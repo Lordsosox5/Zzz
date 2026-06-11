@@ -1,0 +1,1 @@
+- [EHR project setup](ehr-project-setup.md) — Almuzini Children Hospital EHR: full-stack React+Vite + Express 5 + Drizzle/PostgreSQL; all modules wired end-to-end.
