@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 
 export default function ClinicalNotes() {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const [patientId, setPatientId] = useState<number | undefined>(undefined);
   const { data: notes, isLoading } = useListClinicalNotes({ patientId });
   const [isOpen, setIsOpen] = useState(false);
@@ -25,31 +25,31 @@ export default function ClinicalNotes() {
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("generic.new")} Note
+              <Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />
+              {t("notes.addNote")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add Clinical Note</DialogTitle>
+              <DialogTitle>{t("notes.addClinicalNote")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Patient ID</label>
-                <Input placeholder="Enter patient ID" type="number" />
+                <label className="text-sm font-medium">{t("notes.patientId")}</label>
+                <Input placeholder={t("notes.enterPatientId")} type="number" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Note Type</label>
-                <Input placeholder="e.g. SOAP, Progress, Discharge" />
+                <label className="text-sm font-medium">{t("notes.noteType")}</label>
+                <Input placeholder={t("notes.noteTypePlaceholder")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Content</label>
-                <Textarea placeholder="Clinical documentation..." className="min-h-[200px]" />
+                <label className="text-sm font-medium">{t("notes.content")}</label>
+                <Textarea placeholder={t("notes.contentPlaceholder")} className="min-h-[200px]" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsOpen(false)}>{t("generic.cancel")}</Button>
-              <Button><Save className="mr-2 h-4 w-4" /> {t("generic.save")}</Button>
+              <Button><Save className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} /> {t("generic.save")}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -57,17 +57,17 @@ export default function ClinicalNotes() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Notes</CardTitle>
+          <CardTitle>{t("notes.recentNotes")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Preview</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("generic.date")}</TableHead>
+                <TableHead>{t("generic.type")}</TableHead>
+                <TableHead>{t("notes.author")}</TableHead>
+                <TableHead>{t("notes.preview")}</TableHead>
+                <TableHead className={isRtl ? "text-left" : "text-right"}>{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -84,15 +84,15 @@ export default function ClinicalNotes() {
                     <TableCell><Badge variant="outline">{note.type}</Badge></TableCell>
                     <TableCell>{note.authorName}</TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">{note.content}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">View</Button>
+                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                      <Button variant="ghost" size="sm">{t("generic.view")}</Button>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    No notes found.
+                    {t("notes.noNotes")}
                   </TableCell>
                 </TableRow>
               )}

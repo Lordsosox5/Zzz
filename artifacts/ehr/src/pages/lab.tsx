@@ -5,25 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 export default function Lab() {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.lab")}</h1>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("generic.new")} Order
+          <Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />
+          {t("lab.newOrder")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Pending Lab Orders</CardTitle>
+          <CardTitle>{t("lab.pendingOrders")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            No pending lab orders.
+            {t("lab.noPending")}
           </div>
         </CardContent>
       </Card>

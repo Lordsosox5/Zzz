@@ -34,7 +34,7 @@ export default function Settings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Preferences</CardTitle>
+          <CardTitle>{t("settings.preferences")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
@@ -42,11 +42,11 @@ export default function Settings() {
               <Label className="text-base flex items-center gap-2">
                 <Languages className="h-4 w-4" /> {t("settings.language")}
               </Label>
-              <p className="text-sm text-muted-foreground">Change the application language</p>
+              <p className="text-sm text-muted-foreground">{t("settings.changeLanguage")}</p>
             </div>
             <Select value={language} onValueChange={handleLanguageChange}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select Language" />
+                <SelectValue placeholder={t("settings.selectLanguage")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English (LTR)</SelectItem>
@@ -60,12 +60,12 @@ export default function Settings() {
               <Label className="text-base flex items-center gap-2">
                 {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />} {t("settings.theme")}
               </Label>
-              <p className="text-sm text-muted-foreground">Toggle between light and dark mode</p>
+              <p className="text-sm text-muted-foreground">{t("settings.toggleTheme")}</p>
             </div>
-            <Switch 
-              checked={theme === "dark"} 
-              onCheckedChange={handleThemeChange} 
-              aria-label="Toggle dark mode"
+            <Switch
+              checked={theme === "dark"}
+              onCheckedChange={handleThemeChange}
+              aria-label={t("settings.toggleTheme")}
             />
           </div>
         </CardContent>

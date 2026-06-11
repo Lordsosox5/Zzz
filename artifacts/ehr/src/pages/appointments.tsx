@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarIcon, Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 
 export default function Appointments() {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const { data: appointments, isLoading } = useListAppointments({ date });
@@ -18,17 +18,17 @@ export default function Appointments() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.appointments")}</h1>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("generic.new")} Appointment
+          <Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />
+          {t("appt.newAppointment")}
         </Button>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between p-4 border-b">
-          <CardTitle className="text-lg">Schedule</CardTitle>
-          <input 
-            type="date" 
-            value={date} 
+          <CardTitle className="text-lg">{t("appt.schedule")}</CardTitle>
+          <input
+            type="date"
+            value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border rounded px-2 py-1 bg-transparent"
           />
@@ -37,12 +37,12 @@ export default function Appointments() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("appt.time")}</TableHead>
+                <TableHead>{t("generic.patient")}</TableHead>
+                <TableHead>{t("generic.doctor")}</TableHead>
+                <TableHead>{t("generic.type")}</TableHead>
+                <TableHead>{t("generic.status")}</TableHead>
+                <TableHead className={isRtl ? "text-left" : "text-right"}>{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -64,15 +64,15 @@ export default function Appointments() {
                     <TableCell>
                       <Badge variant="outline">{appt.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">Edit</Button>
+                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                      <Button variant="ghost" size="sm">{t("generic.edit")}</Button>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    No appointments for this date.
+                    {t("appt.noAppts")}
                   </TableCell>
                 </TableRow>
               )}

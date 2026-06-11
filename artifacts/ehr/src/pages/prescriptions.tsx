@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Pill, Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 
 export default function Prescriptions() {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const { data: prescriptions, isLoading } = useListPrescriptions({});
 
   return (
@@ -16,25 +16,25 @@ export default function Prescriptions() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.prescriptions")}</h1>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("generic.new")} Prescription
+          <Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />
+          {t("rx.newPrescription")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Active Prescriptions</CardTitle>
+          <CardTitle>{t("rx.activePrescriptions")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Drug</TableHead>
-                <TableHead>Dosage</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("generic.date")}</TableHead>
+                <TableHead>{t("generic.patient")}</TableHead>
+                <TableHead>{t("rx.drug")}</TableHead>
+                <TableHead>{t("rx.dosage")}</TableHead>
+                <TableHead>{t("generic.status")}</TableHead>
+                <TableHead className={isRtl ? "text-left" : "text-right"}>{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -54,15 +54,15 @@ export default function Prescriptions() {
                     <TableCell>
                       <Badge variant={rx.status === 'active' ? 'default' : 'secondary'}>{rx.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">Edit</Button>
+                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                      <Button variant="ghost" size="sm">{t("generic.edit")}</Button>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    No active prescriptions found.
+                    {t("rx.noActive")}
                   </TableCell>
                 </TableRow>
               )}

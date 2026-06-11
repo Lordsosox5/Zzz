@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2 } from "lucide-react";
 
 export default function Pharmacy() {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const { data: drugs, isLoading } = useListDrugs();
 
   return (
@@ -16,23 +16,23 @@ export default function Pharmacy() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.pharmacy")}</h1>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("generic.new")} Drug
+          <Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />
+          {t("pharmacy.newDrug")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Drug Inventory</CardTitle>
+          <CardTitle>{t("pharmacy.inventory")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("generic.name")}</TableHead>
+                <TableHead>{t("generic.category")}</TableHead>
+                <TableHead>{t("generic.status")}</TableHead>
+                <TableHead className={isRtl ? "text-left" : "text-right"}>{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -54,19 +54,19 @@ export default function Pharmacy() {
                       <div className="flex items-center gap-2">
                         {drug.stockQuantity} {drug.unit}
                         {drug.stockQuantity <= (drug.minStockLevel || 0) && (
-                          <Badge variant="destructive">Low Stock</Badge>
+                          <Badge variant="destructive">{t("pharmacy.lowStock")}</Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">Edit</Button>
+                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                      <Button variant="ghost" size="sm">{t("generic.edit")}</Button>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                    No drugs found in inventory.
+                    {t("pharmacy.noInventory")}
                   </TableCell>
                 </TableRow>
               )}

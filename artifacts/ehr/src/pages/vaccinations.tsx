@@ -13,11 +13,11 @@ export default function Vaccinations() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Vaccination Registry</CardTitle>
+          <CardTitle>{t("vacc.registry")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            Select a patient to view their vaccination history.
+            {t("vacc.selectPatient")}
           </div>
         </CardContent>
       </Card>

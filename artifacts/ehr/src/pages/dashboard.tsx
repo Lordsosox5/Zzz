@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const { t, isRtl } = useTranslation();
-  
+
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
     query: { queryKey: getGetDashboardStatsQueryKey() }
   });
@@ -25,8 +25,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">{t("nav.dashboard")}</h1>
-      
-      {/* Stats Grid */}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
@@ -51,7 +50,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Alerts */}
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-medium flex items-center gap-2">
@@ -72,7 +70,7 @@ export default function Dashboard() {
                     <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
                     <div>
                       <h4 className="text-sm font-medium">{isRtl && alert.messageAr ? alert.messageAr : alert.message}</h4>
-                      {alert.patientName && <p className="text-xs text-muted-foreground mt-1">Patient: {alert.patientName}</p>}
+                      {alert.patientName && <p className="text-xs text-muted-foreground mt-1">{t("dash.patient")}: {alert.patientName}</p>}
                       <p className="text-xs text-muted-foreground mt-1">{new Date(alert.timestamp).toLocaleString()}</p>
                     </div>
                   </div>
@@ -80,13 +78,12 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No critical alerts at this time.</p>
+                <p>{t("dash.noAlerts")}</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Today's Appointments */}
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle className="text-lg font-medium flex items-center gap-2">
@@ -123,7 +120,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No appointments today.</p>
+                <p>{t("dash.noApptsToday")}</p>
               </div>
             )}
           </CardContent>

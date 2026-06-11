@@ -17,9 +17,9 @@ export default function NewPatient() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const createMutation = useCreatePatient();
-  
+
   const [formData, setFormData] = useState({
     nameEn: "",
     nameAr: "",
@@ -53,16 +53,16 @@ export default function NewPatient() {
         onSuccess: (data) => {
           queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
           toast({
-            title: "Success",
-            description: "Patient registered successfully",
+            title: t("patient.successTitle"),
+            description: t("patient.successDesc"),
           });
           setLocation(`/patients/${data.id}`);
         },
         onError: () => {
           toast({
             variant: "destructive",
-            title: "Error",
-            description: "Failed to register patient",
+            title: t("patient.errorTitle"),
+            description: t("patient.errorDesc"),
           });
         }
       }
@@ -74,56 +74,56 @@ export default function NewPatient() {
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/patients">
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" style={{ transform: isRtl ? 'scaleX(-1)' : undefined }} />
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Register New Patient</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("patient.registerNew")}</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>{t("patient.personalInfo")}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="nameEn">Full Name (English) *</Label>
+                <Label htmlFor="nameEn">{t("patient.fullNameEn")}</Label>
                 <Input id="nameEn" name="nameEn" required value={formData.nameEn} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nameAr">Full Name (Arabic)</Label>
+                <Label htmlFor="nameAr">{t("patient.fullNameAr")}</Label>
                 <Input id="nameAr" name="nameAr" dir="rtl" value={formData.nameAr} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                <Label htmlFor="dateOfBirth">{t("patient.dateOfBirth")}</Label>
                 <Input id="dateOfBirth" name="dateOfBirth" type="date" required value={formData.dateOfBirth} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="gender">Gender *</Label>
+                <Label htmlFor="gender">{t("patient.genderLabel")}</Label>
                 <Select value={formData.gender} onValueChange={(v) => handleSelectChange('gender', v)}>
                   <SelectTrigger id="gender">
-                    <SelectValue placeholder="Select gender" />
+                    <SelectValue placeholder={t("patient.selectGender")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="male">{t("patient.male")}</SelectItem>
+                    <SelectItem value="female">{t("patient.female")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nationalId">National ID</Label>
+                <Label htmlFor="nationalId">{t("patient.nationalId")}</Label>
                 <Input id="nationalId" name="nationalId" value={formData.nationalId} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nationality">Nationality</Label>
+                <Label htmlFor="nationality">{t("patient.nationality")}</Label>
                 <Input id="nationality" name="nationality" value={formData.nationality} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bloodGroup">Blood Group</Label>
+                <Label htmlFor="bloodGroup">{t("patient.bloodGroup")}</Label>
                 <Select value={formData.bloodGroup} onValueChange={(v) => handleSelectChange('bloodGroup', v)}>
                   <SelectTrigger id="bloodGroup">
-                    <SelectValue placeholder="Select blood group" />
+                    <SelectValue placeholder={t("patient.selectBloodGroup")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="A+">A+</SelectItem>
@@ -142,36 +142,36 @@ export default function NewPatient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Contact & Guardian</CardTitle>
+              <CardTitle>{t("patient.contactGuardian")}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">{t("generic.address")}</Label>
                 <Input id="address" name="address" value={formData.address} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Patient/Home Phone</Label>
+                <Label htmlFor="phone">{t("patient.homePhone")}</Label>
                 <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="guardianName">Guardian Name</Label>
+                <Label htmlFor="guardianName">{t("patient.guardianName")}</Label>
                 <Input id="guardianName" name="guardianName" value={formData.guardianName} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="guardianRelation">Guardian Relation</Label>
+                <Label htmlFor="guardianRelation">{t("patient.guardianRelation")}</Label>
                 <Select value={formData.guardianRelation} onValueChange={(v) => handleSelectChange('guardianRelation', v)}>
                   <SelectTrigger id="guardianRelation">
-                    <SelectValue placeholder="Select relation" />
+                    <SelectValue placeholder={t("patient.selectRelation")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="parent">Parent</SelectItem>
-                    <SelectItem value="sibling">Sibling</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="parent">{t("patient.parent")}</SelectItem>
+                    <SelectItem value="sibling">{t("patient.sibling")}</SelectItem>
+                    <SelectItem value="other">{t("patient.other")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="guardianPhone">Guardian Phone</Label>
+                <Label htmlFor="guardianPhone">{t("patient.guardianPhone")}</Label>
                 <Input id="guardianPhone" name="guardianPhone" type="tel" value={formData.guardianPhone} onChange={handleChange} />
               </div>
             </CardContent>
@@ -179,28 +179,28 @@ export default function NewPatient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Medical Alerts</CardTitle>
+              <CardTitle>{t("patient.medicalAlerts")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="allergies">Known Allergies</Label>
-                <Textarea 
-                  id="allergies" 
-                  name="allergies" 
-                  placeholder="List any known allergies or leave blank" 
-                  value={formData.allergies} 
-                  onChange={handleChange} 
+                <Label htmlFor="allergies">{t("patient.knownAllergies")}</Label>
+                <Textarea
+                  id="allergies"
+                  name="allergies"
+                  placeholder={t("patient.allergiesPlaceholder")}
+                  value={formData.allergies}
+                  onChange={handleChange}
                   className="min-h-[100px]"
                 />
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t pt-6">
               <Button type="button" variant="outline" asChild>
-                <Link href="/patients">Cancel</Link>
+                <Link href="/patients">{t("generic.cancel")}</Link>
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Register Patient
+                {createMutation.isPending ? <Loader2 className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4 animate-spin`} /> : <Save className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />}
+                {t("patient.registerButton")}
               </Button>
             </CardFooter>
           </Card>

@@ -13,11 +13,11 @@ export default function Growth() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Growth Charts</CardTitle>
+          <CardTitle>{t("growth.charts")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            Select a patient to view their growth charts.
+            {t("growth.selectPatient")}
           </div>
         </CardContent>
       </Card>
