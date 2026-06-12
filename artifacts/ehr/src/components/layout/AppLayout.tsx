@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "@/lib/i18n";
 import { logout, getUser } from "@/lib/auth";
+import { getNavForRole, getRoleLabel } from "@/lib/permissions";
 import { 
   LayoutDashboard, Users, Calendar, FileText, Pill, 
   FlaskConical, Activity, HeartPulse, Receipt, UserRound, 
-  ShieldAlert, Settings, LogOut, Bell, Menu, Moon, Sun, Languages
+  ShieldAlert, Settings, LogOut, Bell, Menu, Moon, Sun, Languages, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -19,7 +20,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-const NAV_ITEMS = [
+const ALL_NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, labelKey: "nav.dashboard" },
   { href: "/patients", icon: Users, labelKey: "nav.patients" },
   { href: "/appointments", icon: Calendar, labelKey: "nav.appointments" },
@@ -31,7 +32,7 @@ const NAV_ITEMS = [
   { href: "/billing", icon: Receipt, labelKey: "nav.billing" },
   { href: "/staff", icon: UserRound, labelKey: "nav.staff" },
   { href: "/vaccinations", icon: ShieldAlert, labelKey: "nav.vaccinations" },
-  { href: "/growth", icon: Activity, labelKey: "nav.growth" },
+  { href: "/growth", icon: TrendingUp, labelKey: "nav.growth" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { t, language, setLanguage, isRtl } = useTranslation();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const user = getUser();
+
+  // Filter nav items by role
+  const allowedNav = getNavForRole(user?.role ?? "admin");
+  const navItems = allowedNav === "all"
+    ? ALL_NAV_ITEMS
+    : ALL_NAV_ITEMS.filter(item => (allowedNav as string[]).includes(item.href));
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("ehr_theme") as "light" | "dark";
@@ -59,9 +66,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setLanguage(language === "en" ? "ar" : "en");
   };
 
+  const roleLabel = getRoleLabel(user?.role ?? "", language as "en" | "ar");
+
   const NavLinks = () => (
     <div className="flex flex-col gap-1 w-full py-4">
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const isActive = location.startsWith(item.href);
         const Icon = item.icon;
         return (
@@ -158,7 +167,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{isRtl && user?.nameAr ? user.nameAr : (user?.nameEn || "User")}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.role || "Staff"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{roleLabel}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

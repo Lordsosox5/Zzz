@@ -304,6 +304,36 @@ const translations: Translations = {
   "vacc.dose": { en: "Dose", ar: "الجرعة" },
   "vacc.given": { en: "Date Given", ar: "تاريخ التطعيم" },
   "vacc.nextDue": { en: "Next Due", ar: "الجرعة التالية" },
+
+  // Lab result entry
+  "lab.enterResult": { en: "Enter Result", ar: "إدخال نتيجة" },
+  "lab.resultValue": { en: "Result Value", ar: "قيمة النتيجة" },
+  "lab.unit": { en: "Unit", ar: "الوحدة" },
+  "lab.referenceRange": { en: "Reference Range", ar: "النطاق الطبيعي" },
+  "lab.isCritical": { en: "Critical Result", ar: "نتيجة حرجة" },
+  "lab.resultedAt": { en: "Result Date & Time", ar: "تاريخ ووقت النتيجة" },
+  "lab.updateResult": { en: "Submit Result", ar: "تسليم النتيجة" },
+  "lab.normal": { en: "Normal", ar: "طبيعي" },
+  "lab.abnormal": { en: "Abnormal", ar: "غير طبيعي" },
+  "lab.critical": { en: "Critical", ar: "حرج" },
+  "lab.pending": { en: "Pending", ar: "معلق" },
+  "lab.resulted": { en: "Resulted", ar: "لها نتيجة" },
+  "lab.collected": { en: "Collected", ar: "تم الجمع" },
+  "lab.orderedOn": { en: "Ordered On", ar: "تاريخ الطلب" },
+  "lab.noLabOrders": { en: "No lab orders for this patient.", ar: "لا توجد طلبات مختبر لهذا المريض." },
+  "lab.noRadOrders": { en: "No radiology orders for this patient.", ar: "لا توجد طلبات أشعة لهذا المريض." },
+  "lab.report": { en: "Report", ar: "التقرير" },
+
+  // Patient detail tabs
+  "patient.labResults": { en: "Lab Results", ar: "نتائج المختبر" },
+  "patient.radiologyOrders": { en: "Radiology Orders", ar: "طلبات الأشعة" },
+
+  // Staff role authorities
+  "staff.roleAuthorities": { en: "Role Authorities", ar: "صلاحيات الدور" },
+  "staff.labSpecialist": { en: "Laboratory Specialist", ar: "أخصائي مختبر" },
+  "staff.permissions": { en: "Permissions", ar: "الصلاحيات" },
+  "staff.roleCapabilities": { en: "Capabilities of each role", ar: "قدرات كل دور" },
+  "staff.allowedModules": { en: "Allowed Modules", ar: "الوحدات المسموح بها" },
 };
 
 interface I18nContextType {
