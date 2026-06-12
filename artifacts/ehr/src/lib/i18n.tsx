@@ -174,7 +174,6 @@ const translations: Translations = {
 
   // Radiology
   "radiology.orders": { en: "Radiology Orders", ar: "طلبات الأشعة" },
-  "radiology.noOrders": { en: "No active radiology orders.", ar: "لا طلبات أشعة نشطة." },
   "radiology.newOrder": { en: "New Order", ar: "طلب جديد" },
 
   // Billing
@@ -194,6 +193,117 @@ const translations: Translations = {
   // Growth
   "growth.charts": { en: "Growth Charts", ar: "مخططات النمو" },
   "growth.selectPatient": { en: "Select a patient to view their growth charts.", ar: "اختر مريضاً لعرض مخططات النمو." },
+  "growth.newRecord": { en: "New Record", ar: "قياس جديد" },
+  "growth.addRecord": { en: "Add Growth Record", ar: "إضافة قياس نمو" },
+  "growth.patientId": { en: "Patient ID", ar: "رقم المريض" },
+  "growth.measurementDate": { en: "Measurement Date", ar: "تاريخ القياس" },
+  "growth.weight": { en: "Weight (kg)", ar: "الوزن (كجم)" },
+  "growth.height": { en: "Height (cm)", ar: "الطول (سم)" },
+  "growth.headCirc": { en: "Head Circumference (cm)", ar: "محيط الرأس (سم)" },
+  "growth.noRecords": { en: "No growth records found.", ar: "لا توجد سجلات نمو." },
+  "growth.date": { en: "Date", ar: "التاريخ" },
+  "growth.bmi": { en: "BMI", ar: "مؤشر كتلة الجسم" },
+
+  // Generic extras
+  "generic.priority": { en: "Priority", ar: "الأولوية" },
+  "generic.notes": { en: "Notes", ar: "الملاحظات" },
+  "generic.success": { en: "Success", ar: "تم بنجاح" },
+  "generic.error": { en: "Error", ar: "خطأ" },
+  "generic.addSuccess": { en: "Added successfully", ar: "تمت الإضافة بنجاح" },
+  "generic.addError": { en: "Failed to add record", ar: "فشل إضافة السجل" },
+  "generic.patientId": { en: "Patient ID", ar: "رقم المريض" },
+  "generic.result": { en: "Result", ar: "النتيجة" },
+  "generic.email": { en: "Email", ar: "البريد الإلكتروني" },
+  "generic.department": { en: "Department", ar: "القسم" },
+  "generic.role": { en: "Role", ar: "الدور" },
+  "generic.quantity": { en: "Quantity", ar: "الكمية" },
+  "generic.description": { en: "Description", ar: "الوصف" },
+  "generic.total": { en: "Total", ar: "الإجمالي" },
+  "generic.selectPriority": { en: "Select priority", ar: "اختر الأولوية" },
+  "generic.routine": { en: "Routine", ar: "روتيني" },
+  "generic.urgent": { en: "Urgent", ar: "عاجل" },
+  "generic.stat": { en: "STAT", ar: "فوري" },
+
+  // Appointments dialog
+  "appt.doctorId": { en: "Doctor ID", ar: "رقم الطبيب" },
+  "appt.dateTime": { en: "Date & Time", ar: "التاريخ والوقت" },
+  "appt.chiefComplaint": { en: "Chief Complaint", ar: "الشكوى الرئيسية" },
+  "appt.duration": { en: "Duration (min)", ar: "المدة (دقيقة)" },
+  "appt.selectType": { en: "Select type", ar: "اختر النوع" },
+  "appt.followUp": { en: "Follow-up", ar: "متابعة" },
+  "appt.consultation": { en: "Consultation", ar: "استشارة" },
+  "appt.emergency": { en: "Emergency", ar: "طارئ" },
+  "appt.checkup": { en: "Check-up", ar: "فحص دوري" },
+  "appt.procedure": { en: "Procedure", ar: "إجراء طبي" },
+
+  // Prescriptions dialog
+  "rx.patientId": { en: "Patient ID", ar: "رقم المريض" },
+  "rx.drugName": { en: "Drug Name", ar: "اسم الدواء" },
+  "rx.frequency": { en: "Frequency", ar: "التكرار" },
+  "rx.duration": { en: "Duration", ar: "مدة العلاج" },
+  "rx.route": { en: "Route", ar: "طريقة الإعطاء" },
+  "rx.instructions": { en: "Instructions", ar: "التعليمات" },
+
+  // Lab dialog
+  "lab.testName": { en: "Test Name", ar: "اسم الفحص" },
+  "lab.testCode": { en: "Test Code", ar: "رمز الفحص" },
+  "lab.orderedBy": { en: "Ordered By", ar: "أمر بـ" },
+  "lab.noOrders": { en: "No lab orders found.", ar: "لا توجد طلبات مختبر." },
+
+  // Radiology dialog
+  "radiology.modality": { en: "Modality", ar: "طريقة التصوير" },
+  "radiology.studyDesc": { en: "Study Description", ar: "وصف الدراسة" },
+  "radiology.xray": { en: "X-Ray", ar: "أشعة سينية" },
+  "radiology.ct": { en: "CT Scan", ar: "أشعة مقطعية" },
+  "radiology.mri": { en: "MRI", ar: "رنين مغناطيسي" },
+  "radiology.ultrasound": { en: "Ultrasound", ar: "موجات صوتية" },
+  "radiology.noOrders": { en: "No radiology orders found.", ar: "لا توجد طلبات أشعة." },
+
+  // Pharmacy dialog
+  "pharmacy.drugName": { en: "Drug Name", ar: "اسم الدواء" },
+  "pharmacy.genericName": { en: "Generic Name", ar: "الاسم العام" },
+  "pharmacy.stockQty": { en: "Stock Quantity", ar: "كمية المخزون" },
+  "pharmacy.minStock": { en: "Min Stock Level", ar: "الحد الأدنى للمخزون" },
+  "pharmacy.unit": { en: "Unit", ar: "الوحدة" },
+  "pharmacy.unitPrice": { en: "Unit Price", ar: "سعر الوحدة" },
+
+  // Billing dialog
+  "billing.patientId": { en: "Patient ID", ar: "رقم المريض" },
+  "billing.paymentMethod": { en: "Payment Method", ar: "طريقة الدفع" },
+  "billing.cash": { en: "Cash", ar: "نقد" },
+  "billing.card": { en: "Card", ar: "بطاقة" },
+  "billing.insurance": { en: "Insurance", ar: "تأمين" },
+  "billing.selectPayment": { en: "Select payment method", ar: "اختر طريقة الدفع" },
+  "billing.itemDescription": { en: "Item Description", ar: "وصف البند" },
+  "billing.unitPrice": { en: "Unit Price", ar: "سعر الوحدة" },
+  "billing.patient": { en: "Patient", ar: "المريض" },
+  "billing.amount": { en: "Amount", ar: "المبلغ" },
+  "billing.method": { en: "Method", ar: "طريقة الدفع" },
+  "billing.noInvoicesFound": { en: "No invoices found.", ar: "لا توجد فواتير." },
+
+  // Staff dialog
+  "staff.nameEn": { en: "Full Name (English)", ar: "الاسم الكامل (إنجليزي)" },
+  "staff.nameAr": { en: "Full Name (Arabic)", ar: "الاسم الكامل (عربي)" },
+  "staff.selectRole": { en: "Select role", ar: "اختر الدور" },
+  "staff.consultant": { en: "Consultant", ar: "استشاري" },
+  "staff.specialist": { en: "Specialist", ar: "أخصائي" },
+  "staff.nurse": { en: "Nurse", ar: "ممرض/ة" },
+  "staff.pharmacist": { en: "Pharmacist", ar: "صيدلاني" },
+  "staff.admin": { en: "Admin", ar: "مدير نظام" },
+  "staff.noStaff": { en: "No staff members found.", ar: "لا يوجد موظفون." },
+
+  // Vaccinations dialog
+  "vacc.newRecord": { en: "Record Vaccination", ar: "تسجيل تطعيم" },
+  "vacc.vaccineName": { en: "Vaccine Name", ar: "اسم اللقاح" },
+  "vacc.doseNumber": { en: "Dose #", ar: "رقم الجرعة" },
+  "vacc.administeredDate": { en: "Date Given", ar: "تاريخ التطعيم" },
+  "vacc.nextDueDate": { en: "Next Due Date", ar: "تاريخ الجرعة التالية" },
+  "vacc.batchNumber": { en: "Batch #", ar: "رقم الدفعة" },
+  "vacc.noRecords": { en: "No vaccination records found.", ar: "لا توجد سجلات تطعيم." },
+  "vacc.vaccine": { en: "Vaccine", ar: "اللقاح" },
+  "vacc.dose": { en: "Dose", ar: "الجرعة" },
+  "vacc.given": { en: "Date Given", ar: "تاريخ التطعيم" },
+  "vacc.nextDue": { en: "Next Due", ar: "الجرعة التالية" },
 };
 
 interface I18nContextType {

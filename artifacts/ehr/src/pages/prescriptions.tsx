@@ -1,30 +1,102 @@
 import { useState } from "react";
-import { useListPrescriptions } from "@workspace/api-client-react";
+import { useListPrescriptions, useCreatePrescription, getListPrescriptionsQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Loader2, Save } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Prescriptions() {
   const { t, isRtl } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
   const { data: prescriptions, isLoading } = useListPrescriptions({});
+  const createMutation = useCreatePrescription();
+
+  const [form, setForm] = useState({ patientId: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate(
+      { data: { patientId: Number(form.patientId), drugName: form.drugName, dosage: form.dosage, frequency: form.frequency, duration: form.duration || undefined, route: form.route || undefined, instructions: form.instructions || undefined } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListPrescriptionsQueryKey() });
+          toast({ title: t("generic.success"), description: t("generic.addSuccess") });
+          setIsOpen(false);
+          setForm({ patientId: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
+      }
+    );
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.prescriptions")}</h1>
-        <Button>
-          <Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />
-          {t("rx.newPrescription")}
-        </Button>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />{t("rx.newPrescription")}</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader><DialogTitle>{t("rx.newPrescription")}</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>{t("generic.patientId")} *</Label>
+                <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("rx.drugName")} *</Label>
+                <Input name="drugName" required value={form.drugName} onChange={handleChange} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("rx.dosage")} *</Label>
+                  <Input name="dosage" required value={form.dosage} onChange={handleChange} placeholder="e.g. 250mg" />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("rx.frequency")} *</Label>
+                  <Input name="frequency" required value={form.frequency} onChange={handleChange} placeholder="e.g. 3x daily" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("rx.duration")}</Label>
+                  <Input name="duration" value={form.duration} onChange={handleChange} placeholder="e.g. 7 days" />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("rx.route")}</Label>
+                  <Input name="route" value={form.route} onChange={handleChange} placeholder="e.g. oral" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("rx.instructions")}</Label>
+                <Textarea name="instructions" value={form.instructions} onChange={handleChange} className="min-h-[80px]" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t("generic.cancel")}</Button>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />}
+                  {t("generic.save")}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>{t("rx.activePrescriptions")}</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>{t("rx.activePrescriptions")}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -39,32 +111,20 @@ export default function Prescriptions() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
               ) : prescriptions && prescriptions.length > 0 ? (
                 prescriptions.map((rx) => (
                   <TableRow key={rx.id}>
                     <TableCell>{new Date(rx.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>{rx.patientName}</TableCell>
+                    <TableCell>{rx.patientName ?? rx.patientId}</TableCell>
                     <TableCell className="font-medium">{rx.drugName}</TableCell>
                     <TableCell>{rx.dosage} - {rx.frequency}</TableCell>
-                    <TableCell>
-                      <Badge variant={rx.status === 'active' ? 'default' : 'secondary'}>{rx.status}</Badge>
-                    </TableCell>
-                    <TableCell className={isRtl ? "text-left" : "text-right"}>
-                      <Button variant="ghost" size="sm">{t("generic.edit")}</Button>
-                    </TableCell>
+                    <TableCell><Badge variant={rx.status === 'active' ? 'default' : 'secondary'}>{rx.status}</Badge></TableCell>
+                    <TableCell className={isRtl ? "text-left" : "text-right"}><Button variant="ghost" size="sm">{t("generic.edit")}</Button></TableCell>
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    {t("rx.noActive")}
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{t("rx.noActive")}</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
