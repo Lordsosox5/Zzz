@@ -8,3 +8,4 @@ export * from "./billing";
 export * from "./pharmacy";
 export * from "./vaccinations";
 export * from "./activity";
+export * from "./admissions";

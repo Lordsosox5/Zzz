@@ -25,6 +25,16 @@ export interface Patient {
   /** @nullable */
   address?: string | null;
   /** @nullable */
+  residence?: string | null;
+  /** @nullable */
+  weight?: string | null;
+  /** @nullable */
+  height?: string | null;
+  /** @nullable */
+  admissionDate?: string | null;
+  /** @nullable */
+  dischargeDate?: string | null;
+  /** @nullable */
   guardianName?: string | null;
   /** @nullable */
   guardianRelation?: string | null;

@@ -328,6 +328,65 @@ const translations: Translations = {
   "patient.labResults": { en: "Lab Results", ar: "نتائج المختبر" },
   "patient.radiologyOrders": { en: "Radiology Orders", ar: "طلبات الأشعة" },
 
+  // Section 1 — New patient demographics extras
+  "patient.weight": { en: "Weight (kg)", ar: "الوزن (كغ)" },
+  "patient.height": { en: "Height (cm)", ar: "الطول (سم)" },
+  "patient.residence": { en: "Residence", ar: "مكان الإقامة" },
+  "patient.admissionDate": { en: "Date of Admission", ar: "تاريخ الدخول" },
+  "patient.dischargeDate": { en: "Date of Discharge", ar: "تاريخ الخروج" },
+  "patient.age": { en: "Age", ar: "العمر" },
+
+  // Admission form sections
+  "admit.newPatientTitle": { en: "New Patient Admission", ar: "قبول مريض جديد" },
+  "admit.section1": { en: "Section 1 — Patient Demographics", ar: "القسم ١ — بيانات المريض" },
+  "admit.section2": { en: "Section 2 — Patient History", ar: "القسم ٢ — التاريخ المرضي" },
+  "admit.section3": { en: "Section 3 — On Examination", ar: "القسم ٣ — عند الفحص" },
+  "admit.section4": { en: "Section 4 — Investigations & Management", ar: "القسم ٤ — الفحوصات والخطة العلاجية" },
+  "admit.section5": { en: "Section 5 — Follow-up & Discharge", ar: "القسم ٥ — المتابعة والخروج" },
+  "admit.sectionOptional": { en: "All fields in this section are optional and can be filled later.", ar: "جميع حقول هذا القسم اختيارية ويمكن تعبئتها لاحقاً." },
+  "admit.registerAndSave": { en: "Register Patient & Save", ar: "تسجيل المريض وحفظ" },
+
+  // History fields
+  "admit.mainComplaint": { en: "Main Complaint", ar: "الشكوى الرئيسية" },
+  "admit.analysisTitle": { en: "Analysis of Main Complaint", ar: "تحليل الشكوى الرئيسية" },
+  "admit.site": { en: "Site", ar: "الموقع" },
+  "admit.onset": { en: "Onset", ar: "البداية" },
+  "admit.character": { en: "Character", ar: "الطابع" },
+  "admit.radiation": { en: "Radiation", ar: "الانتشار" },
+  "admit.aggravation": { en: "Aggravating Factors", ar: "عوامل التفاقم" },
+  "admit.relieving": { en: "Relieving Factors", ar: "عوامل التحسن" },
+  "admit.associations": { en: "Associations", ar: "المرتبطات" },
+  "admit.systemicReview": { en: "Systemic Review", ar: "المراجعة المنظومية" },
+  "admit.pastMedicalHistory": { en: "Past Medical History", ar: "التاريخ الطبي السابق" },
+  "admit.familyHistory": { en: "Family History", ar: "التاريخ العائلي" },
+  "admit.drugHistory": { en: "Drug History", ar: "تاريخ الأدوية" },
+  "admit.socialHistory": { en: "Social History", ar: "التاريخ الاجتماعي" },
+  "admit.developmentalHistory": { en: "Developmental History", ar: "التاريخ التطوري" },
+  "admit.summary": { en: "Summary", ar: "الملخص" },
+  "admit.provisionalDiagnosis": { en: "Provisional Diagnosis", ar: "التشخيص المبدئي" },
+
+  // Examination fields
+  "admit.examinationSummary": { en: "General Examination Summary", ar: "ملخص الفحص العام" },
+  "admit.systemsTitle": { en: "Examination by System", ar: "الفحص بحسب الجهاز" },
+  "admit.chestExam": { en: "Chest Examination", ar: "فحص الصدر" },
+  "admit.cnsExam": { en: "CNS Examination", ar: "فحص الجهاز العصبي" },
+  "admit.abdomenExam": { en: "Abdomen Examination", ar: "فحص البطن" },
+  "admit.vitalsTitle": { en: "Vital Signs", ar: "العلامات الحيوية" },
+  "admit.bp": { en: "Blood Pressure (BP)", ar: "ضغط الدم" },
+  "admit.pr": { en: "Pulse Rate (PR)", ar: "معدل النبض" },
+  "admit.rr": { en: "Respiratory Rate (RR)", ar: "معدل التنفس" },
+  "admit.gcs": { en: "GCS Score", ar: "مقياس غلاسكو" },
+  "admit.rbg": { en: "Random Blood Glucose (RBG)", ar: "سكر الدم العشوائي" },
+
+  // Investigations & plan
+  "admit.investigationsOrdered": { en: "Investigations Ordered", ar: "الفحوصات المطلوبة" },
+  "admit.managementPlan": { en: "Plan of Management", ar: "خطة العلاج" },
+
+  // Follow-up & discharge
+  "admit.morningFollowUp": { en: "Morning Follow-up", ar: "متابعة الصباح" },
+  "admit.eveningFollowUp": { en: "Evening Follow-up", ar: "متابعة المساء" },
+  "admit.dischargeLetter": { en: "Discharge / Referral Letter", ar: "رسالة الخروج أو التحويل" },
+
   // Staff role authorities
   "staff.roleAuthorities": { en: "Role Authorities", ar: "صلاحيات الدور" },
   "staff.labSpecialist": { en: "Laboratory Specialist", ar: "أخصائي مختبر" },

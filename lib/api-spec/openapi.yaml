@@ -21,6 +21,7 @@ tags:
   - name: dashboard
   - name: vaccinations
   - name: growth
+  - name: admissions
 
 paths:
   /healthz:
@@ -162,6 +163,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Patient"
+
+  /patients/{id}/assessment:
+    get:
+      operationId: getPatientAssessment
+      tags: [admissions]
+      summary: Get admission assessment for a patient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Admission assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionAssessment"
+        "404":
+          description: Not found
+
+  /admission-assessments:
+    post:
+      operationId: createAdmissionAssessment
+      tags: [admissions]
+      summary: Create admission assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionAssessmentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionAssessment"
+
+  /admission-assessments/{id}:
+    patch:
+      operationId: updateAdmissionAssessment
+      tags: [admissions]
+      summary: Update admission assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmissionAssessmentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdmissionAssessment"
 
   /patients/{id}/summary:
     get:
@@ -1046,6 +1110,11 @@ components:
         nationalId: { type: ["string", "null"] }
         phone: { type: ["string", "null"] }
         address: { type: ["string", "null"] }
+        residence: { type: ["string", "null"] }
+        weight: { type: ["string", "null"] }
+        height: { type: ["string", "null"] }
+        admissionDate: { type: ["string", "null"] }
+        dischargeDate: { type: ["string", "null"] }
         guardianName: { type: ["string", "null"] }
         guardianRelation: { type: ["string", "null"] }
         guardianPhone: { type: ["string", "null"] }
@@ -1066,6 +1135,11 @@ components:
         nationalId: { type: string }
         phone: { type: string }
         address: { type: string }
+        residence: { type: string }
+        weight: { type: string }
+        height: { type: string }
+        admissionDate: { type: string }
+        dischargeDate: { type: string }
         guardianName: { type: string }
         guardianRelation: { type: string }
         guardianPhone: { type: string }
@@ -1078,12 +1152,127 @@ components:
         nameAr: { type: string }
         phone: { type: string }
         address: { type: string }
+        residence: { type: string }
+        weight: { type: string }
+        height: { type: string }
+        admissionDate: { type: string }
+        dischargeDate: { type: string }
         guardianName: { type: string }
         guardianRelation: { type: string }
         guardianPhone: { type: string }
         allergies: { type: string }
         bloodGroup: { type: string }
         status: { type: string }
+
+    AdmissionAssessment:
+      type: object
+      required: [id, patientId, authorId, createdAt]
+      properties:
+        id: { type: integer }
+        patientId: { type: integer }
+        authorId: { type: integer }
+        mainComplaint: { type: ["string", "null"] }
+        analysisSite: { type: ["string", "null"] }
+        analysisOnset: { type: ["string", "null"] }
+        analysisCharacter: { type: ["string", "null"] }
+        analysisRadiation: { type: ["string", "null"] }
+        analysisAggravation: { type: ["string", "null"] }
+        analysisRelieving: { type: ["string", "null"] }
+        analysisAssociations: { type: ["string", "null"] }
+        systemicReview: { type: ["string", "null"] }
+        pastMedicalHistory: { type: ["string", "null"] }
+        familyHistory: { type: ["string", "null"] }
+        drugHistory: { type: ["string", "null"] }
+        socialHistory: { type: ["string", "null"] }
+        developmentalHistory: { type: ["string", "null"] }
+        historySummary: { type: ["string", "null"] }
+        provisionalDiagnosis: { type: ["string", "null"] }
+        examinationSummary: { type: ["string", "null"] }
+        chestExam: { type: ["string", "null"] }
+        cnsExam: { type: ["string", "null"] }
+        abdomenExam: { type: ["string", "null"] }
+        vitalBp: { type: ["string", "null"] }
+        vitalPr: { type: ["string", "null"] }
+        vitalRr: { type: ["string", "null"] }
+        vitalGcs: { type: ["string", "null"] }
+        vitalRbg: { type: ["string", "null"] }
+        investigationsOrdered: { type: ["string", "null"] }
+        managementPlan: { type: ["string", "null"] }
+        morningFollowUp: { type: ["string", "null"] }
+        eveningFollowUp: { type: ["string", "null"] }
+        dischargeLetter: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+
+    AdmissionAssessmentInput:
+      type: object
+      required: [patientId]
+      properties:
+        patientId: { type: integer }
+        mainComplaint: { type: string }
+        analysisSite: { type: string }
+        analysisOnset: { type: string }
+        analysisCharacter: { type: string }
+        analysisRadiation: { type: string }
+        analysisAggravation: { type: string }
+        analysisRelieving: { type: string }
+        analysisAssociations: { type: string }
+        systemicReview: { type: string }
+        pastMedicalHistory: { type: string }
+        familyHistory: { type: string }
+        drugHistory: { type: string }
+        socialHistory: { type: string }
+        developmentalHistory: { type: string }
+        historySummary: { type: string }
+        provisionalDiagnosis: { type: string }
+        examinationSummary: { type: string }
+        chestExam: { type: string }
+        cnsExam: { type: string }
+        abdomenExam: { type: string }
+        vitalBp: { type: string }
+        vitalPr: { type: string }
+        vitalRr: { type: string }
+        vitalGcs: { type: string }
+        vitalRbg: { type: string }
+        investigationsOrdered: { type: string }
+        managementPlan: { type: string }
+        morningFollowUp: { type: string }
+        eveningFollowUp: { type: string }
+        dischargeLetter: { type: string }
+
+    AdmissionAssessmentUpdate:
+      type: object
+      properties:
+        mainComplaint: { type: string }
+        analysisSite: { type: string }
+        analysisOnset: { type: string }
+        analysisCharacter: { type: string }
+        analysisRadiation: { type: string }
+        analysisAggravation: { type: string }
+        analysisRelieving: { type: string }
+        analysisAssociations: { type: string }
+        systemicReview: { type: string }
+        pastMedicalHistory: { type: string }
+        familyHistory: { type: string }
+        drugHistory: { type: string }
+        socialHistory: { type: string }
+        developmentalHistory: { type: string }
+        historySummary: { type: string }
+        provisionalDiagnosis: { type: string }
+        examinationSummary: { type: string }
+        chestExam: { type: string }
+        cnsExam: { type: string }
+        abdomenExam: { type: string }
+        vitalBp: { type: string }
+        vitalPr: { type: string }
+        vitalRr: { type: string }
+        vitalGcs: { type: string }
+        vitalRbg: { type: string }
+        investigationsOrdered: { type: string }
+        managementPlan: { type: string }
+        morningFollowUp: { type: string }
+        eveningFollowUp: { type: string }
+        dischargeLetter: { type: string }
 
     PatientListResponse:
       type: object

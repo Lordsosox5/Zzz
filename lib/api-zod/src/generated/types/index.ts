@@ -7,6 +7,9 @@
  */
 
 export * from './activityItem';
+export * from './admissionAssessment';
+export * from './admissionAssessmentInput';
+export * from './admissionAssessmentUpdate';
 export * from './alert';
 export * from './appointment';
 export * from './appointmentInput';

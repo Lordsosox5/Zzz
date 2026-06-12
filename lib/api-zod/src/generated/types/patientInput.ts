@@ -16,6 +16,11 @@ export interface PatientInput {
   nationalId?: string;
   phone?: string;
   address?: string;
+  residence?: string;
+  weight?: string;
+  height?: string;
+  admissionDate?: string;
+  dischargeDate?: string;
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;

@@ -21,6 +21,9 @@ import type {
 
 import type {
   ActivityItem,
+  AdmissionAssessment,
+  AdmissionAssessmentInput,
+  AdmissionAssessmentUpdate,
   Alert,
   Appointment,
   AppointmentInput,
@@ -687,6 +690,226 @@ export const useUpdatePatient = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdatePatientMutationOptions(options));
+    }
+
+export const getGetPatientAssessmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/patients/${id}/assessment`
+}
+
+/**
+ * @summary Get admission assessment for a patient
+ */
+export const getPatientAssessment = async (id: number, options?: RequestInit): Promise<AdmissionAssessment> => {
+
+  return customFetch<AdmissionAssessment>(getGetPatientAssessmentUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPatientAssessmentQueryKey = (id: number,) => {
+    return [
+    `/api/patients/${id}/assessment`
+    ] as const;
+    }
+
+
+export const getGetPatientAssessmentQueryOptions = <TData = Awaited<ReturnType<typeof getPatientAssessment>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPatientAssessment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPatientAssessmentQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPatientAssessment>>> = ({ signal }) => getPatientAssessment(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPatientAssessment>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPatientAssessmentQueryResult = NonNullable<Awaited<ReturnType<typeof getPatientAssessment>>>
+export type GetPatientAssessmentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get admission assessment for a patient
+ */
+
+export function useGetPatientAssessment<TData = Awaited<ReturnType<typeof getPatientAssessment>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPatientAssessment>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPatientAssessmentQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateAdmissionAssessmentUrl = () => {
+
+
+
+
+  return `/api/admission-assessments`
+}
+
+/**
+ * @summary Create admission assessment
+ */
+export const createAdmissionAssessment = async (admissionAssessmentInput: AdmissionAssessmentInput, options?: RequestInit): Promise<AdmissionAssessment> => {
+
+  return customFetch<AdmissionAssessment>(getCreateAdmissionAssessmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      admissionAssessmentInput,)
+  }
+);}
+
+
+
+
+export const getCreateAdmissionAssessmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdmissionAssessment>>, TError,{data: BodyType<AdmissionAssessmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdmissionAssessment>>, TError,{data: BodyType<AdmissionAssessmentInput>}, TContext> => {
+
+const mutationKey = ['createAdmissionAssessment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdmissionAssessment>>, {data: BodyType<AdmissionAssessmentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdmissionAssessment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdmissionAssessmentMutationResult = NonNullable<Awaited<ReturnType<typeof createAdmissionAssessment>>>
+    export type CreateAdmissionAssessmentMutationBody = BodyType<AdmissionAssessmentInput>
+    export type CreateAdmissionAssessmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create admission assessment
+ */
+export const useCreateAdmissionAssessment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdmissionAssessment>>, TError,{data: BodyType<AdmissionAssessmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdmissionAssessment>>,
+        TError,
+        {data: BodyType<AdmissionAssessmentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdmissionAssessmentMutationOptions(options));
+    }
+
+export const getUpdateAdmissionAssessmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/admission-assessments/${id}`
+}
+
+/**
+ * @summary Update admission assessment
+ */
+export const updateAdmissionAssessment = async (id: number,
+    admissionAssessmentUpdate: AdmissionAssessmentUpdate, options?: RequestInit): Promise<AdmissionAssessment> => {
+
+  return customFetch<AdmissionAssessment>(getUpdateAdmissionAssessmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      admissionAssessmentUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateAdmissionAssessmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdmissionAssessment>>, TError,{id: number;data: BodyType<AdmissionAssessmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdmissionAssessment>>, TError,{id: number;data: BodyType<AdmissionAssessmentUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdmissionAssessment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdmissionAssessment>>, {id: number;data: BodyType<AdmissionAssessmentUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdmissionAssessment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdmissionAssessmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdmissionAssessment>>>
+    export type UpdateAdmissionAssessmentMutationBody = BodyType<AdmissionAssessmentUpdate>
+    export type UpdateAdmissionAssessmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update admission assessment
+ */
+export const useUpdateAdmissionAssessment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdmissionAssessment>>, TError,{id: number;data: BodyType<AdmissionAssessmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdmissionAssessment>>,
+        TError,
+        {id: number;data: BodyType<AdmissionAssessmentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdmissionAssessmentMutationOptions(options));
     }
 
 export const getGetPatientSummaryUrl = (id: number,) => {

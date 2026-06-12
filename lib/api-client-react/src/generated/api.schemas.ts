@@ -56,6 +56,16 @@ export interface Patient {
   /** @nullable */
   address?: string | null;
   /** @nullable */
+  residence?: string | null;
+  /** @nullable */
+  weight?: string | null;
+  /** @nullable */
+  height?: string | null;
+  /** @nullable */
+  admissionDate?: string | null;
+  /** @nullable */
+  dischargeDate?: string | null;
+  /** @nullable */
   guardianName?: string | null;
   /** @nullable */
   guardianRelation?: string | null;
@@ -77,6 +87,11 @@ export interface PatientInput {
   nationalId?: string;
   phone?: string;
   address?: string;
+  residence?: string;
+  weight?: string;
+  height?: string;
+  admissionDate?: string;
+  dischargeDate?: string;
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
@@ -88,12 +103,152 @@ export interface PatientUpdate {
   nameAr?: string;
   phone?: string;
   address?: string;
+  residence?: string;
+  weight?: string;
+  height?: string;
+  admissionDate?: string;
+  dischargeDate?: string;
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
   allergies?: string;
   bloodGroup?: string;
   status?: string;
+}
+
+export interface AdmissionAssessment {
+  id: number;
+  patientId: number;
+  authorId: number;
+  /** @nullable */
+  mainComplaint?: string | null;
+  /** @nullable */
+  analysisSite?: string | null;
+  /** @nullable */
+  analysisOnset?: string | null;
+  /** @nullable */
+  analysisCharacter?: string | null;
+  /** @nullable */
+  analysisRadiation?: string | null;
+  /** @nullable */
+  analysisAggravation?: string | null;
+  /** @nullable */
+  analysisRelieving?: string | null;
+  /** @nullable */
+  analysisAssociations?: string | null;
+  /** @nullable */
+  systemicReview?: string | null;
+  /** @nullable */
+  pastMedicalHistory?: string | null;
+  /** @nullable */
+  familyHistory?: string | null;
+  /** @nullable */
+  drugHistory?: string | null;
+  /** @nullable */
+  socialHistory?: string | null;
+  /** @nullable */
+  developmentalHistory?: string | null;
+  /** @nullable */
+  historySummary?: string | null;
+  /** @nullable */
+  provisionalDiagnosis?: string | null;
+  /** @nullable */
+  examinationSummary?: string | null;
+  /** @nullable */
+  chestExam?: string | null;
+  /** @nullable */
+  cnsExam?: string | null;
+  /** @nullable */
+  abdomenExam?: string | null;
+  /** @nullable */
+  vitalBp?: string | null;
+  /** @nullable */
+  vitalPr?: string | null;
+  /** @nullable */
+  vitalRr?: string | null;
+  /** @nullable */
+  vitalGcs?: string | null;
+  /** @nullable */
+  vitalRbg?: string | null;
+  /** @nullable */
+  investigationsOrdered?: string | null;
+  /** @nullable */
+  managementPlan?: string | null;
+  /** @nullable */
+  morningFollowUp?: string | null;
+  /** @nullable */
+  eveningFollowUp?: string | null;
+  /** @nullable */
+  dischargeLetter?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AdmissionAssessmentInput {
+  patientId: number;
+  mainComplaint?: string;
+  analysisSite?: string;
+  analysisOnset?: string;
+  analysisCharacter?: string;
+  analysisRadiation?: string;
+  analysisAggravation?: string;
+  analysisRelieving?: string;
+  analysisAssociations?: string;
+  systemicReview?: string;
+  pastMedicalHistory?: string;
+  familyHistory?: string;
+  drugHistory?: string;
+  socialHistory?: string;
+  developmentalHistory?: string;
+  historySummary?: string;
+  provisionalDiagnosis?: string;
+  examinationSummary?: string;
+  chestExam?: string;
+  cnsExam?: string;
+  abdomenExam?: string;
+  vitalBp?: string;
+  vitalPr?: string;
+  vitalRr?: string;
+  vitalGcs?: string;
+  vitalRbg?: string;
+  investigationsOrdered?: string;
+  managementPlan?: string;
+  morningFollowUp?: string;
+  eveningFollowUp?: string;
+  dischargeLetter?: string;
+}
+
+export interface AdmissionAssessmentUpdate {
+  mainComplaint?: string;
+  analysisSite?: string;
+  analysisOnset?: string;
+  analysisCharacter?: string;
+  analysisRadiation?: string;
+  analysisAggravation?: string;
+  analysisRelieving?: string;
+  analysisAssociations?: string;
+  systemicReview?: string;
+  pastMedicalHistory?: string;
+  familyHistory?: string;
+  drugHistory?: string;
+  socialHistory?: string;
+  developmentalHistory?: string;
+  historySummary?: string;
+  provisionalDiagnosis?: string;
+  examinationSummary?: string;
+  chestExam?: string;
+  cnsExam?: string;
+  abdomenExam?: string;
+  vitalBp?: string;
+  vitalPr?: string;
+  vitalRr?: string;
+  vitalGcs?: string;
+  vitalRbg?: string;
+  investigationsOrdered?: string;
+  managementPlan?: string;
+  morningFollowUp?: string;
+  eveningFollowUp?: string;
+  dischargeLetter?: string;
 }
 
 export interface PatientListResponse {
