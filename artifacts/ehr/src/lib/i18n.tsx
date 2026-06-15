@@ -30,6 +30,7 @@ const translations: Translations = {
 
   // Login
   "login.title": { en: "Sign In", ar: "تسجيل الدخول" },
+  "login.subtitle": { en: "Enter your credentials to access the EHR", ar: "أدخل بياناتك للوصول إلى النظام" },
   "login.username": { en: "Username", ar: "اسم المستخدم" },
   "login.password": { en: "Password", ar: "كلمة المرور" },
   "login.button": { en: "Login", ar: "دخول" },
