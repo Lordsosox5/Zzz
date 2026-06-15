@@ -52,12 +52,12 @@ export default function Patients() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("patient.mrn")}</TableHead>
-                <TableHead>{t("generic.name")}</TableHead>
-                <TableHead>{t("patient.dob")}</TableHead>
-                <TableHead>{t("patient.gender")}</TableHead>
-                <TableHead>{t("generic.status")}</TableHead>
-                <TableHead className="text-end">{t("generic.actions")}</TableHead>
+                <TableHead className="px-4">{t("patient.mrn")}</TableHead>
+                <TableHead className="px-4">{t("generic.name")}</TableHead>
+                <TableHead className="px-4">{t("patient.dob")}</TableHead>
+                <TableHead className="px-4">{t("patient.gender")}</TableHead>
+                <TableHead className="px-4">{t("generic.status")}</TableHead>
+                <TableHead className="px-4 text-end">{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -70,20 +70,20 @@ export default function Patients() {
               ) : data?.patients && data.patients.length > 0 ? (
                 data.patients.map((patient) => (
                   <TableRow key={patient.id}>
-                    <TableCell className="font-mono text-xs">{patient.mrn}</TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="px-4 font-mono text-xs">{patient.mrn}</TableCell>
+                    <TableCell className="px-4 font-medium">
                       {isRtl && patient.nameAr ? patient.nameAr : patient.nameEn}
                     </TableCell>
-                    <TableCell>{new Date(patient.dateOfBirth).toLocaleDateString()}</TableCell>
-                    <TableCell>
+                    <TableCell className="px-4">{new Date(patient.dateOfBirth).toLocaleDateString()}</TableCell>
+                    <TableCell className="px-4">
                       {patient.gender === 'male' ? t("patient.male") : patient.gender === 'female' ? t("patient.female") : patient.gender}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-4">
                       <Badge variant={patient.status === 'active' ? 'default' : 'secondary'}>
                         {patient.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-end">
+                    <TableCell className="px-4 text-end">
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/patients/${patient.id}`}>{t("patient.viewProfile")}</Link>
                       </Button>
