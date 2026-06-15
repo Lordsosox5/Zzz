@@ -74,7 +74,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         const isActive = location.startsWith(item.href);
         const Icon = item.icon;
         return (
-          <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
+          <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-5 py-3 mx-2 rounded-md transition-colors ${isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
             <Icon className="h-5 w-5" />
             <span>{t(item.labelKey)}</span>
           </Link>
@@ -97,7 +97,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <NavLinks />
         </div>
         <div className="p-4 border-t">
-          <Link href="/settings" className="flex items-center gap-3 px-4 py-2 text-muted-foreground hover:bg-muted/50 rounded-md transition-colors">
+          <Link href="/settings" className="flex items-center gap-3 px-5 py-3 text-muted-foreground hover:bg-muted/50 rounded-md transition-colors">
             <Settings className="h-5 w-5" />
             <span>{t("nav.settings")}</span>
           </Link>
@@ -124,7 +124,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="overflow-y-auto h-[calc(100vh-4rem)]">
                   <NavLinks />
                   <div className="p-4 border-t mt-auto">
-                    <Link href="/settings" className="flex items-center gap-3 px-4 py-2 text-muted-foreground hover:bg-muted/50 rounded-md transition-colors">
+                    <Link href="/settings" className="flex items-center gap-3 px-5 py-3 text-muted-foreground hover:bg-muted/50 rounded-md transition-colors">
                       <Settings className="h-5 w-5" />
                       <span>{t("nav.settings")}</span>
                     </Link>
