@@ -52,6 +52,8 @@ const translations: Translations = {
   "generic.search": { en: "Search...", ar: "بحث..." },
   "generic.save": { en: "Save", ar: "حفظ" },
   "generic.cancel": { en: "Cancel", ar: "إلغاء" },
+  "generic.back": { en: "Back", ar: "السابق" },
+  "generic.next": { en: "Next", ar: "التالي" },
   "generic.edit": { en: "Edit", ar: "تعديل" },
   "generic.delete": { en: "Delete", ar: "حذف" },
   "generic.new": { en: "New", ar: "جديد" },
