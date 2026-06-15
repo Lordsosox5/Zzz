@@ -236,7 +236,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs defaultValue="overview" className="w-full" dir={isRtl ? "rtl" : "ltr"}>
         <TabsList className="w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
           {["overview", "notes", "prescriptions", "labs"].map(tab => (
             <TabsTrigger key={tab} value={tab} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
@@ -345,7 +345,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     <TableHead>{t("generic.result")}</TableHead>
                     <TableHead>{t("lab.resultValue")}</TableHead>
                     <TableHead>{t("lab.referenceRange")}</TableHead>
-                    {canEnterResults && <TableHead className={isRtl ? "text-left" : "text-right"}>{t("generic.actions")}</TableHead>}
+                    {canEnterResults && <TableHead className="text-end">{t("generic.actions")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -382,7 +382,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{order.referenceRange ?? '-'}</TableCell>
                         {canEnterResults && (
-                          <TableCell className={isRtl ? "text-left" : "text-right"}>
+                          <TableCell className="text-end">
                             {order.status !== 'resulted' && (
                               <EnterResultDialog
                                 orderId={order.id}
