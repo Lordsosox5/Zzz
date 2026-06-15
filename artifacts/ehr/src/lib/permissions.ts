@@ -98,8 +98,26 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
   },
 };
 
+export type PatientTab = "overview" | "notes" | "prescriptions" | "labs";
+
+const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
+  admin:          ["overview", "notes", "prescriptions", "labs"],
+  consultant:     ["overview", "notes", "prescriptions", "labs"],
+  specialist:     ["overview", "notes", "prescriptions", "labs"],
+  doctor:         ["overview", "notes", "prescriptions", "labs"],
+  nurse:          ["overview"],
+  pharmacist:     ["overview", "prescriptions"],
+  lab_specialist: ["overview", "labs"],
+  lab_technician: ["overview", "labs"],
+  billing:        ["overview"],
+};
+
+export function getAllowedPatientTabs(role: string): PatientTab[] {
+  return PATIENT_TAB_ACCESS[role] ?? ["overview"];
+}
+
 export function canEnterLabResults(role: string): boolean {
-  return ["admin", "lab_specialist"].includes(role);
+  return ["admin", "lab_specialist", "lab_technician"].includes(role);
 }
 
 export function getNavForRole(role: string): string[] | "all" {

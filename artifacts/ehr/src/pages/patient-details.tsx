@@ -3,7 +3,7 @@ import { useGetPatientSummary, getGetPatientSummaryQueryKey, useListLabOrders, u
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
-import { canEnterLabResults } from "@/lib/permissions";
+import { canEnterLabResults, getAllowedPatientTabs } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +152,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const queryClient = useQueryClient();
   const user = getUser();
   const canEnterResults = canEnterLabResults(user?.role ?? "");
+  const allowedTabs = getAllowedPatientTabs(user?.role ?? "");
 
   const { data: summary, isLoading } = useGetPatientSummary(patientId, {
     query: { enabled: !!patientId, queryKey: getGetPatientSummaryQueryKey(patientId) }
@@ -236,9 +237,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" className="w-full" dir={isRtl ? "rtl" : "ltr"}>
+      <Tabs defaultValue={allowedTabs[0]} className="w-full" dir={isRtl ? "rtl" : "ltr"}>
         <TabsList className="w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
-          {["overview", "notes", "prescriptions", "labs"].map(tab => (
+          {allowedTabs.map(tab => (
             <TabsTrigger key={tab} value={tab} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
               {tab === "overview" ? t("patient.overview") :
                tab === "notes" ? t("patient.clinicalNotes") :
@@ -249,83 +250,90 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         </TabsList>
 
         {/* Overview */}
-        <TabsContent value="overview" className="mt-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" /> {t("patient.demographicsVitals")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-y-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground block mb-1">{t("patient.guardian")}</span>
-                    <span className="font-medium">{patient.guardianName || '-'}</span>
+        {allowedTabs.includes("overview") ? (
+          <TabsContent value="overview" className="mt-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-primary" /> {t("patient.demographicsVitals")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-y-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground block mb-1">{t("patient.guardian")}</span>
+                      <span className="font-medium">{patient.guardianName || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block mb-1">{t("generic.phone")}</span>
+                      <span className="font-medium">{patient.phone || patient.guardianPhone || '-'}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground block mb-1">{t("patient.allergies")}</span>
+                      {patient.allergies ? (
+                        <Badge variant="destructive" className="mt-1">{patient.allergies}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground italic">{t("patient.noAllergies")}</span>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground block mb-1">{t("generic.phone")}</span>
-                    <span className="font-medium">{patient.phone || patient.guardianPhone || '-'}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground block mb-1">{t("patient.allergies")}</span>
-                    {patient.allergies ? (
-                      <Badge variant="destructive" className="mt-1">{patient.allergies}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground italic">{t("patient.noAllergies")}</span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" /> {t("patient.upcomingAppointments")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {summary.upcomingAppointments && summary.upcomingAppointments.length > 0 ? (
-                  <div className="space-y-4">
-                    {summary.upcomingAppointments.map((appt) => (
-                      <div key={appt.id} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
-                        <div>
-                          <p className="font-medium">{new Date(appt.scheduledAt).toLocaleString()}</p>
-                          <p className="text-sm text-muted-foreground">{appt.type} {t("patient.withDoctor")} {appt.doctorName}</p>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" /> {t("patient.upcomingAppointments")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {summary.upcomingAppointments && summary.upcomingAppointments.length > 0 ? (
+                    <div className="space-y-4">
+                      {summary.upcomingAppointments.map((appt) => (
+                        <div key={appt.id} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
+                          <div>
+                            <p className="font-medium">{new Date(appt.scheduledAt).toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">{appt.type} {t("patient.withDoctor")} {appt.doctorName}</p>
+                          </div>
+                          <Badge>{appt.status}</Badge>
                         </div>
-                        <Badge>{appt.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">{t("patient.noUpcomingAppts")}</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">{t("patient.noUpcomingAppts")}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        ) : null}
 
         {/* Clinical Notes */}
-        <TabsContent value="notes">
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-muted-foreground">{t("patient.clinicalNotes")}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {allowedTabs.includes("notes") ? (
+          <TabsContent value="notes">
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-muted-foreground">{t("patient.clinicalNotes")}</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
 
         {/* Prescriptions */}
-        <TabsContent value="prescriptions">
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-muted-foreground">{t("nav.prescriptions")}</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {allowedTabs.includes("prescriptions") ? (
+          <TabsContent value="prescriptions">
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-muted-foreground">{t("nav.prescriptions")}</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
 
         {/* Labs & Radiology */}
-        <TabsContent value="labs" className="mt-6 space-y-6">
+        {allowedTabs.includes("labs") ? (
+          <TabsContent value="labs" className="mt-6 space-y-6">
           {/* Lab Orders */}
           <Card>
             <CardHeader>
@@ -445,7 +453,8 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );
