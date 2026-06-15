@@ -57,7 +57,7 @@ export default function Patients() {
                 <TableHead className="px-4">{t("patient.dob")}</TableHead>
                 <TableHead className="px-4">{t("patient.gender")}</TableHead>
                 <TableHead className="px-4">{t("generic.status")}</TableHead>
-                <TableHead className="px-4 text-end">{t("generic.actions")}</TableHead>
+                <TableHead className="px-4">{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -83,7 +83,7 @@ export default function Patients() {
                         {patient.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="px-4 text-end">
+                    <TableCell className="px-4">
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/patients/${patient.id}`}>{t("patient.viewProfile")}</Link>
                       </Button>
