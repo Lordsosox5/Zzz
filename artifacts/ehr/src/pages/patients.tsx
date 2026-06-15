@@ -57,7 +57,7 @@ export default function Patients() {
                 <TableHead>{t("patient.dob")}</TableHead>
                 <TableHead>{t("patient.gender")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
-                <TableHead className={isRtl ? "text-left" : "text-right"}>{t("generic.actions")}</TableHead>
+                <TableHead className="text-end">{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -83,7 +83,7 @@ export default function Patients() {
                         {patient.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                    <TableCell className="text-end">
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/patients/${patient.id}`}>{t("patient.viewProfile")}</Link>
                       </Button>
