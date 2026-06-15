@@ -15,10 +15,10 @@ import {
 
 const router = Router();
 
-function mapLabOrder(l: typeof labOrdersTable.$inferSelect) {
+function mapLabOrder(l: typeof labOrdersTable.$inferSelect, patientName?: string | null) {
   return {
     ...l,
-    patientName: null,
+    patientName: patientName ?? null,
     orderedByName: null,
     isCritical: l.isCritical,
     collectedAt: l.collectedAt?.toISOString() ?? null,
@@ -44,10 +44,13 @@ router.get("/lab-orders", async (req, res): Promise<void> => {
   const conditions = [];
   if (params.data.patientId) conditions.push(eq(labOrdersTable.patientId, params.data.patientId));
   if (params.data.status) conditions.push(eq(labOrdersTable.status, params.data.status));
-  const results = conditions.length
-    ? await db.select().from(labOrdersTable).where(and(...conditions)).orderBy(labOrdersTable.createdAt)
-    : await db.select().from(labOrdersTable).orderBy(labOrdersTable.createdAt);
-  res.json(results.map(mapLabOrder));
+  const results = await db
+    .select({ order: labOrdersTable, patientNameEn: patientsTable.nameEn })
+    .from(labOrdersTable)
+    .leftJoin(patientsTable, eq(labOrdersTable.patientId, patientsTable.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(labOrdersTable.createdAt);
+  res.json(results.map(r => mapLabOrder(r.order, r.patientNameEn)));
 });
 
 router.post("/lab-orders", async (req, res): Promise<void> => {

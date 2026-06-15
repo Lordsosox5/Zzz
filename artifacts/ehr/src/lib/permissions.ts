@@ -94,7 +94,19 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View patient demographics (read-only)", ar: "عرض بيانات المريض (للقراءة فقط)" },
       { en: "Generate and export lab reports", ar: "إنشاء وتصدير تقارير المختبر" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/lab", "/radiology"],
+    allowedNav: ["/dashboard", "/lab"],
+  },
+  lab_technician: {
+    label: { en: "Lab Technician", ar: "فني مختبر" },
+    description: { en: "Process lab requests, enter test results, and track payment status", ar: "معالجة طلبات المختبر وإدخال نتائج الفحوصات ومتابعة حالة الدفع" },
+    badgeClass: "bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300",
+    authorities: [
+      { en: "View all pending lab orders", ar: "عرض جميع طلبات المختبر المعلقة" },
+      { en: "Check payment status of lab requests", ar: "التحقق من حالة الدفع لطلبات المختبر" },
+      { en: "Enter and submit test result values", ar: "إدخال وتسليم قيم نتائج الفحوصات" },
+      { en: "Flag critical / abnormal results", ar: "تحديد النتائج الحرجة أو غير الطبيعية" },
+    ],
+    allowedNav: ["/dashboard", "/lab"],
   },
 };
 
@@ -107,10 +119,14 @@ const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
   doctor:         ["overview", "notes", "prescriptions", "labs"],
   nurse:          ["overview"],
   pharmacist:     ["overview", "prescriptions"],
-  lab_specialist: ["overview", "labs"],
-  lab_technician: ["overview", "labs"],
+  lab_specialist: ["labs"],
+  lab_technician: ["labs"],
   billing:        ["overview"],
 };
+
+export function isLabRole(role: string): boolean {
+  return ["lab_specialist", "lab_technician"].includes(role);
+}
 
 export function getAllowedPatientTabs(role: string): PatientTab[] {
   return PATIENT_TAB_ACCESS[role] ?? ["overview"];

@@ -307,6 +307,18 @@ const translations: Translations = {
   "vacc.given": { en: "Date Given", ar: "تاريخ التطعيم" },
   "vacc.nextDue": { en: "Next Due", ar: "الجرعة التالية" },
 
+  // Lab technician dashboard
+  "lab.queue": { en: "Lab Work Queue", ar: "قائمة انتظار المختبر" },
+  "lab.queueDesc": { en: "Pending lab requests awaiting processing", ar: "طلبات المختبر المعلقة في انتظار المعالجة" },
+  "lab.paymentStatus": { en: "Payment", ar: "الدفع" },
+  "lab.paid": { en: "Paid", ar: "مدفوع" },
+  "lab.pendingPayment": { en: "Pending Payment", ar: "بانتظار الدفع" },
+  "lab.patientName": { en: "Patient", ar: "المريض" },
+  "lab.orderedByDoc": { en: "Ordered By", ar: "أمر بـ" },
+  "lab.allOrders": { en: "All Orders", ar: "جميع الطلبات" },
+  "lab.pendingOnly": { en: "Pending Only", ar: "المعلقة فقط" },
+  "lab.markCollected": { en: "Mark Collected", ar: "تحديد كمجمعة" },
+
   // Lab result entry
   "lab.enterResult": { en: "Enter Result", ar: "إدخال نتيجة" },
   "lab.resultValue": { en: "Result Value", ar: "قيمة النتيجة" },

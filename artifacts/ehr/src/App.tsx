@@ -5,7 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/lib/i18n";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { getToken } from "@/lib/auth";
+import { getToken, getUser } from "@/lib/auth";
+import { getNavForRole } from "@/lib/permissions";
 
 // Pages
 import NotFound from "@/pages/not-found";
@@ -35,15 +36,26 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, ...rest }: { component: React.ComponentType<any>, [key: string]: any }) {
-  const [, setLocation] = useLocation();
+function ProtectedRoute({ component: Component, allowedPaths, ...rest }: { component: React.ComponentType<any>, allowedPaths?: string[], [key: string]: any }) {
+  const [location, setLocation] = useLocation();
   const token = getToken();
+  const user = getUser();
 
   useEffect(() => {
     if (!token) {
       setLocation("/login");
+      return;
     }
-  }, [token, setLocation]);
+    if (user && allowedPaths) {
+      const nav = getNavForRole(user.role);
+      if (nav !== "all") {
+        const allowed = (nav as string[]).some(p => location.startsWith(p));
+        if (!allowed) {
+          setLocation(nav[0] ?? "/dashboard");
+        }
+      }
+    }
+  }, [token, location, setLocation, user, allowedPaths]);
 
   if (!token) return null;
 
@@ -73,15 +85,15 @@ function Router() {
       </Route>
 
       <Route path="/patients/new">
-        {() => <ProtectedRoute component={NewPatient} />}
+        {() => <ProtectedRoute component={NewPatient} allowedPaths={["/patients"]} />}
       </Route>
 
       <Route path="/patients/:id">
-        {params => <ProtectedRoute component={PatientDetails} params={params} />}
+        {params => <ProtectedRoute component={PatientDetails} params={params} allowedPaths={["/patients"]} />}
       </Route>
 
       <Route path="/patients">
-        {() => <ProtectedRoute component={Patients} />}
+        {() => <ProtectedRoute component={Patients} allowedPaths={["/patients"]} />}
       </Route>
 
       <Route path="/appointments">
