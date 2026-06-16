@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { useListPrescriptions, useCreatePrescription, getListPrescriptionsQueryKey } from "@workspace/api-client-react";
+import { useListPrescriptions, useCreatePrescription, useUpdatePrescription, getListPrescriptionsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
+import { getUser } from "@/lib/auth";
+import { canPrescribe, canDispensePrescription } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,16 +12,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, Save } from "lucide-react";
+import { Plus, Loader2, Save, PackageCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Prescriptions() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = getUser();
+  const canWrite = canPrescribe(user?.role ?? "");
+  const canDispense = canDispensePrescription(user?.role ?? "");
   const [isOpen, setIsOpen] = useState(false);
   const { data: prescriptions, isLoading } = useListPrescriptions({});
   const createMutation = useCreatePrescription();
+  const updateMutation = useUpdatePrescription();
 
   const [form, setForm] = useState({ patientId: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
@@ -44,6 +50,7 @@ export default function Prescriptions() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.prescriptions")}</h1>
+        {canWrite && (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button><Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />{t("rx.newPrescription")}</Button>
@@ -93,6 +100,7 @@ export default function Prescriptions() {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <Card>
@@ -119,8 +127,36 @@ export default function Prescriptions() {
                     <TableCell>{rx.patientName ?? rx.patientId}</TableCell>
                     <TableCell className="font-medium">{rx.drugName}</TableCell>
                     <TableCell>{rx.dosage} - {rx.frequency}</TableCell>
-                    <TableCell><Badge variant={rx.status === 'active' ? 'default' : 'secondary'}>{rx.status}</Badge></TableCell>
-                    <TableCell className={isRtl ? "text-left" : "text-right"}><Button variant="ghost" size="sm">{t("generic.edit")}</Button></TableCell>
+                    <TableCell>
+                      <Badge variant={rx.status === 'active' ? 'default' : rx.status === 'dispensed' ? 'secondary' : 'outline'} className="capitalize">
+                        {rx.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={`${isRtl ? "text-left" : "text-right"} space-x-1`}>
+                      {canDispense && rx.status === 'active' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                          disabled={updateMutation.isPending}
+                          onClick={() =>
+                            updateMutation.mutate(
+                              { id: rx.id, data: { status: "dispensed" } },
+                              {
+                                onSuccess: () => {
+                                  queryClient.invalidateQueries({ queryKey: getListPrescriptionsQueryKey() });
+                                  toast({ title: t("generic.success"), description: t("rx.dispensed") });
+                                },
+                                onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
+                              }
+                            )
+                          }
+                        >
+                          <PackageCheck className="h-3 w-3" /> {t("rx.dispense")}
+                        </Button>
+                      )}
+                      {canWrite && <Button variant="ghost" size="sm">{t("generic.edit")}</Button>}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (

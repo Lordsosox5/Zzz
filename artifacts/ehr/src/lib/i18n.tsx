@@ -351,6 +351,19 @@ const translations: Translations = {
   "patient.dischargeDate": { en: "Date of Discharge", ar: "تاريخ الخروج" },
   "patient.age": { en: "Age", ar: "العمر" },
 
+  // Prescription dispensing
+  "rx.dispense": { en: "Dispense", ar: "صرف" },
+  "rx.dispensed": { en: "Prescription dispensed successfully", ar: "تم صرف الوصفة بنجاح" },
+  "rx.dispensedStatus": { en: "Dispensed", ar: "تم الصرف" },
+
+  // Nurse vitals
+  "nurse.recordVitals": { en: "Record Vitals", ar: "تسجيل العلامات الحيوية" },
+  "nurse.vitalsRecorded": { en: "Vitals recorded successfully", ar: "تم تسجيل العلامات الحيوية بنجاح" },
+  "nurse.vitalsTitle": { en: "Record Vital Signs", ar: "تسجيل العلامات الحيوية" },
+  "patient.vitals": { en: "Vital Signs", ar: "العلامات الحيوية" },
+  "patient.temperature": { en: "Temperature (°C)", ar: "درجة الحرارة (°م)" },
+  "patient.spo2": { en: "SpO₂ (%)", ar: "تشبع الأكسجين (%)" },
+
   // Admission form sections
   "admit.newPatientTitle": { en: "New Patient Admission", ar: "قبول مريض جديد" },
   "admit.section1": { en: "Section 1 — Patient Demographics", ar: "القسم ١ — بيانات المريض" },

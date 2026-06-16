@@ -136,6 +136,30 @@ export function canEnterLabResults(role: string): boolean {
   return ["admin", "lab_specialist", "lab_technician"].includes(role);
 }
 
+export function canWriteClinicalNotes(role: string): boolean {
+  return ["admin", "consultant", "specialist"].includes(role);
+}
+
+export function canPrescribe(role: string): boolean {
+  return ["admin", "consultant", "specialist"].includes(role);
+}
+
+export function canDispensePrescription(role: string): boolean {
+  return ["admin", "pharmacist"].includes(role);
+}
+
+export function canManagePharmacyInventory(role: string): boolean {
+  return ["admin", "pharmacist"].includes(role);
+}
+
+export function canRecordVitals(role: string): boolean {
+  return ["admin", "nurse", "consultant", "specialist"].includes(role);
+}
+
+export function canAdmitNewPatient(role: string): boolean {
+  return ["admin", "consultant", "specialist", "nurse"].includes(role);
+}
+
 export function getNavForRole(role: string): string[] | "all" {
   return ROLE_DEFINITIONS[role]?.allowedNav ?? "all";
 }

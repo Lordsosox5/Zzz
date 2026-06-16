@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
+import { getUser } from "@/lib/auth";
+import { canWriteClinicalNotes } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,13 +12,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Loader2, Save } from "lucide-react";
+import { Plus, Loader2, Save, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ClinicalNotes() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
+  const user = getUser();
+  const canWrite = canWriteClinicalNotes(user?.role ?? "");
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const { data: notes, isLoading } = useListClinicalNotes({});
@@ -44,6 +48,7 @@ export default function ClinicalNotes() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.notes")}</h1>
+        {canWrite && (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button><Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />{t("notes.addNote")}</Button>
@@ -84,6 +89,7 @@ export default function ClinicalNotes() {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <Card>
