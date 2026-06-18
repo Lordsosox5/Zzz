@@ -36,7 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, Save, Pencil } from "lucide-react";
+import { Plus, Loader2, Save, Pencil, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Appointment = {
@@ -62,6 +62,30 @@ const STATUS_OPTIONS = [
   "no-show",
 ];
 
+const STATUS_CYCLE: Record<string, string> = {
+  scheduled: "confirmed",
+  confirmed: "in-progress",
+  "in-progress": "completed",
+};
+
+const STATUS_BADGE: Record<string, "outline" | "secondary" | "default" | "destructive"> = {
+  scheduled: "outline",
+  confirmed: "secondary",
+  "in-progress": "default",
+  completed: "default",
+  cancelled: "destructive",
+  "no-show": "destructive",
+};
+
+const STATUS_COLOR_CLASS: Record<string, string> = {
+  scheduled: "",
+  confirmed: "border-blue-400 text-blue-600 dark:border-blue-500 dark:text-blue-400",
+  "in-progress": "bg-amber-500 text-white border-amber-500",
+  completed: "bg-green-600 text-white border-green-600",
+  cancelled: "",
+  "no-show": "",
+};
+
 const TYPE_OPTIONS = [
   "consultation",
   "follow-up",
@@ -82,10 +106,29 @@ export default function Appointments() {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editAppt, setEditAppt] = useState<Appointment | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [cyclingId, setCyclingId] = useState<number | null>(null);
 
   const { data: appointments, isLoading } = useListAppointments({ date });
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
+
+  const handleQuickStatus = (appt: Appointment) => {
+    const next = STATUS_CYCLE[appt.status];
+    if (!next || cyclingId !== null) return;
+    setCyclingId(appt.id);
+    updateMutation.mutate(
+      { id: appt.id, data: { status: next } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
+          toast({ title: t("generic.success"), description: `${appt.patientName ?? "Appointment"} → ${next}` });
+        },
+        onError: () =>
+          toast({ variant: "destructive", title: t("generic.error"), description: t("generic.updateError") }),
+        onSettled: () => setCyclingId(null),
+      }
+    );
+  };
 
   const [form, setForm] = useState({
     patientId: "",
@@ -207,15 +250,6 @@ export default function Appointments() {
           }),
       }
     );
-  };
-
-  const statusColor: Record<string, string> = {
-    scheduled: "outline",
-    confirmed: "secondary",
-    "in-progress": "default",
-    completed: "default",
-    cancelled: "destructive",
-    "no-show": "destructive",
   };
 
   return (
@@ -462,7 +496,7 @@ export default function Appointments() {
                   </TableCell>
                 </TableRow>
               ) : appointments && appointments.length > 0 ? (
-                appointments.map((appt) => (
+                (appointments as Appointment[]).map((appt) => (
                   <TableRow key={appt.id}>
                     <TableCell className="font-medium">
                       {new Date(appt.scheduledAt).toLocaleTimeString([], {
@@ -476,17 +510,33 @@ export default function Appointments() {
                     </TableCell>
                     <TableCell className="capitalize">{appt.type}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          (statusColor[appt.status] as
-                            | "outline"
-                            | "secondary"
-                            | "default"
-                            | "destructive") ?? "outline"
-                        }
-                      >
-                        {appt.status}
-                      </Badge>
+                      {STATUS_CYCLE[appt.status] ? (
+                        <button
+                          onClick={() => handleQuickStatus(appt as Appointment)}
+                          disabled={cyclingId !== null}
+                          className="group inline-flex items-center gap-1 focus:outline-none"
+                          title={`Advance to ${STATUS_CYCLE[appt.status]}`}
+                        >
+                          <Badge
+                            variant={STATUS_BADGE[appt.status] ?? "outline"}
+                            className={`cursor-pointer transition-all group-hover:pr-1 ${STATUS_COLOR_CLASS[appt.status] ?? ""}`}
+                          >
+                            {cyclingId === appt.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3 mr-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            )}
+                            {appt.status}
+                          </Badge>
+                        </button>
+                      ) : (
+                        <Badge
+                          variant={STATUS_BADGE[appt.status] ?? "outline"}
+                          className={STATUS_COLOR_CLASS[appt.status] ?? ""}
+                        >
+                          {appt.status}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className={isRtl ? "text-left" : "text-right"}>
                       <Button
