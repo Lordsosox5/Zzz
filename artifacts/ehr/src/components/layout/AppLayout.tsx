@@ -88,9 +88,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-e bg-card flex-shrink-0 z-10 sticky top-0 h-screen">
         <div className="h-16 flex items-center px-4 border-b">
-          <div className="font-bold text-lg text-primary flex items-center gap-2">
-            <HeartPulse className="h-6 w-6" />
-            <span className="truncate">{t("app.title")}</span>
+          <div className="font-bold text-sm text-primary flex items-center gap-2">
+            <HeartPulse className="h-5 w-5 shrink-0" />
+            <span className="leading-tight">{t("app.title")}</span>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -116,9 +116,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
               <SheetContent side={isRtl ? "right" : "left"} className="p-0 w-64">
                 <div className="h-16 flex items-center px-4 border-b">
-                  <div className="font-bold text-lg text-primary flex items-center gap-2">
-                    <HeartPulse className="h-6 w-6" />
-                    <span className="truncate">{t("app.title")}</span>
+                  <div className="font-bold text-sm text-primary flex items-center gap-2">
+                    <HeartPulse className="h-5 w-5 shrink-0" />
+                    <span className="leading-tight">{t("app.title")}</span>
                   </div>
                 </div>
                 <div className="overflow-y-auto h-[calc(100vh-4rem)]">
@@ -133,7 +133,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SheetContent>
             </Sheet>
             
-            <h1 className="md:hidden font-bold text-primary truncate">
+            <h1 className="md:hidden font-bold text-sm text-primary leading-tight">
               {t("app.title")}
             </h1>
           </div>
