@@ -243,6 +243,8 @@ const translations: Translations = {
   "generic.error": { en: "Error", ar: "خطأ" },
   "generic.addSuccess": { en: "Added successfully", ar: "تمت الإضافة بنجاح" },
   "generic.addError": { en: "Failed to add record", ar: "فشل إضافة السجل" },
+  "generic.updateSuccess": { en: "Updated successfully", ar: "تم التحديث بنجاح" },
+  "generic.updateError": { en: "Failed to update record", ar: "فشل تحديث السجل" },
   "generic.patientId": { en: "Patient ID", ar: "رقم المريض" },
   "generic.searchPatient": { en: "Search patient by name or MRN...", ar: "ابحث عن مريض بالاسم أو الرقم..." },
   "generic.selectPatient": { en: "Select a patient", ar: "اختر مريضاً" },
