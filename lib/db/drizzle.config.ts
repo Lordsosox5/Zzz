@@ -14,6 +14,6 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url: connectionString,
-    ssl: isSupabase ? "require" : false,
+    ...(isSupabase ? { ssl: { rejectUnauthorized: false } } : {}),
   },
 });

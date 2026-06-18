@@ -32,7 +32,19 @@ router.get("/lab-orders", async (req, res): Promise<void> => {
   if (params.data.status) query = query.eq("status", params.data.status);
   const { data, error } = await query;
   if (dbError(error, res)) return;
-  res.json((data ?? []).map(formatLabOrder));
+  const orders = data ?? [];
+  const patientIds = [...new Set(orders.map((o: Record<string, unknown>) => o.patient_id).filter(Boolean))];
+  let patientMap: Record<number, string> = {};
+  if (patientIds.length > 0) {
+    const { data: patients } = await supabase.from("patients").select("id,name_en").in("id", patientIds);
+    if (patients) {
+      for (const p of patients as Array<{ id: number; name_en: string }>) patientMap[p.id] = p.name_en;
+    }
+  }
+  res.json(orders.map((row: Record<string, unknown>) => {
+    const mapped = mapRow(row);
+    return { ...mapped, patientName: patientMap[(row.patient_id as number)] ?? null, orderedByName: null };
+  }));
 });
 
 router.post("/lab-orders", async (req, res): Promise<void> => {
