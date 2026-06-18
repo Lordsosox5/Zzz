@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, drugsTable } from "@workspace/db";
-import { eq, ilike, lte, asc, sql } from "drizzle-orm";
+import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
 import {
   ListDrugsQueryParams,
   CreateDrugBody,
@@ -10,45 +9,45 @@ import {
 
 const router = Router();
 
-function formatDrug(row: typeof drugsTable.$inferSelect) {
-  return { ...row, unitPrice: Number(row.unitPrice ?? 0) };
+function formatDrug(row: Record<string, unknown>) {
+  const mapped = mapRow(row);
+  return { ...mapped, unitPrice: Number(mapped.unitPrice ?? 0) };
 }
 
 router.get("/drugs", async (req, res): Promise<void> => {
   const params = ListDrugsQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  try {
-    if (params.data.lowStock) {
-      const allDrugs = await db.select().from(drugsTable);
-      const lowStock = allDrugs.filter((d) => d.stockQuantity <= d.minStockLevel);
-      res.json(lowStock.map(formatDrug));
-      return;
-    }
-    let query = db.select().from(drugsTable).$dynamic();
-    if (params.data.search) {
-      query = query.where(ilike(drugsTable.name, `%${params.data.search}%`));
-    } else {
-      query = query.orderBy(asc(drugsTable.name));
-    }
-    const data = await query;
-    res.json(data.map(formatDrug));
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
+  let query = supabase.from("drugs").select();
+  if (params.data.search) {
+    query = query.ilike("name", `%${params.data.search}%`);
+  } else if (params.data.lowStock) {
+    const { data: allDrugs, error } = await supabase.from("drugs").select();
+    if (dbError(error, res)) return;
+    const lowStock = (allDrugs ?? []).filter(
+      (d: Record<string, unknown>) => Number(d.stock_quantity) <= Number(d.min_stock_level)
+    );
+    res.json(lowStock.map(formatDrug));
+    return;
+  } else {
+    query = query.order("name");
   }
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json((data ?? []).map(formatDrug));
 });
 
 router.post("/drugs", async (req, res): Promise<void> => {
   const parsed = CreateDrugBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  try {
-    const [drug] = await db
-      .insert(drugsTable)
-      .values({ ...parsed.data as any, unitPrice: parsed.data.unitPrice?.toFixed(2) ?? "0.00" })
-      .returning();
-    res.status(201).json(formatDrug(drug));
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
-  }
+  const snaked = toSnake(parsed.data as Record<string, unknown>);
+  snaked.unit_price = parsed.data.unitPrice?.toFixed(2) ?? "0.00";
+  const { data, error } = await supabase
+    .from("drugs")
+    .insert(snaked)
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json(formatDrug(data));
 });
 
 router.patch("/drugs/:id", async (req, res): Promise<void> => {
@@ -56,15 +55,17 @@ router.patch("/drugs/:id", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateDrugBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  try {
-    const updates: Record<string, unknown> = { ...parsed.data };
-    if (parsed.data.unitPrice !== undefined) updates.unitPrice = parsed.data.unitPrice.toFixed(2);
-    const [drug] = await db.update(drugsTable).set(updates as any).where(eq(drugsTable.id, params.data.id)).returning();
-    if (!drug) { res.status(404).json({ error: "Drug not found" }); return; }
-    res.json(formatDrug(drug));
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
-  }
+  const updates = toSnake(parsed.data as Record<string, unknown>);
+  if (parsed.data.unitPrice !== undefined) updates.unit_price = parsed.data.unitPrice.toFixed(2);
+  const { data, error } = await supabase
+    .from("drugs")
+    .update(updates)
+    .eq("id", params.data.id)
+    .select()
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Drug not found" }); return; }
+  res.json(formatDrug(data));
 });
 
 export default router;
