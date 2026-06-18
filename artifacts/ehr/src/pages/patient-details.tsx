@@ -29,7 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
-  Loader2, Save, Plus, PackageCheck, Stethoscope, FileText,
+  Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
 } from "lucide-react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -372,6 +372,14 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             {canWrite && <AddNoteDialog patientId={patientId} onSuccess={handleNoteSuccess} />}
             {canRx && <AddPrescriptionDialog patientId={patientId} onSuccess={handleRxSuccess} />}
             <Button asChild variant="secondary"><Link href="/appointments"><Calendar className="mr-2 h-4 w-4" />{t("patient.newAppointment")}</Link></Button>
+            <Button
+              variant="outline"
+              onClick={() => window.open(`/patients/${patientId}/print`, "_blank")}
+              className="gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print Summary
+            </Button>
           </div>
         </CardContent>
       </Card>

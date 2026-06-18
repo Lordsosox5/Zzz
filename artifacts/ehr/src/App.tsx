@@ -15,6 +15,7 @@ import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
 import NewPatient from "@/pages/new-patient";
 import PatientDetails from "@/pages/patient-details";
+import PatientPrint from "@/pages/patient-print";
 import Appointments from "@/pages/appointments";
 import ClinicalNotes from "@/pages/clinical-notes";
 import Prescriptions from "@/pages/prescriptions";
@@ -86,6 +87,10 @@ function Router() {
 
       <Route path="/patients/new">
         {() => <ProtectedRoute component={NewPatient} allowedPaths={["/patients"]} />}
+      </Route>
+
+      <Route path="/patients/:id/print">
+        {params => <PatientPrint params={params} />}
       </Route>
 
       <Route path="/patients/:id">
