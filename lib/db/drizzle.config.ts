@@ -7,10 +7,13 @@ if (!connectionString) {
   throw new Error("SUPABASE_DATABASE_URL (or DATABASE_URL) must be set, ensure the database is provisioned");
 }
 
+const isSupabase = !!process.env.SUPABASE_DATABASE_URL;
+
 export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
   dialect: "postgresql",
   dbCredentials: {
     url: connectionString,
+    ssl: isSupabase ? "require" : false,
   },
 });
