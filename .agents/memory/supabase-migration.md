@@ -1,17 +1,19 @@
 ---
-name: Supabase to Replit DB migration
-description: How the original Supabase client was replaced with Drizzle ORM + Replit PostgreSQL in all API routes
+name: Supabase to Replit DB migration (reverted)
+description: Routes were temporarily migrated to Drizzle/Replit DB, then reverted back to Supabase client once SUPABASE_ANON_KEY and SUPABASE_DATABASE_URL were provided
 ---
 
-# Supabase → Replit DB Migration
+# Supabase Connection
 
-**Why:** The project originally used `@supabase/supabase-js` in all Express routes, requiring `SUPABASE_URL` and `SUPABASE_ANON_KEY` env vars. These weren't available in Replit environment, so the backend crashed on startup.
+**Current state:** All API routes use the Supabase JS client via `artifacts/api-server/src/lib/supabase.ts`.
 
-**What changed:**
-- `artifacts/api-server/src/lib/db.ts` — re-exports `db` from `@workspace/db` and all Drizzle table objects + a `dbError` helper
-- `artifacts/api-server/src/lib/supabase.ts` — still exists but is no longer imported anywhere
-- All 11 route files now import from `../lib/db` using Drizzle ORM query builders (`eq`, `and`, `gte`, `lte`, `ilike`, `asc`, `desc`, `sql`)
+**Required secrets (all set):**
+- `SUPABASE_URL` — set in userenv shared (https://vhiekleynomremcampnd.supabase.co)
+- `SUPABASE_ANON_KEY` — set as Replit secret
+- `SUPABASE_DATABASE_URL` — set as Replit secret (used by drizzle.config.ts for schema migrations)
 
-**How to apply:** If adding new routes, import from `../lib/db` not `../lib/supabase`. Use Drizzle's typed query builder.
+**How drizzle.config.ts works:** Checks `SUPABASE_DATABASE_URL` first, then falls back to `DATABASE_URL`. When `SUPABASE_DATABASE_URL` is set it also enables `ssl: { rejectUnauthorized: false }`.
 
-**Database:** Replit PostgreSQL provisioned; schema pushed via `pnpm --filter @workspace/db run push`; demo data seeded (8 users, 5 patients, drugs, alerts, activity logs).
+**lib/db.ts** still exists (re-exports Drizzle db + tables) but is not used by routes — it was from a temporary Drizzle migration. Routes import from `../lib/supabase` only.
+
+**Why:** User wanted to use their Supabase project as the database, not Replit PostgreSQL.

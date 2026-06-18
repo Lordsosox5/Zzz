@@ -1,23 +1,22 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "../lib/db";
+import { supabase, mapRow } from "../lib/supabase";
 import { LoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-function formatUser(u: typeof usersTable.$inferSelect) {
+function formatUser(u: Record<string, unknown>) {
   return {
     id: u.id,
     username: u.username,
-    nameEn: u.nameEn,
-    nameAr: u.nameAr ?? null,
+    nameEn: u.name_en,
+    nameAr: u.name_ar ?? null,
     role: u.role,
     department: u.department ?? null,
     email: u.email ?? null,
     phone: u.phone ?? null,
-    avatarUrl: u.avatarUrl ?? null,
-    createdAt: u.createdAt,
+    avatarUrl: u.avatar_url ?? null,
+    createdAt: u.created_at,
   };
 }
 
@@ -28,22 +27,22 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
   const { username, password } = parsed.data;
-  try {
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.username, username))
-      .limit(1);
-    if (!user || user.password !== password) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-    const token = Buffer.from(`${user.id}:${user.username}:${Date.now()}`).toString("base64");
-    res.json({ token, user: formatUser(user) });
-  } catch (err) {
-    logger.error({ err }, "DB error in /auth/login");
-    res.status(500).json({ error: "Internal server error" });
+  const { data: user, error } = await supabase
+    .from("users")
+    .select()
+    .eq("username", username)
+    .maybeSingle();
+  if (error) {
+    logger.error({ error }, "DB error in /auth/login");
+    res.status(500).json({ error: error.message });
+    return;
   }
+  if (!user || user.password !== password) {
+    res.status(401).json({ error: "Invalid credentials" });
+    return;
+  }
+  const token = Buffer.from(`${user.id}:${user.username}:${Date.now()}`).toString("base64");
+  res.json({ token, user: formatUser(user) });
 });
 
 router.post("/auth/logout", async (_req, res): Promise<void> => {
@@ -60,12 +59,12 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     const token = authHeader.replace("Bearer ", "");
     const decoded = Buffer.from(token, "base64").toString("utf-8");
     const [userId] = decoded.split(":");
-    const [user] = await db
+    const { data: user, error } = await supabase
+      .from("users")
       .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, parseInt(userId, 10)))
-      .limit(1);
-    if (!user) {
+      .eq("id", parseInt(userId, 10))
+      .maybeSingle();
+    if (error || !user) {
       res.status(401).json({ error: "User not found" });
       return;
     }
