@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, clinicalNotesTable, diagnosesTable, usersTable } from "@workspace/db";
+import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
 import {
   ListClinicalNotesQueryParams,
   CreateClinicalNoteBody,
@@ -13,28 +12,18 @@ import {
 
 const router = Router();
 
-function mapNote(n: typeof clinicalNotesTable.$inferSelect, authorName?: string | null) {
-  return {
-    ...n,
-    authorName: authorName ?? null,
-    createdAt: n.createdAt.toISOString(),
-    updatedAt: n.updatedAt.toISOString(),
-  };
-}
-
 router.get("/clinical-notes", async (req, res): Promise<void> => {
   const params = ListClinicalNotesQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const conditions = [];
-  if (params.data.patientId) conditions.push(eq(clinicalNotesTable.patientId, params.data.patientId));
-  if (params.data.type) conditions.push(eq(clinicalNotesTable.type, params.data.type));
-  const notes = conditions.length
-    ? await db.select().from(clinicalNotesTable).where(and(...conditions)).orderBy(clinicalNotesTable.createdAt)
-    : await db.select().from(clinicalNotesTable).orderBy(clinicalNotesTable.createdAt);
-  res.json(notes.map(n => mapNote(n)));
+  let query = supabase.from("clinical_notes").select().order("created_at");
+  if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
+  if (params.data.type) query = query.eq("type", params.data.type);
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json(mapRows(data ?? []).map((n: Record<string, unknown>) => ({ ...n, authorName: null })));
 });
 
 router.post("/clinical-notes", async (req, res): Promise<void> => {
@@ -43,9 +32,13 @@ router.post("/clinical-notes", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const authorId = 1; // default author
-  const [note] = await db.insert(clinicalNotesTable).values({ ...parsed.data, authorId }).returning();
-  res.status(201).json(mapNote(note));
+  const { data, error } = await supabase
+    .from("clinical_notes")
+    .insert({ ...toSnake(parsed.data as Record<string, unknown>), author_id: 1 })
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json({ ...mapRow(data), authorName: null });
 });
 
 router.get("/clinical-notes/:id", async (req, res): Promise<void> => {
@@ -54,12 +47,14 @@ router.get("/clinical-notes/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [note] = await db.select().from(clinicalNotesTable).where(eq(clinicalNotesTable.id, params.data.id));
-  if (!note) {
-    res.status(404).json({ error: "Note not found" });
-    return;
-  }
-  res.json(mapNote(note));
+  const { data, error } = await supabase
+    .from("clinical_notes")
+    .select()
+    .eq("id", params.data.id)
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Note not found" }); return; }
+  res.json({ ...mapRow(data), authorName: null });
 });
 
 router.patch("/clinical-notes/:id", async (req, res): Promise<void> => {
@@ -73,12 +68,15 @@ router.patch("/clinical-notes/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [note] = await db.update(clinicalNotesTable).set(parsed.data).where(eq(clinicalNotesTable.id, params.data.id)).returning();
-  if (!note) {
-    res.status(404).json({ error: "Note not found" });
-    return;
-  }
-  res.json(mapNote(note));
+  const { data, error } = await supabase
+    .from("clinical_notes")
+    .update(toSnake(parsed.data as Record<string, unknown>))
+    .eq("id", params.data.id)
+    .select()
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Note not found" }); return; }
+  res.json({ ...mapRow(data), authorName: null });
 });
 
 router.get("/diagnoses", async (req, res): Promise<void> => {
@@ -87,10 +85,11 @@ router.get("/diagnoses", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const results = params.data.patientId
-    ? await db.select().from(diagnosesTable).where(eq(diagnosesTable.patientId, params.data.patientId))
-    : await db.select().from(diagnosesTable);
-  res.json(results.map(d => ({ ...d, createdAt: d.createdAt.toISOString() })));
+  let query = supabase.from("diagnoses").select().order("created_at");
+  if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json(mapRows(data ?? []));
 });
 
 router.post("/diagnoses", async (req, res): Promise<void> => {
@@ -99,8 +98,13 @@ router.post("/diagnoses", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [dx] = await db.insert(diagnosesTable).values(parsed.data).returning();
-  res.status(201).json({ ...dx, createdAt: dx.createdAt.toISOString() });
+  const { data, error } = await supabase
+    .from("diagnoses")
+    .insert(toSnake(parsed.data as Record<string, unknown>))
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json(mapRow(data));
 });
 
 export default router;

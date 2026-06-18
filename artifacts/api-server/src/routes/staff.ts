@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
 import {
   ListStaffQueryParams,
   CreateStaffBody,
@@ -11,57 +10,66 @@ import {
 
 const router = Router();
 
-function mapStaff(u: typeof usersTable.$inferSelect) {
+function formatStaff(u: Record<string, unknown>) {
   return {
     id: u.id,
-    nameEn: u.nameEn,
-    nameAr: u.nameAr ?? null,
+    nameEn: u.name_en,
+    nameAr: u.name_ar ?? null,
     role: u.role,
     department: u.department ?? "General",
     specialization: null,
     email: u.email ?? null,
     phone: u.phone ?? null,
     licenseNumber: null,
-    status: u.isActive ? "active" : "inactive",
-    createdAt: u.createdAt.toISOString(),
+    status: u.is_active ? "active" : "inactive",
+    createdAt: u.created_at,
   };
 }
 
 router.get("/staff", async (req, res): Promise<void> => {
   const params = ListStaffQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const conditions = [];
-  if (params.data.role) conditions.push(eq(usersTable.role, params.data.role));
-  if (params.data.department) conditions.push(eq(usersTable.department, params.data.department));
-  const results = conditions.length
-    ? await db.select().from(usersTable).where(and(...conditions))
-    : await db.select().from(usersTable);
-  res.json(results.map(mapStaff));
+  let query = supabase.from("users").select();
+  if (params.data.role) query = query.eq("role", params.data.role);
+  if (params.data.department) query = query.eq("department", params.data.department);
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json((data ?? []).map(formatStaff));
 });
 
 router.post("/staff", async (req, res): Promise<void> => {
   const parsed = CreateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const username = parsed.data.nameEn.toLowerCase().replace(/\s+/g, ".") + Math.floor(Math.random() * 1000);
-  const [user] = await db.insert(usersTable).values({
-    username,
-    password: "password123",
-    nameEn: parsed.data.nameEn,
-    nameAr: parsed.data.nameAr ?? null,
-    role: parsed.data.role,
-    department: parsed.data.department ?? null,
-    email: parsed.data.email ?? null,
-    phone: parsed.data.phone ?? null,
-  }).returning();
-  res.status(201).json(mapStaff(user));
+  const { data, error } = await supabase
+    .from("users")
+    .insert({
+      username,
+      password: "password123",
+      name_en: parsed.data.nameEn,
+      name_ar: parsed.data.nameAr ?? null,
+      role: parsed.data.role,
+      department: parsed.data.department ?? null,
+      email: parsed.data.email ?? null,
+      phone: parsed.data.phone ?? null,
+    })
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json(formatStaff(data));
 });
 
 router.get("/staff/:id", async (req, res): Promise<void> => {
   const params = GetStaffMemberParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
-  if (!user) { res.status(404).json({ error: "Staff member not found" }); return; }
-  res.json(mapStaff(user));
+  const { data, error } = await supabase
+    .from("users")
+    .select()
+    .eq("id", params.data.id)
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Staff member not found" }); return; }
+  res.json(formatStaff(data));
 });
 
 router.patch("/staff/:id", async (req, res): Promise<void> => {
@@ -69,15 +77,21 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: params.error.message }); return; }
-  const updateData: Record<string, unknown> = {};
-  if (parsed.data.nameEn) updateData.nameEn = parsed.data.nameEn;
-  if (parsed.data.nameAr) updateData.nameAr = parsed.data.nameAr;
-  if (parsed.data.department) updateData.department = parsed.data.department;
-  if (parsed.data.phone) updateData.phone = parsed.data.phone;
-  if (parsed.data.status) updateData.isActive = parsed.data.status === "active";
-  const [user] = await db.update(usersTable).set(updateData).where(eq(usersTable.id, params.data.id)).returning();
-  if (!user) { res.status(404).json({ error: "Staff member not found" }); return; }
-  res.json(mapStaff(user));
+  const updates: Record<string, unknown> = {};
+  if (parsed.data.nameEn) updates.name_en = parsed.data.nameEn;
+  if (parsed.data.nameAr) updates.name_ar = parsed.data.nameAr;
+  if (parsed.data.department) updates.department = parsed.data.department;
+  if (parsed.data.phone) updates.phone = parsed.data.phone;
+  if (parsed.data.status) updates.is_active = parsed.data.status === "active";
+  const { data, error } = await supabase
+    .from("users")
+    .update(updates)
+    .eq("id", params.data.id)
+    .select()
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Staff member not found" }); return; }
+  res.json(formatStaff(data));
 });
 
 export default router;

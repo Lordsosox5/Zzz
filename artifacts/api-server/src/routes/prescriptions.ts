@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, prescriptionsTable, patientsTable, usersTable } from "@workspace/db";
+import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
 import {
   ListPrescriptionsQueryParams,
   CreatePrescriptionBody,
@@ -11,8 +10,8 @@ import {
 
 const router = Router();
 
-function mapRx(p: typeof prescriptionsTable.$inferSelect, patientName?: string | null, prescriberName?: string | null) {
-  return { ...p, patientName: patientName ?? null, prescriberName: prescriberName ?? null, createdAt: p.createdAt.toISOString() };
+function formatRx(row: Record<string, unknown>) {
+  return { ...mapRow(row), patientName: null, prescriberName: null };
 }
 
 router.get("/prescriptions", async (req, res): Promise<void> => {
@@ -21,13 +20,12 @@ router.get("/prescriptions", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const conditions = [];
-  if (params.data.patientId) conditions.push(eq(prescriptionsTable.patientId, params.data.patientId));
-  if (params.data.status) conditions.push(eq(prescriptionsTable.status, params.data.status));
-  const results = conditions.length
-    ? await db.select().from(prescriptionsTable).where(and(...conditions)).orderBy(prescriptionsTable.createdAt)
-    : await db.select().from(prescriptionsTable).orderBy(prescriptionsTable.createdAt);
-  res.json(results.map(p => mapRx(p)));
+  let query = supabase.from("prescriptions").select().order("created_at");
+  if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
+  if (params.data.status) query = query.eq("status", params.data.status);
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json((data ?? []).map(formatRx));
 });
 
 router.post("/prescriptions", async (req, res): Promise<void> => {
@@ -36,9 +34,13 @@ router.post("/prescriptions", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const prescriberId = parsed.data.patientId; // use first staff as prescriber
-  const [rx] = await db.insert(prescriptionsTable).values({ ...parsed.data, prescriberId: 1 }).returning();
-  res.status(201).json(mapRx(rx));
+  const { data, error } = await supabase
+    .from("prescriptions")
+    .insert({ ...toSnake(parsed.data as Record<string, unknown>), prescriber_id: 1 })
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json(formatRx(data));
 });
 
 router.get("/prescriptions/:id", async (req, res): Promise<void> => {
@@ -47,12 +49,14 @@ router.get("/prescriptions/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [rx] = await db.select().from(prescriptionsTable).where(eq(prescriptionsTable.id, params.data.id));
-  if (!rx) {
-    res.status(404).json({ error: "Prescription not found" });
-    return;
-  }
-  res.json(mapRx(rx));
+  const { data, error } = await supabase
+    .from("prescriptions")
+    .select()
+    .eq("id", params.data.id)
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Prescription not found" }); return; }
+  res.json(formatRx(data));
 });
 
 router.patch("/prescriptions/:id", async (req, res): Promise<void> => {
@@ -66,12 +70,15 @@ router.patch("/prescriptions/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [rx] = await db.update(prescriptionsTable).set(parsed.data).where(eq(prescriptionsTable.id, params.data.id)).returning();
-  if (!rx) {
-    res.status(404).json({ error: "Prescription not found" });
-    return;
-  }
-  res.json(mapRx(rx));
+  const { data, error } = await supabase
+    .from("prescriptions")
+    .update(toSnake(parsed.data as Record<string, unknown>))
+    .eq("id", params.data.id)
+    .select()
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Prescription not found" }); return; }
+  res.json(formatRx(data));
 });
 
 export default router;

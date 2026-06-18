@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { eq, ilike, or, sql } from "drizzle-orm";
-import { db, patientsTable, clinicalNotesTable, prescriptionsTable, labOrdersTable, appointmentsTable, vaccinationsTable, growthRecordsTable, usersTable, diagnosesTable } from "@workspace/db";
+import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
 import {
   ListPatientsQueryParams,
   CreatePatientBody,
@@ -26,40 +25,17 @@ router.get("/patients", async (req, res): Promise<void> => {
   const { search, page = 1, limit = 20 } = params.data;
   const offset = (page - 1) * limit;
 
-  let query = db.select().from(patientsTable);
-  let countQuery = db.select({ count: sql<number>`count(*)` }).from(patientsTable);
+  let query = supabase.from("patients").select("*", { count: "exact" });
+  if (search) {
+    query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%,name_ar.ilike.%${search}%`);
+  }
+  query = query.order("created_at").range(offset, offset + limit - 1);
 
-  const results = await db
-    .select()
-    .from(patientsTable)
-    .where(
-      search
-        ? or(
-            ilike(patientsTable.nameEn, `%${search}%`),
-            ilike(patientsTable.mrn, `%${search}%`),
-            ilike(patientsTable.nameAr ?? patientsTable.nameEn, `%${search}%`)
-          )
-        : undefined
-    )
-    .limit(limit)
-    .offset(offset)
-    .orderBy(patientsTable.createdAt);
-
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(patientsTable)
-    .where(
-      search
-        ? or(
-            ilike(patientsTable.nameEn, `%${search}%`),
-            ilike(patientsTable.mrn, `%${search}%`)
-          )
-        : undefined
-    );
-
+  const { data, error, count } = await query;
+  if (dbError(error, res)) return;
   res.json({
-    patients: results.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
-    total: Number(countResult?.count ?? 0),
+    patients: mapRows(data ?? []),
+    total: count ?? 0,
     page,
     limit,
   });
@@ -72,8 +48,13 @@ router.post("/patients", async (req, res): Promise<void> => {
     return;
   }
   const mrn = generateMRN();
-  const [patient] = await db.insert(patientsTable).values({ ...parsed.data, mrn }).returning();
-  res.status(201).json({ ...patient, createdAt: patient.createdAt.toISOString() });
+  const { data, error } = await supabase
+    .from("patients")
+    .insert({ ...toSnake(parsed.data as Record<string, unknown>), mrn })
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json(mapRow(data));
 });
 
 router.get("/patients/:id", async (req, res): Promise<void> => {
@@ -82,12 +63,14 @@ router.get("/patients/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, params.data.id));
-  if (!patient) {
-    res.status(404).json({ error: "Patient not found" });
-    return;
-  }
-  res.json({ ...patient, createdAt: patient.createdAt.toISOString() });
+  const { data, error } = await supabase
+    .from("patients")
+    .select()
+    .eq("id", params.data.id)
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Patient not found" }); return; }
+  res.json(mapRow(data));
 });
 
 router.patch("/patients/:id", async (req, res): Promise<void> => {
@@ -101,16 +84,15 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [patient] = await db
-    .update(patientsTable)
-    .set(parsed.data)
-    .where(eq(patientsTable.id, params.data.id))
-    .returning();
-  if (!patient) {
-    res.status(404).json({ error: "Patient not found" });
-    return;
-  }
-  res.json({ ...patient, createdAt: patient.createdAt.toISOString() });
+  const { data, error } = await supabase
+    .from("patients")
+    .update(toSnake(parsed.data as Record<string, unknown>))
+    .eq("id", params.data.id)
+    .select()
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Patient not found" }); return; }
+  res.json(mapRow(data));
 });
 
 router.get("/patients/:id/summary", async (req, res): Promise<void> => {
@@ -120,35 +102,40 @@ router.get("/patients/:id/summary", async (req, res): Promise<void> => {
     return;
   }
   const id = params.data.id;
-  const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, id));
-  if (!patient) {
-    res.status(404).json({ error: "Patient not found" });
-    return;
-  }
-  const [recentNotes, activePrescriptions, pendingLabOrders, upcomingAppointments, vaccinations, growthRecords] = await Promise.all([
-    db.select().from(clinicalNotesTable).where(eq(clinicalNotesTable.patientId, id)).limit(5).orderBy(clinicalNotesTable.createdAt),
-    db.select().from(prescriptionsTable).where(eq(prescriptionsTable.patientId, id)).limit(5),
-    db.select().from(labOrdersTable).where(eq(labOrdersTable.patientId, id)).limit(5),
-    db.select().from(appointmentsTable).where(eq(appointmentsTable.patientId, id)).limit(3),
-    db.select().from(vaccinationsTable).where(eq(vaccinationsTable.patientId, id)).limit(10),
-    db.select().from(growthRecordsTable).where(eq(growthRecordsTable.patientId, id)).limit(1).orderBy(growthRecordsTable.createdAt),
+  const { data: patient, error: pErr } = await supabase
+    .from("patients")
+    .select()
+    .eq("id", id)
+    .maybeSingle();
+  if (pErr) { res.status(500).json({ error: pErr.message }); return; }
+  if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
+
+  const [
+    { data: notes },
+    { data: rxs },
+    { data: labs },
+    { data: appts },
+    { data: vaccs },
+    { data: growth },
+  ] = await Promise.all([
+    supabase.from("clinical_notes").select().eq("patient_id", id).order("created_at", { ascending: false }).limit(5),
+    supabase.from("prescriptions").select().eq("patient_id", id).limit(5),
+    supabase.from("lab_orders").select().eq("patient_id", id).limit(5),
+    supabase.from("appointments").select().eq("patient_id", id).order("scheduled_at").limit(3),
+    supabase.from("vaccinations").select().eq("patient_id", id).limit(10),
+    supabase.from("growth_records").select().eq("patient_id", id).order("measurement_date", { ascending: false }).limit(1),
   ]);
 
-  const mapNote = (n: typeof clinicalNotesTable.$inferSelect) => ({
-    ...n,
-    authorName: null,
-    createdAt: n.createdAt.toISOString(),
-    updatedAt: n.updatedAt.toISOString(),
-  });
+  const latestGrowth = growth?.[0] ? mapRow(growth[0]) : null;
 
   res.json({
-    patient: { ...patient, createdAt: patient.createdAt.toISOString() },
-    recentNotes: recentNotes.map(mapNote),
-    activePrescriptions: activePrescriptions.map(p => ({ ...p, patientName: null, prescriberName: null, createdAt: p.createdAt.toISOString() })),
-    pendingLabOrders: pendingLabOrders.map(l => ({ ...l, patientName: null, orderedByName: null, isCritical: l.isCritical, collectedAt: l.collectedAt?.toISOString() ?? null, resultedAt: l.resultedAt?.toISOString() ?? null, createdAt: l.createdAt.toISOString() })),
-    upcomingAppointments: upcomingAppointments.map(a => ({ ...a, patientName: null, doctorName: null, scheduledAt: a.scheduledAt.toISOString(), createdAt: a.createdAt.toISOString() })),
-    latestGrowth: growthRecords[0] ? { ...growthRecords[0], weight: growthRecords[0].weight ? Number(growthRecords[0].weight) : null, height: growthRecords[0].height ? Number(growthRecords[0].height) : null, headCircumference: growthRecords[0].headCircumference ? Number(growthRecords[0].headCircumference) : null, bmi: growthRecords[0].bmi ? Number(growthRecords[0].bmi) : null, weightPercentile: growthRecords[0].weightPercentile ? Number(growthRecords[0].weightPercentile) : null, heightPercentile: growthRecords[0].heightPercentile ? Number(growthRecords[0].heightPercentile) : null, bmiPercentile: growthRecords[0].bmiPercentile ? Number(growthRecords[0].bmiPercentile) : null, createdAt: growthRecords[0].createdAt.toISOString() } : null,
-    vaccinations: vaccinations.map(v => ({ ...v, createdAt: v.createdAt.toISOString() })),
+    patient: mapRow(patient),
+    recentNotes: mapRows(notes ?? []).map((n: Record<string, unknown>) => ({ ...n, authorName: null })),
+    activePrescriptions: mapRows(rxs ?? []).map((p: Record<string, unknown>) => ({ ...p, patientName: null, prescriberName: null })),
+    pendingLabOrders: mapRows(labs ?? []).map((l: Record<string, unknown>) => ({ ...l, patientName: null, orderedByName: null })),
+    upcomingAppointments: mapRows(appts ?? []).map((a: Record<string, unknown>) => ({ ...a, patientName: null, doctorName: null })),
+    latestGrowth,
+    vaccinations: mapRows(vaccs ?? []),
   });
 });
 
