@@ -81,7 +81,7 @@ function EnterResultDialog({ orderId, testName, onSuccess }: { orderId: number; 
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>{t("lab.enterResult")}: {testName}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>{t("generic.result")} *</Label>
             <Select value={form.result} onValueChange={v => setForm(p => ({ ...p, result: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -93,11 +93,11 @@ function EnterResultDialog({ orderId, testName, onSuccess }: { orderId: number; 
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>{t("lab.resultValue")}</Label><Input value={form.resultValue} onChange={e => setForm(p => ({ ...p, resultValue: e.target.value }))} placeholder="e.g. 7.4" /></div>
-            <div className="space-y-2"><Label>{t("lab.unit")}</Label><Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="e.g. mmol/L" /></div>
+            <div className="space-y-3"><Label>{t("lab.resultValue")}</Label><Input value={form.resultValue} onChange={e => setForm(p => ({ ...p, resultValue: e.target.value }))} placeholder="e.g. 7.4" /></div>
+            <div className="space-y-3"><Label>{t("lab.unit")}</Label><Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="e.g. mmol/L" /></div>
           </div>
-          <div className="space-y-2"><Label>{t("lab.referenceRange")}</Label><Input value={form.referenceRange} onChange={e => setForm(p => ({ ...p, referenceRange: e.target.value }))} placeholder="e.g. 3.5 - 5.5" /></div>
-          <div className="space-y-2"><Label>{t("lab.resultedAt")}</Label><Input type="datetime-local" value={form.resultedAt} onChange={e => setForm(p => ({ ...p, resultedAt: e.target.value }))} /></div>
+          <div className="space-y-3"><Label>{t("lab.referenceRange")}</Label><Input value={form.referenceRange} onChange={e => setForm(p => ({ ...p, referenceRange: e.target.value }))} placeholder="e.g. 3.5 - 5.5" /></div>
+          <div className="space-y-3"><Label>{t("lab.resultedAt")}</Label><Input type="datetime-local" value={form.resultedAt} onChange={e => setForm(p => ({ ...p, resultedAt: e.target.value }))} /></div>
           <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
             <Checkbox id="critical" checked={form.isCritical} onCheckedChange={v => setForm(p => ({ ...p, isCritical: !!v }))} />
             <label htmlFor="critical" className="text-sm font-medium cursor-pointer flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />{t("lab.isCritical")}</label>
@@ -150,14 +150,14 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
         <DialogHeader><DialogTitle>{t("nurse.vitalsTitle")}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>{t("admit.bp")}</Label><Input name="vitalBp" value={form.vitalBp} onChange={handleChange} placeholder="e.g. 110/70" /></div>
-            <div className="space-y-2"><Label>{t("admit.pr")}</Label><Input name="vitalPr" value={form.vitalPr} onChange={handleChange} placeholder="e.g. 88 bpm" /></div>
-            <div className="space-y-2"><Label>{t("admit.rr")}</Label><Input name="vitalRr" value={form.vitalRr} onChange={handleChange} placeholder="e.g. 20/min" /></div>
-            <div className="space-y-2"><Label>{t("admit.gcs")}</Label><Input name="vitalGcs" value={form.vitalGcs} onChange={handleChange} placeholder="e.g. 15/15" /></div>
-            <div className="space-y-2"><Label>{t("admit.rbg")}</Label><Input name="vitalRbg" value={form.vitalRbg} onChange={handleChange} placeholder="e.g. 5.2 mmol/L" /></div>
-            <div className="space-y-2"><Label>{t("patient.weight")}</Label><Input name="weight" value={form.weight} onChange={handleChange} placeholder="e.g. 12.5 kg" /></div>
+            <div className="space-y-3"><Label>{t("admit.bp")}</Label><Input name="vitalBp" value={form.vitalBp} onChange={handleChange} placeholder="e.g. 110/70" /></div>
+            <div className="space-y-3"><Label>{t("admit.pr")}</Label><Input name="vitalPr" value={form.vitalPr} onChange={handleChange} placeholder="e.g. 88 bpm" /></div>
+            <div className="space-y-3"><Label>{t("admit.rr")}</Label><Input name="vitalRr" value={form.vitalRr} onChange={handleChange} placeholder="e.g. 20/min" /></div>
+            <div className="space-y-3"><Label>{t("admit.gcs")}</Label><Input name="vitalGcs" value={form.vitalGcs} onChange={handleChange} placeholder="e.g. 15/15" /></div>
+            <div className="space-y-3"><Label>{t("admit.rbg")}</Label><Input name="vitalRbg" value={form.vitalRbg} onChange={handleChange} placeholder="e.g. 5.2 mmol/L" /></div>
+            <div className="space-y-3"><Label>{t("patient.weight")}</Label><Input name="weight" value={form.weight} onChange={handleChange} placeholder="e.g. 12.5 kg" /></div>
           </div>
-          <div className="space-y-2"><Label>{t("patient.height")}</Label><Input name="height" value={form.height} onChange={handleChange} placeholder="e.g. 95 cm" /></div>
+          <div className="space-y-3"><Label>{t("patient.height")}</Label><Input name="height" value={form.height} onChange={handleChange} placeholder="e.g. 95 cm" /></div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={createAssessment.isPending}>
@@ -196,7 +196,7 @@ function AddNoteDialog({ patientId, onSuccess }: { patientId: number; onSuccess:
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>{t("notes.addClinicalNote")}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>{t("notes.noteType")} *</Label>
             <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -209,7 +209,7 @@ function AddNoteDialog({ patientId, onSuccess }: { patientId: number; onSuccess:
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>{t("notes.content")} *</Label>
             <Textarea required value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} className="min-h-[160px]" placeholder={t("notes.contentPlaceholder")} />
           </div>
@@ -252,14 +252,14 @@ function AddPrescriptionDialog({ patientId, onSuccess }: { patientId: number; on
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>{t("rx.newPrescription")}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-2"><Label>{t("rx.drugName")} *</Label><Input name="drugName" required value={form.drugName} onChange={handleChange} /></div>
+          <div className="space-y-3"><Label>{t("rx.drugName")} *</Label><Input name="drugName" required value={form.drugName} onChange={handleChange} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>{t("rx.dosage")} *</Label><Input name="dosage" required value={form.dosage} onChange={handleChange} placeholder="e.g. 250mg" /></div>
-            <div className="space-y-2"><Label>{t("rx.frequency")} *</Label><Input name="frequency" required value={form.frequency} onChange={handleChange} placeholder="e.g. 3x daily" /></div>
-            <div className="space-y-2"><Label>{t("rx.duration")}</Label><Input name="duration" value={form.duration} onChange={handleChange} placeholder="e.g. 7 days" /></div>
-            <div className="space-y-2"><Label>{t("rx.route")}</Label><Input name="route" value={form.route} onChange={handleChange} placeholder="e.g. oral" /></div>
+            <div className="space-y-3"><Label>{t("rx.dosage")} *</Label><Input name="dosage" required value={form.dosage} onChange={handleChange} placeholder="e.g. 250mg" /></div>
+            <div className="space-y-3"><Label>{t("rx.frequency")} *</Label><Input name="frequency" required value={form.frequency} onChange={handleChange} placeholder="e.g. 3x daily" /></div>
+            <div className="space-y-3"><Label>{t("rx.duration")}</Label><Input name="duration" value={form.duration} onChange={handleChange} placeholder="e.g. 7 days" /></div>
+            <div className="space-y-3"><Label>{t("rx.route")}</Label><Input name="route" value={form.route} onChange={handleChange} placeholder="e.g. oral" /></div>
           </div>
-          <div className="space-y-2"><Label>{t("rx.instructions")}</Label><Textarea name="instructions" value={form.instructions} onChange={handleChange} className="min-h-[80px]" /></div>
+          <div className="space-y-3"><Label>{t("rx.instructions")}</Label><Textarea name="instructions" value={form.instructions} onChange={handleChange} className="min-h-[80px]" /></div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={createRx.isPending}>
@@ -325,7 +325,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-32" />
-        <Card><CardContent className="p-6"><div className="flex items-center gap-4"><Skeleton className="h-16 w-16 rounded-full" /><div className="space-y-2"><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-32" /></div></div></CardContent></Card>
+        <Card><CardContent className="p-6"><div className="flex items-center gap-4"><Skeleton className="h-16 w-16 rounded-full" /><div className="space-y-3"><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-32" /></div></div></CardContent></Card>
       </div>
     );
   }

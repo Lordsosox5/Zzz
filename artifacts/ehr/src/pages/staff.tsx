@@ -69,17 +69,17 @@ export default function Staff() {
               <DialogHeader><DialogTitle>{t("staff.newMember")}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 py-2">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("staff.nameEn")} *</Label>
                     <Input name="nameEn" required value={form.nameEn} onChange={handleChange} />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("staff.nameAr")}</Label>
                     <Input name="nameAr" dir="rtl" value={form.nameAr} onChange={handleChange} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.role")} *</Label>
                     <Select value={form.role} onValueChange={v => setForm(p => ({ ...p, role: v }))}>
                       <SelectTrigger><SelectValue placeholder={t("staff.selectRole")} /></SelectTrigger>
@@ -90,17 +90,17 @@ export default function Staff() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.department")} *</Label>
                     <Input name="department" required value={form.department} onChange={handleChange} placeholder="e.g. Pediatrics" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.email")}</Label>
                     <Input name="email" type="email" value={form.email} onChange={handleChange} />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.phone")}</Label>
                     <Input name="phone" type="tel" value={form.phone} onChange={handleChange} />
                   </div>

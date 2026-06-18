@@ -57,11 +57,11 @@ export default function ClinicalNotes() {
             <DialogHeader><DialogTitle>{t("notes.addClinicalNote")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("notes.patientId")} *</Label>
                   <Input type="number" required value={form.patientId} onChange={e => setForm(p => ({ ...p, patientId: e.target.value }))} placeholder="e.g. 1" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("notes.noteType")} *</Label>
                   <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -75,7 +75,7 @@ export default function ClinicalNotes() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("notes.content")} *</Label>
                 <Textarea required placeholder={t("notes.contentPlaceholder")} value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} className="min-h-[200px]" />
               </div>

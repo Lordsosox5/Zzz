@@ -50,35 +50,35 @@ export default function Vaccinations() {
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{t("vacc.newRecord")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.patientId")} *</Label>
                 <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("vacc.vaccineName")} *</Label>
                   <Input name="vaccineName" required value={form.vaccineName} onChange={handleChange} placeholder="e.g. MMR" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("vacc.doseNumber")}</Label>
                   <Input name="doseNumber" type="number" min="1" value={form.doseNumber} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("vacc.administeredDate")} *</Label>
                   <Input name="administeredDate" type="date" required value={form.administeredDate} onChange={handleChange} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("vacc.nextDueDate")}</Label>
                   <Input name="nextDueDate" type="date" value={form.nextDueDate} onChange={handleChange} />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("vacc.batchNumber")}</Label>
                 <Input name="batchNumber" value={form.batchNumber} onChange={handleChange} />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.notes")}</Label>
                 <Textarea name="notes" value={form.notes} onChange={handleChange} className="min-h-[60px]" />
               </div>

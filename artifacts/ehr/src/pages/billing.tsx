@@ -56,11 +56,11 @@ export default function Billing() {
             <DialogHeader><DialogTitle>{t("billing.newInvoice")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("billing.patientId")} *</Label>
                   <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("billing.paymentMethod")} *</Label>
                   <Select value={form.paymentMethod} onValueChange={v => setForm(p => ({ ...p, paymentMethod: v }))}>
                     <SelectTrigger><SelectValue placeholder={t("billing.selectPayment")} /></SelectTrigger>
@@ -86,7 +86,7 @@ export default function Billing() {
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.notes")}</Label>
                 <Textarea name="notes" value={form.notes} onChange={handleChange} className="min-h-[60px]" />
               </div>

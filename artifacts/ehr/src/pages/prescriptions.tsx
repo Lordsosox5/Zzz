@@ -58,35 +58,35 @@ export default function Prescriptions() {
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{t("rx.newPrescription")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.patientId")} *</Label>
                 <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("rx.drugName")} *</Label>
                 <Input name="drugName" required value={form.drugName} onChange={handleChange} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("rx.dosage")} *</Label>
                   <Input name="dosage" required value={form.dosage} onChange={handleChange} placeholder="e.g. 250mg" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("rx.frequency")} *</Label>
                   <Input name="frequency" required value={form.frequency} onChange={handleChange} placeholder="e.g. 3x daily" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("rx.duration")}</Label>
                   <Input name="duration" value={form.duration} onChange={handleChange} placeholder="e.g. 7 days" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("rx.route")}</Label>
                   <Input name="route" value={form.route} onChange={handleChange} placeholder="e.g. oral" />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("rx.instructions")}</Label>
                 <Textarea name="instructions" value={form.instructions} onChange={handleChange} className="min-h-[80px]" />
               </div>

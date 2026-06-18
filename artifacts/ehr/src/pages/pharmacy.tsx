@@ -51,35 +51,35 @@ export default function Pharmacy() {
             <DialogHeader><DialogTitle>{t("pharmacy.newDrug")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("pharmacy.drugName")} *</Label>
                   <Input name="name" required value={form.name} onChange={handleChange} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("pharmacy.genericName")}</Label>
                   <Input name="genericName" value={form.genericName} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("generic.category")} *</Label>
                   <Input name="category" required value={form.category} onChange={handleChange} placeholder="e.g. Antibiotic" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("pharmacy.unit")} *</Label>
                   <Input name="unit" required value={form.unit} onChange={handleChange} placeholder="e.g. tablet" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("pharmacy.stockQty")} *</Label>
                   <Input name="stockQuantity" type="number" required value={form.stockQuantity} onChange={handleChange} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("pharmacy.minStock")}</Label>
                   <Input name="minStockLevel" type="number" value={form.minStockLevel} onChange={handleChange} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("pharmacy.unitPrice")}</Label>
                   <Input name="unitPrice" type="number" step="0.01" value={form.unitPrice} onChange={handleChange} />
                 </div>

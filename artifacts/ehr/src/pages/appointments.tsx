@@ -272,7 +272,7 @@ export default function Appointments() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("generic.patientId")} *</Label>
                   <Input
                     name="patientId"
@@ -283,7 +283,7 @@ export default function Appointments() {
                     placeholder="e.g. 1"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("appt.doctorId")} *</Label>
                   <Input
                     name="doctorId"
@@ -295,7 +295,7 @@ export default function Appointments() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("appt.dateTime")} *</Label>
                   <Input
                     name="scheduledAt"
@@ -305,7 +305,7 @@ export default function Appointments() {
                     onChange={handleChange}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("appt.duration")}</Label>
                   <Input
                     name="duration"
@@ -315,7 +315,7 @@ export default function Appointments() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.type")} *</Label>
                 <Select
                   value={form.type}
@@ -333,7 +333,7 @@ export default function Appointments() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("appt.chiefComplaint")}</Label>
                 <Input
                   name="chiefComplaint"
@@ -341,7 +341,7 @@ export default function Appointments() {
                   onChange={handleChange}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.notes")}</Label>
                 <Textarea
                   name="notes"
@@ -389,7 +389,7 @@ export default function Appointments() {
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("appt.dateTime")}</Label>
                 <Input
                   name="scheduledAt"
@@ -400,7 +400,7 @@ export default function Appointments() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("generic.status")}</Label>
                   <Select
                     value={editForm.status}
@@ -420,7 +420,7 @@ export default function Appointments() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("appt.duration")}</Label>
                   <Input
                     name="duration"
@@ -432,7 +432,7 @@ export default function Appointments() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.notes")}</Label>
                 <Textarea
                   name="notes"

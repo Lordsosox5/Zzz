@@ -436,7 +436,7 @@ function EnterResultDialog({
               ) : (
                 /* Fallback simple form for unknown tests */
                 <>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.result")} *</Label>
                     <Select value={simpleResult} onValueChange={setSimpleResult}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -448,16 +448,16 @@ function EnterResultDialog({
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label>{t("lab.resultValue")}</Label>
                       <Input value={simpleValue} onChange={(e) => setSimpleValue(e.target.value)} placeholder="e.g. 7.4" />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label>{t("lab.unit")}</Label>
                       <Input value={simpleUnit} onChange={(e) => setSimpleUnit(e.target.value)} placeholder="e.g. mmol/L" />
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("lab.referenceRange")}</Label>
                     <Input value={simpleRange} onChange={(e) => setSimpleRange(e.target.value)} placeholder="e.g. 3.5 – 5.5 mmol/L" />
                   </div>
@@ -466,7 +466,7 @@ function EnterResultDialog({
 
               {/* Common footer fields */}
               <div className="border-t pt-4 space-y-3">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("lab.resultedAt")}</Label>
                   <Input type="datetime-local" value={resultedAt} onChange={(e) => setResultedAt(e.target.value)} />
                 </div>
@@ -664,7 +664,7 @@ export default function Lab() {
                 <form onSubmit={handleSubmit} className="space-y-4 py-2">
 
                   {/* Patient */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("nav.patients")} *</Label>
                     <PatientSearchCombobox value={form.patientId} onChange={handlePatientSelect} />
                     {form.patientId && (
@@ -673,7 +673,7 @@ export default function Lab() {
                   </div>
 
                   {/* Test */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("lab.testName")} *</Label>
                     <TestCatalogCombobox value={form.selectedTest} onChange={handleTestSelect} />
                     {form.selectedTest && (
@@ -686,7 +686,7 @@ export default function Lab() {
                   </div>
 
                   {/* Priority */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.priority")}</Label>
                     <Select value={form.priority} onValueChange={(v) => setForm((p) => ({ ...p, priority: v }))}>
                       <SelectTrigger><SelectValue placeholder={t("generic.selectPriority")} /></SelectTrigger>
@@ -699,7 +699,7 @@ export default function Lab() {
                   </div>
 
                   {/* Notes */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("generic.notes")}</Label>
                     <Textarea
                       value={form.notes}

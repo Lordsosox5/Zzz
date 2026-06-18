@@ -142,7 +142,7 @@ export default function Login() {
                   <AlertDescription>{errorMsg}</AlertDescription>
                 </Alert>
               )}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="username">{t("login.username")}</Label>
                 <Input
                   id="username"
@@ -153,7 +153,7 @@ export default function Login() {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="password">{t("login.password")}</Label>
                 <Input
                   id="password"

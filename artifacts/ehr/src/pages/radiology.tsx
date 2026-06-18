@@ -51,12 +51,12 @@ export default function Radiology() {
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>{t("radiology.newOrder")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.patientId")} *</Label>
                 <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("radiology.modality")} *</Label>
                   <Select value={form.modality} onValueChange={v => setForm(p => ({ ...p, modality: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -68,7 +68,7 @@ export default function Radiology() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("generic.priority")}</Label>
                   <Select value={form.priority} onValueChange={v => setForm(p => ({ ...p, priority: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -80,11 +80,11 @@ export default function Radiology() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("radiology.studyDesc")} *</Label>
                 <Input name="studyDescription" required value={form.studyDescription} onChange={handleChange} placeholder="e.g. Chest X-Ray PA view" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("appt.dateTime")}</Label>
                 <Input name="scheduledAt" type="datetime-local" value={form.scheduledAt} onChange={handleChange} />
               </div>

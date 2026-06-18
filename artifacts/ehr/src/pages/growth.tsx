@@ -51,30 +51,30 @@ export default function Growth() {
             <DialogHeader><DialogTitle>{t("growth.addRecord")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("generic.patientId")} *</Label>
                   <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("growth.measurementDate")} *</Label>
                   <Input name="measurementDate" type="date" required value={form.measurementDate} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("growth.weight")}</Label>
                   <Input name="weight" type="number" step="0.1" value={form.weight} onChange={handleChange} placeholder="kg" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("growth.height")}</Label>
                   <Input name="height" type="number" step="0.1" value={form.height} onChange={handleChange} placeholder="cm" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>{t("growth.headCirc")}</Label>
                   <Input name="headCircumference" type="number" step="0.1" value={form.headCircumference} onChange={handleChange} placeholder="cm" />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>{t("generic.notes")}</Label>
                 <Textarea name="notes" value={form.notes} onChange={handleChange} className="min-h-[60px]" />
               </div>
