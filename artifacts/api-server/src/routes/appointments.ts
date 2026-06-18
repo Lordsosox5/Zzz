@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
+import { eq, and, gte, lte, asc } from "drizzle-orm";
+import { db, appointmentsTable, patientsTable, usersTable } from "../lib/db";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -10,16 +11,15 @@ import {
 
 const router = Router();
 
-async function enrichAppointment(a: Record<string, unknown>) {
-  const [{ data: patient }, { data: doctor }] = await Promise.all([
-    supabase.from("patients").select("name_en").eq("id", a.patient_id).maybeSingle(),
-    supabase.from("users").select("name_en").eq("id", a.doctor_id).maybeSingle(),
+async function enrichAppointment(a: typeof appointmentsTable.$inferSelect) {
+  const [[patient], [doctor]] = await Promise.all([
+    db.select({ nameEn: patientsTable.nameEn }).from(patientsTable).where(eq(patientsTable.id, a.patientId)).limit(1),
+    db.select({ nameEn: usersTable.nameEn }).from(usersTable).where(eq(usersTable.id, a.doctorId)).limit(1),
   ]);
-  const mapped = mapRow(a);
   return {
-    ...mapped,
-    patientName: patient?.name_en ?? null,
-    doctorName: doctor?.name_en ?? null,
+    ...a,
+    patientName: patient?.nameEn ?? null,
+    doctorName: doctor?.nameEn ?? null,
   };
 }
 
@@ -30,21 +30,26 @@ router.get("/appointments", async (req, res): Promise<void> => {
     return;
   }
   const { date, doctorId, patientId, status } = params.data;
-  let query = supabase.from("appointments").select().order("scheduled_at");
-  if (patientId) query = query.eq("patient_id", patientId);
-  if (doctorId) query = query.eq("doctor_id", doctorId);
-  if (status) query = query.eq("status", status);
-  if (date) {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
-    query = query.gte("scheduled_at", start.toISOString()).lte("scheduled_at", end.toISOString());
+  try {
+    const conditions = [];
+    if (patientId) conditions.push(eq(appointmentsTable.patientId, patientId));
+    if (doctorId) conditions.push(eq(appointmentsTable.doctorId, doctorId));
+    if (status) conditions.push(eq(appointmentsTable.status, status));
+    if (date) {
+      const start = new Date(date); start.setHours(0, 0, 0, 0);
+      const end = new Date(date); end.setHours(23, 59, 59, 999);
+      conditions.push(gte(appointmentsTable.scheduledAt, start));
+      conditions.push(lte(appointmentsTable.scheduledAt, end));
+    }
+    const query = db.select().from(appointmentsTable).orderBy(asc(appointmentsTable.scheduledAt));
+    const data = conditions.length > 0
+      ? await query.where(and(...conditions))
+      : await query;
+    const enriched = await Promise.all(data.map(enrichAppointment));
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal error" });
   }
-  const { data, error } = await query;
-  if (dbError(error, res)) return;
-  const enriched = await Promise.all((data ?? []).map(enrichAppointment));
-  res.json(enriched);
 });
 
 router.post("/appointments", async (req, res): Promise<void> => {
@@ -53,29 +58,31 @@ router.post("/appointments", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { data, error } = await supabase
-    .from("appointments")
-    .insert(toSnake(parsed.data as Record<string, unknown>))
-    .select()
-    .single();
-  if (dbError(error, res)) return;
-  res.status(201).json(await enrichAppointment(data));
+  try {
+    const [appointment] = await db
+      .insert(appointmentsTable)
+      .values(parsed.data as any)
+      .returning();
+    res.status(201).json(await enrichAppointment(appointment));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal error" });
+  }
 });
 
 router.get("/appointments/today", async (_req, res): Promise<void> => {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  const { data, error } = await supabase
-    .from("appointments")
-    .select()
-    .gte("scheduled_at", start.toISOString())
-    .lte("scheduled_at", end.toISOString())
-    .order("scheduled_at");
-  if (dbError(error, res)) return;
-  const enriched = await Promise.all((data ?? []).map(enrichAppointment));
-  res.json(enriched);
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const end = new Date(); end.setHours(23, 59, 59, 999);
+  try {
+    const data = await db
+      .select()
+      .from(appointmentsTable)
+      .where(and(gte(appointmentsTable.scheduledAt, start), lte(appointmentsTable.scheduledAt, end)))
+      .orderBy(asc(appointmentsTable.scheduledAt));
+    const enriched = await Promise.all(data.map(enrichAppointment));
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal error" });
+  }
 });
 
 router.get("/appointments/:id", async (req, res): Promise<void> => {
@@ -84,14 +91,17 @@ router.get("/appointments/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const { data, error } = await supabase
-    .from("appointments")
-    .select()
-    .eq("id", params.data.id)
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Appointment not found" }); return; }
-  res.json(await enrichAppointment(data));
+  try {
+    const [appointment] = await db
+      .select()
+      .from(appointmentsTable)
+      .where(eq(appointmentsTable.id, params.data.id))
+      .limit(1);
+    if (!appointment) { res.status(404).json({ error: "Appointment not found" }); return; }
+    res.json(await enrichAppointment(appointment));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal error" });
+  }
 });
 
 router.patch("/appointments/:id", async (req, res): Promise<void> => {
@@ -105,15 +115,17 @@ router.patch("/appointments/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { data, error } = await supabase
-    .from("appointments")
-    .update(toSnake(parsed.data as Record<string, unknown>))
-    .eq("id", params.data.id)
-    .select()
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Appointment not found" }); return; }
-  res.json(await enrichAppointment(data));
+  try {
+    const [appointment] = await db
+      .update(appointmentsTable)
+      .set(parsed.data as any)
+      .where(eq(appointmentsTable.id, params.data.id))
+      .returning();
+    if (!appointment) { res.status(404).json({ error: "Appointment not found" }); return; }
+    res.json(await enrichAppointment(appointment));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Internal error" });
+  }
 });
 
 export default router;
