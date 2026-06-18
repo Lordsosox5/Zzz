@@ -1,5 +1,8 @@
-import { useState, useCallback } from "react";
-import { useListLabOrders, useCreateLabOrder, useUpdateLabOrder, getListLabOrdersQueryKey, useListPatients } from "@workspace/api-client-react";
+import { useState, useCallback, useMemo } from "react";
+import {
+  useListLabOrders, useCreateLabOrder, useUpdateLabOrder,
+  getListLabOrdersQueryKey, useListPatients,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
@@ -16,18 +19,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Loader2, Save, FlaskConical, AlertCircle, ChevronsUpDown, Check, User } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Loader2, Save, FlaskConical, AlertCircle, ChevronsUpDown, Check, User, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  LAB_TESTS, LAB_CATEGORIES, findTest, assessResult, fieldStatus,
+  type LabTest, type ResultField,
+} from "@/lib/lab-tests";
 
-interface PatientOption {
-  id: number;
-  nameEn: string;
-  mrn: string;
-}
+// ─── Patient Search Combobox ─────────────────────────────────────────────────
 
 function PatientSearchCombobox({
-  value,
-  onChange,
+  value, onChange,
 }: {
   value: string;
   onChange: (id: string, name: string) => void;
@@ -42,13 +45,13 @@ function PatientSearchCombobox({
     { query: { enabled: open } }
   );
 
-  const patients: PatientOption[] = (data?.patients ?? []).map((p: Record<string, unknown>) => ({
+  const patients = (data?.patients ?? []).map((p: Record<string, unknown>) => ({
     id: p.id as number,
     nameEn: (p.nameEn ?? p.name_en ?? "") as string,
     mrn: (p.mrn ?? "") as string,
   }));
 
-  const handleSelect = useCallback((patient: PatientOption) => {
+  const handleSelect = useCallback((patient: typeof patients[0]) => {
     onChange(String(patient.id), patient.nameEn);
     setSelectedName(patient.nameEn);
     setOpen(false);
@@ -57,17 +60,9 @@ function PatientSearchCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
           {value && selectedName ? (
-            <span className="flex items-center gap-2 text-foreground">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
-              {selectedName}
-            </span>
+            <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" />{selectedName}</span>
           ) : (
             <span className="text-muted-foreground">{t("generic.selectPatient")}</span>
           )}
@@ -76,39 +71,26 @@ function PatientSearchCombobox({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={t("generic.searchPatient")}
-            value={search}
-            onValueChange={setSearch}
-          />
+          <CommandInput placeholder={t("generic.searchPatient")} value={search} onValueChange={setSearch} />
           <CommandList>
             {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
+              <div className="flex items-center justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
             ) : patients.length === 0 ? (
               <CommandEmpty>{t("generic.noPatientFound")}</CommandEmpty>
             ) : (
               <CommandGroup>
-                {patients.map((patient) => (
-                  <CommandItem
-                    key={patient.id}
-                    value={String(patient.id)}
-                    onSelect={() => handleSelect(patient)}
-                    className="flex items-center justify-between gap-2 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
+                {patients.map((p) => (
+                  <CommandItem key={p.id} value={String(p.id)} onSelect={() => handleSelect(p)} className="cursor-pointer">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div className="h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                        {patient.nameEn.charAt(0).toUpperCase()}
+                        {p.nameEn.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{patient.nameEn}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{patient.mrn}</p>
+                        <p className="font-medium text-sm truncate">{p.nameEn}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{p.mrn}</p>
                       </div>
                     </div>
-                    {value === String(patient.id) && (
-                      <Check className="h-4 w-4 text-primary shrink-0" />
-                    )}
+                    {value === String(p.id) && <Check className="h-4 w-4 text-primary shrink-0" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -120,40 +102,261 @@ function PatientSearchCombobox({
   );
 }
 
-function EnterResultDialog({ orderId, testName, onSuccess }: { orderId: number; testName: string; onSuccess: () => void }) {
+// ─── Test Catalog Combobox ───────────────────────────────────────────────────
+
+function TestCatalogCombobox({
+  value, onChange,
+}: {
+  value: LabTest | null;
+  onChange: (test: LabTest) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return LAB_TESTS;
+    return LAB_TESTS.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.code.toLowerCase().includes(q) ||
+        t.nameAr.includes(q) ||
+        t.category.toLowerCase().includes(q)
+    );
+  }, [search]);
+
+  const byCategory = useMemo(() => {
+    const map = new Map<string, LabTest[]>();
+    for (const test of filtered) {
+      const arr = map.get(test.category) ?? [];
+      arr.push(test);
+      map.set(test.category, arr);
+    }
+    return map;
+  }, [filtered]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          {value ? (
+            <span className="flex items-center gap-2 min-w-0">
+              <FlaskConical className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">{value.name}</span>
+              <span className="text-xs text-muted-foreground font-mono shrink-0">{value.code}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Search test name or code...</span>
+          )}
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[480px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Search by name, code, or category..." value={search} onValueChange={setSearch} />
+          <CommandList className="max-h-[360px]">
+            {byCategory.size === 0 ? (
+              <CommandEmpty>No test found.</CommandEmpty>
+            ) : (
+              Array.from(byCategory.entries()).map(([catId, tests]) => {
+                const cat = LAB_CATEGORIES.find((c) => c.id === catId);
+                return (
+                  <CommandGroup key={catId} heading={cat?.en ?? catId}>
+                    {tests.map((test) => (
+                      <CommandItem
+                        key={test.id}
+                        value={test.id}
+                        onSelect={() => { onChange(test); setOpen(false); setSearch(""); }}
+                        className="cursor-pointer flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{test.code}</span>
+                          <span className="text-sm truncate">{test.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs text-muted-foreground">{test.fields.length} field{test.fields.length !== 1 ? "s" : ""}</span>
+                          {value?.id === test.id && <Check className="h-3.5 w-3.5 text-primary" />}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                );
+              })
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Field Status Indicator ──────────────────────────────────────────────────
+
+function FieldStatusBadge({ status }: { status: "normal" | "abnormal" | "critical" | null }) {
+  if (!status || status === "normal") return null;
+  return (
+    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${status === "critical" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+      {status === "critical" ? "⚠ Critical" : "↑↓ Abnormal"}
+    </span>
+  );
+}
+
+// ─── Dynamic Result Field ─────────────────────────────────────────────────────
+
+function DynamicField({
+  field,
+  value,
+  onChange,
+}: {
+  field: ResultField;
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const status = fieldStatus(field, value);
+  const borderColor =
+    status === "critical" ? "border-red-400 focus:ring-red-300" :
+    status === "abnormal" ? "border-amber-400" : "";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm font-medium">
+          {field.label}
+          {field.required && <span className="text-destructive ml-1">*</span>}
+          {field.unit && <span className="text-xs text-muted-foreground font-normal ml-1">({field.unit})</span>}
+        </Label>
+        <FieldStatusBadge status={status} />
+      </div>
+
+      {field.type === "select" ? (
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options?.map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : field.type === "text" ? (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.label}
+          className="h-9"
+        />
+      ) : (
+        <Input
+          type="number"
+          step="any"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.refRange ?? "Enter value"}
+          className={`h-9 ${borderColor}`}
+        />
+      )}
+
+      {field.refRange && (
+        <p className="text-xs text-muted-foreground">Ref: {field.refRange}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Enter Result Dialog ──────────────────────────────────────────────────────
+
+function EnterResultDialog({
+  orderId, testName, onSuccess,
+}: {
+  orderId: number; testName: string; onSuccess: () => void;
+}) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const updateMutation = useUpdateLabOrder();
 
-  const [form, setForm] = useState({
-    result: "normal",
-    resultValue: "",
-    unit: "",
-    referenceRange: "",
-    isCritical: false,
-    resultedAt: new Date().toISOString().slice(0, 16),
-  });
+  const testDef = useMemo(() => findTest(testName), [testName]);
+
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  const [isCritical, setIsCritical] = useState(false);
+  const [resultedAt, setResultedAt] = useState(new Date().toISOString().slice(0, 16));
+  const [notes, setNotes] = useState("");
+
+  // Simple form for unknown tests
+  const [simpleResult, setSimpleResult] = useState("normal");
+  const [simpleValue, setSimpleValue] = useState("");
+  const [simpleUnit, setSimpleUnit] = useState("");
+  const [simpleRange, setSimpleRange] = useState("");
+
+  const handleReset = () => {
+    setFieldValues({});
+    setIsCritical(false);
+    setResultedAt(new Date().toISOString().slice(0, 16));
+    setNotes("");
+    setSimpleResult("normal");
+    setSimpleValue("");
+    setSimpleUnit("");
+    setSimpleRange("");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    let resultValue: string;
+    let unit: string | undefined;
+    let referenceRange: string | undefined;
+    let result: string;
+    let critical = isCritical;
+
+    if (testDef && testDef.fields.length > 0) {
+      // Multi-field or single-field from catalog
+      const autoResult = assessResult(testDef.fields, fieldValues);
+      result = autoResult;
+      if (autoResult === "critical") critical = true;
+
+      if (testDef.fields.length === 1) {
+        // Single-field: store cleanly
+        const f = testDef.fields[0];
+        resultValue = fieldValues[f.key] ?? "";
+        unit = f.unit;
+        referenceRange = f.refRange;
+      } else {
+        // Multi-field: serialize as JSON summary
+        const summary: Record<string, string> = {};
+        for (const f of testDef.fields) {
+          if (fieldValues[f.key]) summary[f.key] = fieldValues[f.key];
+        }
+        resultValue = JSON.stringify(summary);
+        unit = undefined;
+        referenceRange = undefined;
+      }
+    } else {
+      // Unknown test: simple form
+      result = simpleResult;
+      resultValue = simpleValue;
+      unit = simpleUnit || undefined;
+      referenceRange = simpleRange || undefined;
+    }
+
     updateMutation.mutate(
       {
         id: orderId,
         data: {
           status: "resulted",
-          result: form.result,
-          resultValue: form.resultValue || undefined,
-          unit: form.unit || undefined,
-          referenceRange: form.referenceRange || undefined,
-          isCritical: form.isCritical,
-          resultedAt: form.resultedAt ? new Date(form.resultedAt).toISOString() : undefined,
+          result,
+          resultValue: resultValue || undefined,
+          unit,
+          referenceRange,
+          isCritical: critical,
+          resultedAt: resultedAt ? new Date(resultedAt).toISOString() : undefined,
         },
       },
       {
         onSuccess: () => {
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setOpen(false);
+          handleReset();
           onSuccess();
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
@@ -161,59 +364,132 @@ function EnterResultDialog({ orderId, testName, onSuccess }: { orderId: number; 
     );
   };
 
+  const autoResult = testDef ? assessResult(testDef.fields, fieldValues) : null;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) handleReset(); }}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1 whitespace-nowrap">
           <FlaskConical className="h-3 w-3" /> {t("lab.enterResult")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t("lab.enterResult")}: {testName}</DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="border-b pb-3">
+          <DialogTitle className="flex items-center gap-2">
+            <FlaskConical className="h-4 w-4 text-blue-500" />
+            {t("lab.enterResult")}: {testName}
+          </DialogTitle>
+          {testDef && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">{testDef.code}</span>
+              <span className="text-xs text-muted-foreground">{testDef.categoryAr} · {testDef.fields.length} fields</span>
+              {autoResult && autoResult !== "normal" && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${autoResult === "critical" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                  Auto-detected: {autoResult}
+                </span>
+              )}
+            </div>
+          )}
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>{t("generic.result")} *</Label>
-            <Select value={form.result} onValueChange={v => setForm(p => ({ ...p, result: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">{t("lab.normal")}</SelectItem>
-                <SelectItem value="abnormal">{t("lab.abnormal")}</SelectItem>
-                <SelectItem value="critical">{t("lab.critical")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>{t("lab.resultValue")}</Label>
-              <Input value={form.resultValue} onChange={e => setForm(p => ({ ...p, resultValue: e.target.value }))} placeholder="e.g. 7.4" />
+
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <ScrollArea className="flex-1 px-1">
+            <div className="py-4 space-y-4">
+              {testDef ? (
+                <>
+                  {/* Dynamic fields from catalog */}
+                  {testDef.fields.length <= 4 ? (
+                    <div className="grid grid-cols-1 gap-4">
+                      {testDef.fields.map((field) => (
+                        <DynamicField
+                          key={field.key}
+                          field={field}
+                          value={fieldValues[field.key] ?? ""}
+                          onChange={(v) => setFieldValues((prev) => ({ ...prev, [field.key]: v }))}
+                        />
+                      ))}
+                    </div>
+                  ) : testDef.fields.length <= 8 ? (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {testDef.fields.map((field) => (
+                        <DynamicField
+                          key={field.key}
+                          field={field}
+                          value={fieldValues[field.key] ?? ""}
+                          onChange={(v) => setFieldValues((prev) => ({ ...prev, [field.key]: v }))}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {testDef.fields.map((field) => (
+                        <DynamicField
+                          key={field.key}
+                          field={field}
+                          value={fieldValues[field.key] ?? ""}
+                          onChange={(v) => setFieldValues((prev) => ({ ...prev, [field.key]: v }))}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Fallback simple form for unknown tests */
+                <>
+                  <div className="space-y-2">
+                    <Label>{t("generic.result")} *</Label>
+                    <Select value={simpleResult} onValueChange={setSimpleResult}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">{t("lab.normal")}</SelectItem>
+                        <SelectItem value="abnormal">{t("lab.abnormal")}</SelectItem>
+                        <SelectItem value="critical">{t("lab.critical")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("lab.resultValue")}</Label>
+                      <Input value={simpleValue} onChange={(e) => setSimpleValue(e.target.value)} placeholder="e.g. 7.4" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("lab.unit")}</Label>
+                      <Input value={simpleUnit} onChange={(e) => setSimpleUnit(e.target.value)} placeholder="e.g. mmol/L" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("lab.referenceRange")}</Label>
+                    <Input value={simpleRange} onChange={(e) => setSimpleRange(e.target.value)} placeholder="e.g. 3.5 – 5.5 mmol/L" />
+                  </div>
+                </>
+              )}
+
+              {/* Common footer fields */}
+              <div className="border-t pt-4 space-y-3">
+                <div className="space-y-2">
+                  <Label>{t("lab.resultedAt")}</Label>
+                  <Input type="datetime-local" value={resultedAt} onChange={(e) => setResultedAt(e.target.value)} />
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
+                  <Checkbox
+                    id="critical-result"
+                    checked={isCritical || autoResult === "critical"}
+                    onCheckedChange={(v) => setIsCritical(!!v)}
+                  />
+                  <label htmlFor="critical-result" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    {t("lab.isCritical")}
+                    {autoResult === "critical" && (
+                      <span className="text-xs text-red-500">(auto-detected from values)</span>
+                    )}
+                  </label>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t("lab.unit")}</Label>
-              <Input value={form.unit} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} placeholder="e.g. mmol/L" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>{t("lab.referenceRange")}</Label>
-            <Input value={form.referenceRange} onChange={e => setForm(p => ({ ...p, referenceRange: e.target.value }))} placeholder="e.g. 3.5 - 5.5 mmol/L" />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("lab.resultedAt")}</Label>
-            <Input type="datetime-local" value={form.resultedAt} onChange={e => setForm(p => ({ ...p, resultedAt: e.target.value }))} />
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
-            <Checkbox
-              id="critical-lab"
-              checked={form.isCritical}
-              onCheckedChange={v => setForm(p => ({ ...p, isCritical: !!v }))}
-            />
-            <label htmlFor="critical-lab" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-destructive" />
-              {t("lab.isCritical")}
-            </label>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
+          </ScrollArea>
+
+          <div className="flex justify-end gap-2 pt-3 border-t">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={updateMutation.isPending}>
               {updateMutation.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
@@ -225,6 +501,8 @@ function EnterResultDialog({ orderId, testName, onSuccess }: { orderId: number; 
     </Dialog>
   );
 }
+
+// ─── Mark Collected ───────────────────────────────────────────────────────────
 
 function MarkCollectedButton({ orderId, onSuccess }: { orderId: number; onSuccess: () => void }) {
   const { t } = useTranslation();
@@ -248,6 +526,58 @@ function MarkCollectedButton({ orderId, onSuccess }: { orderId: number; onSucces
   );
 }
 
+// ─── Result Value Display ─────────────────────────────────────────────────────
+
+function ResultDisplay({ order }: { order: { result?: string | null; resultValue?: string | null; unit?: string | null; testName: string } }) {
+  if (!order.result) return <span className="text-muted-foreground text-sm">–</span>;
+
+  const testDef = findTest(order.testName);
+  const resultColor = order.result === "critical" ? "text-destructive" : order.result === "abnormal" ? "text-orange-600" : "text-green-600";
+
+  // Try to parse multi-field JSON
+  if (order.resultValue && order.resultValue.startsWith("{")) {
+    try {
+      const parsed: Record<string, string> = JSON.parse(order.resultValue);
+      const entries = Object.entries(parsed).slice(0, 3);
+      return (
+        <div>
+          <span className={`font-medium capitalize text-sm ${resultColor}`}>{order.result}</span>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+            {entries.map(([key, val]) => {
+              const fieldDef = testDef?.fields.find((f) => f.key === key);
+              const label = fieldDef?.label ?? key.toUpperCase();
+              const unit = fieldDef?.unit ?? "";
+              return (
+                <span key={key} className="text-xs text-muted-foreground font-mono">
+                  {label}: <span className="font-medium text-foreground">{val}</span>{unit && ` ${unit}`}
+                </span>
+              );
+            })}
+            {Object.keys(parsed).length > 3 && (
+              <span className="text-xs text-muted-foreground">+{Object.keys(parsed).length - 3} more</span>
+            )}
+          </div>
+        </div>
+      );
+    } catch {
+      // Fall through
+    }
+  }
+
+  return (
+    <span className={`font-medium capitalize text-sm ${resultColor}`}>
+      {order.result}
+      {order.resultValue && (
+        <span className="font-mono ms-1">
+          ({order.resultValue}{order.unit ? ` ${order.unit}` : ""})
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ─── Main Lab Page ────────────────────────────────────────────────────────────
+
 export default function Lab() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
@@ -258,28 +588,35 @@ export default function Lab() {
 
   const [statusFilter, setStatusFilter] = useState<string>(isLabTech ? "pending" : "all");
   const [isOpen, setIsOpen] = useState(false);
-  const { data: orders, isLoading } = useListLabOrders(
-    statusFilter !== "all" ? { status: statusFilter } : {}
-  );
+  const { data: orders, isLoading } = useListLabOrders(statusFilter !== "all" ? { status: statusFilter } : {});
   const createMutation = useCreateLabOrder();
 
-  const [form, setForm] = useState({ patientId: "", patientName: "", testName: "", testCode: "", priority: "routine", notes: "" });
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+  const [form, setForm] = useState({
+    patientId: "", patientName: "",
+    selectedTest: null as LabTest | null,
+    priority: "routine", notes: "",
+  });
 
   const handlePatientSelect = useCallback((id: string, name: string) => {
-    setForm(p => ({ ...p, patientId: id, patientName: name }));
+    setForm((p) => ({ ...p, patientId: id, patientName: name }));
   }, []);
+
+  const handleTestSelect = useCallback((test: LabTest) => {
+    setForm((p) => ({ ...p, selectedTest: test }));
+  }, []);
+
+  const resetForm = () =>
+    setForm({ patientId: "", patientName: "", selectedTest: null, priority: "routine", notes: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.patientId) return;
+    if (!form.patientId || !form.selectedTest) return;
     createMutation.mutate(
       {
         data: {
           patientId: Number(form.patientId),
-          testName: form.testName,
-          testCode: form.testCode || undefined,
+          testName: form.selectedTest.name,
+          testCode: form.selectedTest.code,
           priority: form.priority || undefined,
           notes: form.notes || undefined,
         },
@@ -289,7 +626,7 @@ export default function Lab() {
           queryClient.invalidateQueries({ queryKey: getListLabOrdersQueryKey() });
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setIsOpen(false);
-          setForm({ patientId: "", patientName: "", testName: "", testCode: "", priority: "routine", notes: "" });
+          resetForm();
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
@@ -297,23 +634,18 @@ export default function Lab() {
   };
 
   const refreshOrders = () => queryClient.invalidateQueries({ queryKey: getListLabOrdersQueryKey() });
-
-  const pendingCount = orders?.filter(o => o.status === "pending").length ?? 0;
+  const pendingCount = orders?.filter((o) => o.status === "pending").length ?? 0;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t("nav.lab")}</h1>
-          {isLabTech && (
-            <p className="text-muted-foreground mt-1">{t("lab.queueDesc")}</p>
-          )}
+          {isLabTech && <p className="text-muted-foreground mt-1">{t("lab.queueDesc")}</p>}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("lab.allOrders")}</SelectItem>
               <SelectItem value="pending">{t("lab.pendingOnly")}</SelectItem>
@@ -323,50 +655,40 @@ export default function Lab() {
           </Select>
 
           {!isLabTech && (
-            <Dialog open={isOpen} onOpenChange={(o) => {
-              setIsOpen(o);
-              if (!o) setForm({ patientId: "", patientName: "", testName: "", testCode: "", priority: "routine", notes: "" });
-            }}>
+            <Dialog open={isOpen} onOpenChange={(o) => { setIsOpen(o); if (!o) resetForm(); }}>
               <DialogTrigger asChild>
-                <Button><Plus className={`${isRtl ? 'ms-2' : 'me-2'} h-4 w-4`} />{t("lab.newOrder")}</Button>
+                <Button><Plus className={`${isRtl ? "ms-2" : "me-2"} h-4 w-4`} />{t("lab.newOrder")}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>{t("lab.newOrder")}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-2">
 
-                  {/* Patient search combobox */}
+                  {/* Patient */}
                   <div className="space-y-2">
-                    <Label>
-                      {t("nav.patients")} *
-                    </Label>
-                    <PatientSearchCombobox
-                      value={form.patientId}
-                      onChange={handlePatientSelect}
-                    />
-                    {!form.patientId && (
-                      <p className="text-xs text-muted-foreground">{t("generic.searchPatient")}</p>
-                    )}
+                    <Label>{t("nav.patients")} *</Label>
+                    <PatientSearchCombobox value={form.patientId} onChange={handlePatientSelect} />
                     {form.patientId && (
-                      <p className="text-xs text-muted-foreground">
-                        ID: <span className="font-mono font-medium">{form.patientId}</span>
-                      </p>
+                      <p className="text-xs text-muted-foreground">ID: <span className="font-mono font-medium">{form.patientId}</span></p>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>{t("lab.testName")} *</Label>
-                      <Input name="testName" required value={form.testName} onChange={handleChange} placeholder="e.g. CBC" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t("lab.testCode")}</Label>
-                      <Input name="testCode" value={form.testCode} onChange={handleChange} placeholder="e.g. CBC-001" />
-                    </div>
+                  {/* Test */}
+                  <div className="space-y-2">
+                    <Label>{t("lab.testName")} *</Label>
+                    <TestCatalogCombobox value={form.selectedTest} onChange={handleTestSelect} />
+                    {form.selectedTest && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{form.selectedTest.code}</span>
+                        <ChevronRight className="h-3 w-3" />
+                        <span>{form.selectedTest.fields.length} result field{form.selectedTest.fields.length !== 1 ? "s" : ""} when entering results</span>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Priority */}
                   <div className="space-y-2">
                     <Label>{t("generic.priority")}</Label>
-                    <Select value={form.priority} onValueChange={v => setForm(p => ({ ...p, priority: v }))}>
+                    <Select value={form.priority} onValueChange={(v) => setForm((p) => ({ ...p, priority: v }))}>
                       <SelectTrigger><SelectValue placeholder={t("generic.selectPriority")} /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="routine">{t("generic.routine")}</SelectItem>
@@ -376,14 +698,19 @@ export default function Lab() {
                     </Select>
                   </div>
 
+                  {/* Notes */}
                   <div className="space-y-2">
                     <Label>{t("generic.notes")}</Label>
-                    <Textarea name="notes" value={form.notes} onChange={handleChange} className="min-h-[80px]" />
+                    <Textarea
+                      value={form.notes}
+                      onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                      className="min-h-[60px]"
+                    />
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t("generic.cancel")}</Button>
-                    <Button type="submit" disabled={createMutation.isPending || !form.patientId}>
+                    <Button type="submit" disabled={createMutation.isPending || !form.patientId || !form.selectedTest}>
                       {createMutation.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
                       {t("generic.save")}
                     </Button>
@@ -397,39 +724,21 @@ export default function Lab() {
 
       {isLabTech && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-full bg-amber-500/10 text-amber-600">
-                <FlaskConical className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("lab.pendingOnly")}</p>
-                <p className="text-2xl font-bold">{pendingCount}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-full bg-green-500/10 text-green-600">
-                <FlaskConical className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("lab.resulted")}</p>
-                <p className="text-2xl font-bold">{orders?.filter(o => o.status === "resulted").length ?? 0}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-500/10 text-blue-600">
-                <FlaskConical className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{t("lab.collected")}</p>
-                <p className="text-2xl font-bold">{orders?.filter(o => o.status === "collected").length ?? 0}</p>
-              </div>
-            </CardContent>
-          </Card>
+          {[
+            { label: t("lab.pendingOnly"), value: pendingCount, color: "text-amber-600", bg: "bg-amber-500/10" },
+            { label: t("lab.resulted"), value: orders?.filter((o) => o.status === "resulted").length ?? 0, color: "text-green-600", bg: "bg-green-500/10" },
+            { label: t("lab.collected"), value: orders?.filter((o) => o.status === "collected").length ?? 0, color: "text-blue-600", bg: "bg-blue-500/10" },
+          ].map((s) => (
+            <Card key={s.label}>
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className={`p-2 rounded-full ${s.bg} ${s.color}`}><FlaskConical className="h-5 w-5" /></div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <p className="text-2xl font-bold">{s.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -465,31 +774,27 @@ export default function Lab() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{order.testName}</span>
-                        {order.isCritical && (
-                          <Badge variant="destructive" className="text-xs">⚠ {t("lab.critical")}</Badge>
-                        )}
+                        {order.isCritical && <Badge variant="destructive" className="text-xs">⚠ {t("lab.critical")}</Badge>}
                       </div>
-                      {order.testCode && <div className="text-xs text-muted-foreground font-mono">{order.testCode}</div>}
+                      {order.testCode && (
+                        <div className="text-xs text-muted-foreground font-mono">{order.testCode}</div>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={order.priority === 'stat' ? 'destructive' : order.priority === 'urgent' ? 'default' : 'secondary'} className="capitalize">
+                      <Badge
+                        variant={order.priority === "stat" ? "destructive" : order.priority === "urgent" ? "default" : "secondary"}
+                        className="capitalize"
+                      >
                         {order.priority}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={order.status === 'resulted' ? 'default' : order.status === 'collected' ? 'secondary' : 'outline'}>
-                        {order.status === 'resulted' ? t("lab.resulted") : order.status === 'collected' ? t("lab.collected") : t("lab.pending")}
+                      <Badge variant={order.status === "resulted" ? "default" : order.status === "collected" ? "secondary" : "outline"}>
+                        {order.status === "resulted" ? t("lab.resulted") : order.status === "collected" ? t("lab.collected") : t("lab.pending")}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {order.result ? (
-                        <span className={`font-medium capitalize text-sm ${order.result === 'critical' ? 'text-destructive' : order.result === 'abnormal' ? 'text-orange-600' : 'text-green-600'}`}>
-                          {order.result}
-                          {order.resultValue && <span className="font-mono ms-1">({order.resultValue}{order.unit ? ` ${order.unit}` : ''})</span>}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">–</span>
-                      )}
+                    <TableCell className="max-w-[220px]">
+                      <ResultDisplay order={order} />
                     </TableCell>
                     {(canEnter || isLabTech) && (
                       <TableCell className="text-end">
