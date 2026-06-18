@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useListLabOrders, useCreateLabOrder, useUpdateLabOrder, getListLabOrdersQueryKey } from "@workspace/api-client-react";
+import { useState, useCallback } from "react";
+import { useListLabOrders, useCreateLabOrder, useUpdateLabOrder, getListLabOrdersQueryKey, useListPatients } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
@@ -13,9 +13,112 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Loader2, Save, FlaskConical, AlertCircle } from "lucide-react";
+import { Plus, Loader2, Save, FlaskConical, AlertCircle, ChevronsUpDown, Check, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface PatientOption {
+  id: number;
+  nameEn: string;
+  mrn: string;
+}
+
+function PatientSearchCombobox({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string, name: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedName, setSelectedName] = useState("");
+
+  const { data, isLoading } = useListPatients(
+    search.trim() ? { search: search.trim(), limit: 20 } : { limit: 30 },
+    { query: { enabled: open } }
+  );
+
+  const patients: PatientOption[] = (data?.patients ?? []).map((p: Record<string, unknown>) => ({
+    id: p.id as number,
+    nameEn: (p.nameEn ?? p.name_en ?? "") as string,
+    mrn: (p.mrn ?? "") as string,
+  }));
+
+  const handleSelect = useCallback((patient: PatientOption) => {
+    onChange(String(patient.id), patient.nameEn);
+    setSelectedName(patient.nameEn);
+    setOpen(false);
+  }, [onChange]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          {value && selectedName ? (
+            <span className="flex items-center gap-2 text-foreground">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              {selectedName}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">{t("generic.selectPatient")}</span>
+          )}
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={t("generic.searchPatient")}
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : patients.length === 0 ? (
+              <CommandEmpty>{t("generic.noPatientFound")}</CommandEmpty>
+            ) : (
+              <CommandGroup>
+                {patients.map((patient) => (
+                  <CommandItem
+                    key={patient.id}
+                    value={String(patient.id)}
+                    onSelect={() => handleSelect(patient)}
+                    className="flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                        {patient.nameEn.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{patient.nameEn}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{patient.mrn}</p>
+                      </div>
+                    </div>
+                    {value === String(patient.id) && (
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function EnterResultDialog({ orderId, testName, onSuccess }: { orderId: number; testName: string; onSuccess: () => void }) {
   const { t } = useTranslation();
@@ -160,19 +263,33 @@ export default function Lab() {
   );
   const createMutation = useCreateLabOrder();
 
-  const [form, setForm] = useState({ patientId: "", testName: "", testCode: "", priority: "routine", notes: "" });
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+  const [form, setForm] = useState({ patientId: "", patientName: "", testName: "", testCode: "", priority: "routine", notes: "" });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handlePatientSelect = useCallback((id: string, name: string) => {
+    setForm(p => ({ ...p, patientId: id, patientName: name }));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.patientId) return;
     createMutation.mutate(
-      { data: { patientId: Number(form.patientId), testName: form.testName, testCode: form.testCode || undefined, priority: form.priority || undefined, notes: form.notes || undefined } },
+      {
+        data: {
+          patientId: Number(form.patientId),
+          testName: form.testName,
+          testCode: form.testCode || undefined,
+          priority: form.priority || undefined,
+          notes: form.notes || undefined,
+        },
+      },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListLabOrdersQueryKey() });
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setIsOpen(false);
-          setForm({ patientId: "", testName: "", testCode: "", priority: "routine", notes: "" });
+          setForm({ patientId: "", patientName: "", testName: "", testCode: "", priority: "routine", notes: "" });
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
@@ -193,7 +310,6 @@ export default function Lab() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Status filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -206,19 +322,37 @@ export default function Lab() {
             </SelectContent>
           </Select>
 
-          {/* Only non-lab-tech roles can create new orders */}
           {!isLabTech && (
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <Dialog open={isOpen} onOpenChange={(o) => {
+              setIsOpen(o);
+              if (!o) setForm({ patientId: "", patientName: "", testName: "", testCode: "", priority: "routine", notes: "" });
+            }}>
               <DialogTrigger asChild>
                 <Button><Plus className={`${isRtl ? 'ms-2' : 'me-2'} h-4 w-4`} />{t("lab.newOrder")}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader><DialogTitle>{t("lab.newOrder")}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 py-2">
+
+                  {/* Patient search combobox */}
                   <div className="space-y-2">
-                    <Label>{t("generic.patientId")} *</Label>
-                    <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
+                    <Label>
+                      {t("nav.patients")} *
+                    </Label>
+                    <PatientSearchCombobox
+                      value={form.patientId}
+                      onChange={handlePatientSelect}
+                    />
+                    {!form.patientId && (
+                      <p className="text-xs text-muted-foreground">{t("generic.searchPatient")}</p>
+                    )}
+                    {form.patientId && (
+                      <p className="text-xs text-muted-foreground">
+                        ID: <span className="font-mono font-medium">{form.patientId}</span>
+                      </p>
+                    )}
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>{t("lab.testName")} *</Label>
@@ -229,6 +363,7 @@ export default function Lab() {
                       <Input name="testCode" value={form.testCode} onChange={handleChange} placeholder="e.g. CBC-001" />
                     </div>
                   </div>
+
                   <div className="space-y-2">
                     <Label>{t("generic.priority")}</Label>
                     <Select value={form.priority} onValueChange={v => setForm(p => ({ ...p, priority: v }))}>
@@ -240,13 +375,15 @@ export default function Lab() {
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-2">
                     <Label>{t("generic.notes")}</Label>
                     <Textarea name="notes" value={form.notes} onChange={handleChange} className="min-h-[80px]" />
                   </div>
+
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t("generic.cancel")}</Button>
-                    <Button type="submit" disabled={createMutation.isPending}>
+                    <Button type="submit" disabled={createMutation.isPending || !form.patientId}>
                       {createMutation.isPending ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Save className="me-2 h-4 w-4" />}
                       {t("generic.save")}
                     </Button>
@@ -258,7 +395,6 @@ export default function Lab() {
         </div>
       </div>
 
-      {/* Summary for lab tech */}
       {isLabTech && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Card>
