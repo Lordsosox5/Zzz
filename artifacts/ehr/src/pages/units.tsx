@@ -471,7 +471,7 @@ export default function Units() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="mt-4 gap-3">
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>
               {t("generic.cancel")}
             </Button>
