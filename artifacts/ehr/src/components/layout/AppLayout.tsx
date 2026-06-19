@@ -58,7 +58,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const allowedNav = getNavForRole(user?.role ?? "super_admin");
   const navItems = allowedNav === "all"
-    ? ALL_NAV_ITEMS
+    ? ALL_NAV_ITEMS.filter(item => item.href !== "/my-patients")
     : ALL_NAV_ITEMS.filter(item => (allowedNav as string[]).includes(item.href));
 
   const activeItem = navItems.find(n => location.startsWith(n.href));
