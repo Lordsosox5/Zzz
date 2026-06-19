@@ -4,7 +4,7 @@ import { useTranslation } from "@/lib/i18n";
 import { logout, getUser } from "@/lib/auth";
 import { getNavForRole, getRoleLabel } from "@/lib/permissions";
 import {
-  LayoutDashboard, Users, Calendar, FileText, Pill,
+  LayoutDashboard, Users, Users2, Calendar, FileText, Pill,
   FlaskConical, Activity, HeartPulse, Receipt, UserRound,
   ShieldAlert, Settings, LogOut, Bell, Moon, Sun, Languages, TrendingUp, Building2,
 } from "lucide-react";
@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const ALL_NAV_ITEMS = [
   { href: "/dashboard",      icon: LayoutDashboard, labelKey: "nav.dashboard" },
   { href: "/patients",       icon: Users,           labelKey: "nav.patients" },
+  { href: "/my-patients",    icon: Users2,          labelKey: "nav.myPatients" },
   { href: "/appointments",   icon: Calendar,        labelKey: "nav.appointments" },
   { href: "/clinical-notes", icon: FileText,        labelKey: "nav.notes" },
   { href: "/prescriptions",  icon: Pill,            labelKey: "nav.prescriptions" },

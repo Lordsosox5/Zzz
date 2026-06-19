@@ -28,6 +28,7 @@ import Vaccinations from "@/pages/vaccinations";
 import Growth from "@/pages/growth";
 import Settings from "@/pages/settings";
 import Units from "@/pages/units";
+import MyPatients from "@/pages/my-patients";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -156,6 +157,10 @@ function Router() {
 
       <Route path="/units">
         {() => <ProtectedRoute component={Units} requiredPath="/units" />}
+      </Route>
+
+      <Route path="/my-patients">
+        {() => <ProtectedRoute component={MyPatients} requiredPath="/my-patients" />}
       </Route>
 
       <Route component={NotFound} />

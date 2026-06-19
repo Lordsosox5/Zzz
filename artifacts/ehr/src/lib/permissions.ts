@@ -129,7 +129,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Prescribe medications under consultant approval", ar: "وصف الأدوية بموافقة الاستشاري" },
       { en: "Manage appointments and admissions", ar: "إدارة المواعيد والدخول" },
     ],
-    allowedNav: ["/dashboard", "/clinical-notes", "/prescriptions", "/lab", "/radiology"],
+    allowedNav: ["/dashboard", "/my-patients", "/clinical-notes", "/prescriptions", "/lab", "/radiology"],
   },
   medical_officer: {
     label: { en: "Medical Officer", ar: "ضابط طبي" },
@@ -143,7 +143,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Manage unit admissions and discharges", ar: "إدارة دخول وخروج مرضى الوحدة" },
       { en: "Supervise house officers", ar: "الإشراف على الأطباء المقيمين" },
     ],
-    allowedNav: ["/dashboard", "/clinical-notes", "/prescriptions", "/lab", "/radiology"],
+    allowedNav: ["/dashboard", "/my-patients", "/clinical-notes", "/prescriptions", "/lab", "/radiology"],
   },
   registrar: {
     label: { en: "Registrar", ar: "طبيب تخصصي" },
