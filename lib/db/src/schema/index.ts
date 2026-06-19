@@ -9,3 +9,4 @@ export * from "./pharmacy";
 export * from "./vaccinations";
 export * from "./activity";
 export * from "./admissions";
+export * from "./units";
