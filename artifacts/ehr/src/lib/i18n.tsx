@@ -58,6 +58,12 @@ const translations: Translations = {
   "units.activate": { en: "Activate", ar: "تفعيل" },
   "units.confirmDeactivate": { en: "This unit will be marked inactive.", ar: "سيتم وضع علامة على هذه الوحدة كغير نشطة." },
   "patient.unit": { en: "Unit", ar: "الوحدة" },
+  "patient.currentUnit": { en: "Current Unit", ar: "الوحدة الحالية" },
+  "patient.transferUnit": { en: "Transfer Unit", ar: "نقل لوحدة" },
+  "patient.noUnit": { en: "No unit assigned", ar: "لم يُحدد قسم" },
+  "patient.transferSuccess": { en: "Patient transferred successfully", ar: "تم نقل المريض بنجاح" },
+  "patient.removeFromUnit": { en: "Remove from unit", ar: "إزالة من القسم" },
+  "patient.transferConfirm": { en: "Transfer", ar: "نقل" },
 
   // Login
   "login.title": { en: "Sign In", ar: "تسجيل الدخول" },

@@ -24,7 +24,7 @@ interface Unit {
 }
 
 let nextId = 7;
-const units: Unit[] = [
+export const units: Unit[] = [
   { id: 1, nameEn: "General Pediatrics",  nameAr: "طب الأطفال العام",                    type: "ward",       description: null, floor: "2", capacity: 40, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
   { id: 2, nameEn: "PICU",                nameAr: "وحدة العناية المركزة للأطفال",          type: "icu",        description: null, floor: "3", capacity: 15, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
   { id: 3, nameEn: "NICU",                nameAr: "وحدة العناية المركزة لحديثي الولادة", type: "nicu",       description: null, floor: "3", capacity: 20, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },

@@ -220,6 +220,10 @@ export function canManageUnits(role: string): boolean {
   return ["super_admin"].includes(role);
 }
 
+export function canTransferPatient(role: string): boolean {
+  return ["super_admin", "pediatric_consultant", "medical_officer", "registrar"].includes(role);
+}
+
 export function canManageStaff(role: string): boolean {
   return ["super_admin"].includes(role);
 }

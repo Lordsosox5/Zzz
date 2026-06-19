@@ -6,14 +6,16 @@ import {
   useListPrescriptions, useCreatePrescription, useUpdatePrescription, getListPrescriptionsQueryKey,
   useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey,
   useCreateAdmissionAssessment,
+  useListUnits,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
-import { getUser } from "@/lib/auth";
+import { getUser, getToken } from "@/lib/auth";
 import {
   canEnterLabResults, getAllowedPatientTabs,
   canWriteClinicalNotes, canPrescribe,
   canDispensePrescription, canRecordVitals,
+  canTransferPatient,
 } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
+  Building2, ArrowRightLeft,
 } from "lucide-react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -273,6 +276,92 @@ function AddPrescriptionDialog({ patientId, onSuccess }: { patientId: number; on
   );
 }
 
+/* ── Transfer Unit dialog (super_admin / consultant / medical_officer) ── */
+function TransferUnitDialog({
+  patientId,
+  currentUnitId,
+  onSuccess,
+}: {
+  patientId: number;
+  currentUnitId: number | null;
+  onSuccess: () => void;
+}) {
+  const { t, isRtl } = useTranslation();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(currentUnitId?.toString() ?? "");
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: unitList } = useListUnits();
+  const activeUnits = (unitList ?? []).filter((u: any) => u.status === "active");
+
+  const handleTransfer = async () => {
+    setSubmitting(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/patients/${patientId}/unit`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ unitId: selectedUnitId ? parseInt(selectedUnitId, 10) : null }),
+      });
+      if (!res.ok) throw new Error("Transfer failed");
+      toast({ title: t("generic.success"), description: t("patient.transferSuccess") });
+      setOpen(false);
+      onSuccess();
+    } catch {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <ArrowRightLeft className="h-3.5 w-3.5" />
+          {t("patient.transferUnit")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            {t("patient.transferUnit")}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>{t("patient.currentUnit")}</Label>
+            <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("patient.noUnit")} />
+              </SelectTrigger>
+              <SelectContent>
+                {activeUnits.map((u: any) => (
+                  <SelectItem key={u.id} value={u.id.toString()}>
+                    {isRtl && u.nameAr ? u.nameAr : u.nameEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
+            <Button onClick={handleTransfer} disabled={submitting || !selectedUnitId}>
+              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRightLeft className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
+              {t("patient.transferConfirm")}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ── Main page ── */
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const patientId = parseInt(params.id, 10);
@@ -287,9 +376,25 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const canRx            = canPrescribe(role);
   const canDispense      = canDispensePrescription(role);
   const canVitals        = canRecordVitals(role);
+  const canTransfer      = canTransferPatient(role);
   const allowedTabs      = getAllowedPatientTabs(role);
 
   const updateRxMutation = useUpdatePrescription();
+
+  /* ── Patient unit query ── */
+  const patientUnitQueryKey = ["patient-unit", patientId];
+  const { data: patientUnitData, refetch: refetchUnit } = useQuery({
+    queryKey: patientUnitQueryKey,
+    queryFn: async () => {
+      const token = getToken();
+      const res = await fetch(`/api/patients/${patientId}/unit`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return { unitId: null, unitNameEn: null, unitNameAr: null };
+      return res.json() as Promise<{ unitId: number | null; unitNameEn: string | null; unitNameAr: string | null }>;
+    },
+    enabled: !!patientId,
+  });
 
   const { data: summary, isLoading } = useGetPatientSummary(patientId, {
     query: { enabled: !!patientId, queryKey: getGetPatientSummaryQueryKey(patientId) }
@@ -362,6 +467,27 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 <span>{t("patient.dob")}: {new Date(patient.dateOfBirth).toLocaleDateString()}</span>
                 {patient.bloodGroup && (
                   <><span>•</span><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">{patient.bloodGroup}</Badge></>
+                )}
+              </div>
+              {/* Unit indicator */}
+              <div className="flex items-center gap-2 mt-2">
+                {patientUnitData?.unitId ? (
+                  <Badge variant="secondary" className="gap-1.5 text-xs font-medium">
+                    <Building2 className="h-3 w-3" />
+                    {isRtl && patientUnitData.unitNameAr ? patientUnitData.unitNameAr : patientUnitData.unitNameEn}
+                  </Badge>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground italic">
+                    <Building2 className="h-3 w-3" />
+                    {t("patient.noUnit")}
+                  </span>
+                )}
+                {canTransfer && (
+                  <TransferUnitDialog
+                    patientId={patientId}
+                    currentUnitId={patientUnitData?.unitId ?? null}
+                    onSuccess={() => refetchUnit()}
+                  />
                 )}
               </div>
             </div>

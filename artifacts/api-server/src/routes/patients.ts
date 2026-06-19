@@ -10,9 +10,12 @@ import {
 } from "@workspace/api-zod";
 import {
   assignPatientToUnit,
+  removePatientFromUnit,
   getPatientsInUnit,
   getUnitForUser,
+  getUnitForPatient,
 } from "../lib/unit-store";
+import { units } from "./units";
 
 const router = Router();
 
@@ -161,6 +164,45 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
   if (error) { res.status(500).json({ error: error.message }); return; }
   if (!data) { res.status(404).json({ error: "Patient not found" }); return; }
   res.json(mapRow(data));
+});
+
+router.get("/patients/:id/unit", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid patient id" }); return; }
+  const unitId = getUnitForPatient(id);
+  if (unitId === undefined) {
+    res.json({ unitId: null, unitNameEn: null, unitNameAr: null });
+    return;
+  }
+  const unit = units.find(u => u.id === unitId);
+  res.json({
+    unitId,
+    unitNameEn: unit?.nameEn ?? null,
+    unitNameAr: unit?.nameAr ?? null,
+  });
+});
+
+router.patch("/patients/:id/unit", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid patient id" }); return; }
+
+  const { unitId } = req.body as { unitId: number | null };
+
+  if (unitId === null || unitId === undefined) {
+    removePatientFromUnit(id);
+    res.json({ unitId: null, unitNameEn: null, unitNameAr: null });
+    return;
+  }
+
+  const unit = units.find(u => u.id === unitId);
+  if (!unit) { res.status(404).json({ error: "Unit not found" }); return; }
+
+  assignPatientToUnit(id, unitId);
+  res.json({
+    unitId,
+    unitNameEn: unit.nameEn,
+    unitNameAr: unit.nameAr ?? null,
+  });
 });
 
 router.get("/patients/:id/summary", async (req, res): Promise<void> => {
