@@ -94,7 +94,7 @@ export default function ClinicalNotes() {
 
       <Card>
         <CardHeader><CardTitle>{t("notes.recentNotes")}</CardTitle></CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>

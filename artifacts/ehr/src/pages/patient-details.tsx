@@ -463,7 +463,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               {canWrite && <AddNoteDialog patientId={patientId} onSuccess={handleNoteSuccess} />}
             </div>
             <Card>
-              <CardContent className="p-0">
+              <CardContent className="px-4 pb-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -503,7 +503,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               {canRx && <AddPrescriptionDialog patientId={patientId} onSuccess={handleRxSuccess} />}
             </div>
             <Card>
-              <CardContent className="p-0">
+              <CardContent className="px-4 pb-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -562,7 +562,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   <FlaskConical className="h-5 w-5 text-primary" />{t("patient.labResults")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="px-4 pb-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -626,7 +626,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   <Activity className="h-5 w-5 text-primary" />{t("patient.radiologyOrders")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="px-4 pb-4">
                 <Table>
                   <TableHeader>
                     <TableRow>

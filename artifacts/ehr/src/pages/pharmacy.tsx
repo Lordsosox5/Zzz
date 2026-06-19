@@ -98,7 +98,7 @@ export default function Pharmacy() {
 
       <Card>
         <CardHeader><CardTitle>{t("pharmacy.inventory")}</CardTitle></CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>

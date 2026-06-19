@@ -614,7 +614,7 @@ function LabDashboard() {
             {t("lab.allOrders")}
           </Button>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">

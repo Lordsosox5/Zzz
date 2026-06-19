@@ -746,7 +746,7 @@ export default function Lab() {
         <CardHeader>
           <CardTitle>{isLabTech ? t("lab.queue") : t("lab.pendingOrders")}</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>

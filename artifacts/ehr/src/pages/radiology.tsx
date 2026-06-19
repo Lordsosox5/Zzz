@@ -102,7 +102,7 @@ export default function Radiology() {
 
       <Card>
         <CardHeader><CardTitle>{t("radiology.orders")}</CardTitle></CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>
