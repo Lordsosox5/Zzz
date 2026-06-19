@@ -106,8 +106,6 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   const params = UpdateStaffParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
-  const unitId = req.body.unitId !== undefined ? (req.body.unitId ? Number(req.body.unitId) : null) : undefined;
-
   const parsed = UpdateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const updates: Record<string, unknown> = {};
@@ -119,7 +117,7 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
   if (parsed.data.status) updates.is_active = parsed.data.status === "active";
   if (parsed.data.password) updates.password = parsed.data.password;
-  if (unitId !== undefined) updates.unit_id = unitId;
+  if (parsed.data.unitId !== undefined) updates.unit_id = parsed.data.unitId ? Number(parsed.data.unitId) : null;
 
   const { data, error } = await supabase
     .from("users")

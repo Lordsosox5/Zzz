@@ -199,7 +199,7 @@ export default function Staff() {
       nameAr: member.nameAr ?? "",
       role: member.role ?? "",
       department: member.department ?? "",
-      unitId: "",
+      unitId: member.unitId != null ? String(member.unitId) : "",
       email: member.email ?? "",
       phone: member.phone ?? "",
     });
@@ -224,7 +224,7 @@ export default function Staff() {
           email: editForm.email || undefined,
           phone: editForm.phone || undefined,
           unitId: editForm.unitId ? Number(editForm.unitId) : undefined,
-        } as any,
+        },
       },
       {
         onSuccess: () => {

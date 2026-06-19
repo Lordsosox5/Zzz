@@ -9,9 +9,12 @@
 export interface StaffUpdate {
   nameEn?: string;
   nameAr?: string;
+  role?: string;
   department?: string;
   specialization?: string;
   phone?: string;
+  email?: string;
   status?: string;
   password?: string;
+  unitId?: number;
 }

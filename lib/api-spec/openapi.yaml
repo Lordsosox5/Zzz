@@ -1757,11 +1757,14 @@ components:
       properties:
         nameEn: { type: string }
         nameAr: { type: string }
+        role: { type: string }
         department: { type: string }
         specialization: { type: string }
         phone: { type: string }
+        email: { type: string }
         status: { type: string }
         password: { type: string }
+        unitId: { type: integer }
 
     # VACCINATIONS
     Vaccination:
