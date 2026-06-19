@@ -38,7 +38,15 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, allowedPaths, ...rest }: { component: React.ComponentType<any>, allowedPaths?: string[], [key: string]: any }) {
+function ProtectedRoute({
+  component: Component,
+  requiredPath,
+  params,
+}: {
+  component: React.ComponentType<any>;
+  requiredPath?: string;
+  params?: Record<string, string | undefined>;
+}) {
   const [location, setLocation] = useLocation();
   const token = getToken();
   const user = getUser();
@@ -48,22 +56,22 @@ function ProtectedRoute({ component: Component, allowedPaths, ...rest }: { compo
       setLocation("/login");
       return;
     }
-    if (user && allowedPaths) {
+    if (user && requiredPath) {
       const nav = getNavForRole(user.role);
       if (nav !== "all") {
-        const allowed = (nav as string[]).some(p => location.startsWith(p));
+        const allowed = (nav as string[]).some(p => requiredPath.startsWith(p));
         if (!allowed) {
-          setLocation(nav[0] ?? "/dashboard");
+          setLocation((nav as string[])[0] ?? "/dashboard");
         }
       }
     }
-  }, [token, location, setLocation, user, allowedPaths]);
+  }, [token, location, setLocation, user, requiredPath]);
 
   if (!token) return null;
 
   return (
     <AppLayout>
-      <Component {...rest} />
+      <Component params={params} />
     </AppLayout>
   );
 }
@@ -87,7 +95,7 @@ function Router() {
       </Route>
 
       <Route path="/patients/new">
-        {() => <ProtectedRoute component={NewPatient} allowedPaths={["/patients"]} />}
+        {() => <ProtectedRoute component={NewPatient} requiredPath="/patients" />}
       </Route>
 
       <Route path="/patients/:id/print">
@@ -95,51 +103,51 @@ function Router() {
       </Route>
 
       <Route path="/patients/:id">
-        {params => <ProtectedRoute component={PatientDetails} params={params} allowedPaths={["/patients"]} />}
+        {params => <ProtectedRoute component={PatientDetails} requiredPath="/patients" params={params} />}
       </Route>
 
       <Route path="/patients">
-        {() => <ProtectedRoute component={Patients} allowedPaths={["/patients"]} />}
+        {() => <ProtectedRoute component={Patients} requiredPath="/patients" />}
       </Route>
 
       <Route path="/appointments">
-        {() => <ProtectedRoute component={Appointments} />}
+        {() => <ProtectedRoute component={Appointments} requiredPath="/appointments" />}
       </Route>
 
       <Route path="/clinical-notes">
-        {() => <ProtectedRoute component={ClinicalNotes} />}
+        {() => <ProtectedRoute component={ClinicalNotes} requiredPath="/clinical-notes" />}
       </Route>
 
       <Route path="/prescriptions">
-        {() => <ProtectedRoute component={Prescriptions} />}
+        {() => <ProtectedRoute component={Prescriptions} requiredPath="/prescriptions" />}
       </Route>
 
       <Route path="/lab">
-        {() => <ProtectedRoute component={Lab} />}
+        {() => <ProtectedRoute component={Lab} requiredPath="/lab" />}
       </Route>
 
       <Route path="/radiology">
-        {() => <ProtectedRoute component={Radiology} />}
+        {() => <ProtectedRoute component={Radiology} requiredPath="/radiology" />}
       </Route>
 
       <Route path="/pharmacy">
-        {() => <ProtectedRoute component={Pharmacy} />}
+        {() => <ProtectedRoute component={Pharmacy} requiredPath="/pharmacy" />}
       </Route>
 
       <Route path="/billing">
-        {() => <ProtectedRoute component={Billing} />}
+        {() => <ProtectedRoute component={Billing} requiredPath="/billing" />}
       </Route>
 
       <Route path="/staff">
-        {() => <ProtectedRoute component={Staff} />}
+        {() => <ProtectedRoute component={Staff} requiredPath="/staff" />}
       </Route>
 
       <Route path="/vaccinations">
-        {() => <ProtectedRoute component={Vaccinations} />}
+        {() => <ProtectedRoute component={Vaccinations} requiredPath="/vaccinations" />}
       </Route>
 
       <Route path="/growth">
-        {() => <ProtectedRoute component={Growth} />}
+        {() => <ProtectedRoute component={Growth} requiredPath="/growth" />}
       </Route>
 
       <Route path="/settings">
@@ -147,7 +155,7 @@ function Router() {
       </Route>
 
       <Route path="/units">
-        {() => <ProtectedRoute component={Units} allowedPaths={["/units"]} />}
+        {() => <ProtectedRoute component={Units} requiredPath="/units" />}
       </Route>
 
       <Route component={NotFound} />
