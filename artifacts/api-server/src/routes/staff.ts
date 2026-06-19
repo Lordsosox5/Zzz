@@ -10,7 +10,27 @@ import {
 
 const router = Router();
 
+// ─── In-memory expiry store ─────────────────────────────────────────────────
+// Keyed by user ID. House Officers get a 90-day expiry on creation.
+// Medical Officers have null expiry (active until departure).
+const expiryStore = new Map<number, string | null>();
+
+function computeExpiryDate(role: string): string | null {
+  if (role === "house_officer") {
+    const d = new Date();
+    d.setDate(d.getDate() + 90);
+    return d.toISOString().split("T")[0]; // YYYY-MM-DD
+  }
+  return null;
+}
+
 function formatStaff(u: Record<string, unknown>) {
+  const id = Number(u.id);
+  // Use stored expiry if available, otherwise compute from role for house officers
+  const accountExpiryDate = expiryStore.has(id)
+    ? expiryStore.get(id) ?? null
+    : u.role === "house_officer" ? computeExpiryDate("house_officer") : null;
+
   return {
     id: u.id,
     nameEn: u.name_en,
@@ -22,6 +42,7 @@ function formatStaff(u: Record<string, unknown>) {
     phone: u.phone ?? null,
     licenseNumber: null,
     status: u.is_active ? "active" : "inactive",
+    accountExpiryDate,
     createdAt: u.created_at,
   };
 }
@@ -56,6 +77,12 @@ router.post("/staff", async (req, res): Promise<void> => {
     .select()
     .single();
   if (dbError(error, res)) return;
+
+  // Store computed expiry in memory
+  const id = Number(data.id);
+  const expiry = computeExpiryDate(parsed.data.role);
+  expiryStore.set(id, expiry);
+
   res.status(201).json(formatStaff(data));
 });
 
@@ -76,7 +103,7 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   const params = UpdateStaffParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateStaffBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: params.error.message }); return; }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const updates: Record<string, unknown> = {};
   if (parsed.data.nameEn) updates.name_en = parsed.data.nameEn;
   if (parsed.data.nameAr) updates.name_ar = parsed.data.nameAr;

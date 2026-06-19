@@ -1322,6 +1322,7 @@ export const ListStaffResponseItem = zod.object({
   "phone": zod.string().nullish(),
   "licenseNumber": zod.string().nullish(),
   "status": zod.string().optional(),
+  "accountExpiryDate": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListStaffResponse = zod.array(ListStaffResponseItem)
@@ -1360,6 +1361,7 @@ export const GetStaffMemberResponse = zod.object({
   "phone": zod.string().nullish(),
   "licenseNumber": zod.string().nullish(),
   "status": zod.string().optional(),
+  "accountExpiryDate": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -1391,6 +1393,7 @@ export const UpdateStaffResponse = zod.object({
   "phone": zod.string().nullish(),
   "licenseNumber": zod.string().nullish(),
   "status": zod.string().optional(),
+  "accountExpiryDate": zod.string().nullish(),
   "createdAt": zod.string()
 })
 

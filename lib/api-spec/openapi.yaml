@@ -1733,6 +1733,7 @@ components:
         phone: { type: ["string", "null"] }
         licenseNumber: { type: ["string", "null"] }
         status: { type: string }
+        accountExpiryDate: { type: ["string", "null"] }
         createdAt: { type: string }
 
     StaffInput:

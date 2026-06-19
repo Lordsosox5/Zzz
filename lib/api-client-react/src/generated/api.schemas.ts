@@ -638,6 +638,8 @@ export interface StaffMember {
   /** @nullable */
   licenseNumber?: string | null;
   status?: string;
+  /** @nullable */
+  accountExpiryDate?: string | null;
   createdAt: string;
 }
 
