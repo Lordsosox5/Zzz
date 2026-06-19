@@ -60,7 +60,8 @@ function ProtectedRoute({
     if (user && requiredPath) {
       const nav = getNavForRole(user.role);
       if (nav !== "all") {
-        const allowed = (nav as string[]).some(p => requiredPath.startsWith(p));
+        const allowed = (nav as string[]).some(p => requiredPath.startsWith(p))
+            || (requiredPath === "/patients" && (nav as string[]).includes("/my-patients"));
         if (!allowed) {
           setLocation((nav as string[])[0] ?? "/dashboard");
         }
