@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function ClinicalNotes() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const user = getUser();
   const canWrite = canWriteClinicalNotes(user?.role ?? "");
   const queryClient = useQueryClient();
@@ -120,7 +122,14 @@ export default function ClinicalNotes() {
                 notes.map((note) => (
                   <TableRow key={note.id}>
                     <TableCell>{new Date(note.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="font-medium">{(note as Record<string, unknown>).patientName as string ?? '-'}</TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => navigate(`/patients/${note.patientId}`)}
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                      >
+                        {(note as Record<string, unknown>).patientName as string ?? '-'}
+                      </button>
+                    </TableCell>
                     <TableCell><Badge variant="outline">{note.type}</Badge></TableCell>
                     <TableCell>{note.authorName ?? '-'}</TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">{note.content}</TableCell>

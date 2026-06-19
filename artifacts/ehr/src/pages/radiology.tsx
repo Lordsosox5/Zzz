@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useListRadiologyOrders, useCreateRadiologyOrder, getListRadiologyOrdersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -17,6 +18,7 @@ import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 export default function Radiology() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const { data: orders, isLoading } = useListRadiologyOrders({});
@@ -129,7 +131,14 @@ export default function Radiology() {
                 orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>{order.patientName ?? order.patientId}</TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => navigate(`/patients/${order.patientId}`)}
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                      >
+                        {order.patientName ?? order.patientId}
+                      </button>
+                    </TableCell>
                     <TableCell className="uppercase font-mono text-xs">{order.modality}</TableCell>
                     <TableCell>{order.studyDescription}</TableCell>
                     <TableCell>

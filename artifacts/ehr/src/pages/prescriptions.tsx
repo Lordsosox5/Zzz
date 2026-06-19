@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useListPrescriptions, useCreatePrescription, useUpdatePrescription, getListPrescriptionsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Prescriptions() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const user = getUser();
   const canWrite = canPrescribe(user?.role ?? "");
@@ -132,7 +134,14 @@ export default function Prescriptions() {
                 prescriptions.map((rx) => (
                   <TableRow key={rx.id}>
                     <TableCell>{new Date(rx.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>{rx.patientName ?? rx.patientId}</TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => navigate(`/patients/${rx.patientId}`)}
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                      >
+                        {rx.patientName ?? rx.patientId}
+                      </button>
+                    </TableCell>
                     <TableCell className="font-medium">{rx.drugName}</TableCell>
                     <TableCell>{rx.dosage} - {rx.frequency}</TableCell>
                     <TableCell>
