@@ -1738,12 +1738,14 @@ components:
 
     StaffInput:
       type: object
-      required: [nameEn, role, department]
+      required: [nameEn, role]
       properties:
         nameEn: { type: string }
         nameAr: { type: string }
         role: { type: string }
         department: { type: string }
+        unitId: { type: integer }
+        password: { type: string }
         specialization: { type: string }
         email: { type: string }
         phone: { type: string }

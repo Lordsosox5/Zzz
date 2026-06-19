@@ -58,11 +58,12 @@ router.post("/staff", async (req, res): Promise<void> => {
   const parsed = CreateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const username = parsed.data.nameEn.toLowerCase().replace(/\s+/g, ".") + Math.floor(Math.random() * 1000);
+  const password = parsed.data.password ?? "password123";
   const { data, error } = await supabase
     .from("users")
     .insert({
       username,
-      password: "password123",
+      password,
       name_en: parsed.data.nameEn,
       name_ar: parsed.data.nameAr ?? null,
       role: parsed.data.role,
@@ -78,7 +79,7 @@ router.post("/staff", async (req, res): Promise<void> => {
   const expiry = computeExpiryDate(parsed.data.role);
   expiryStore.set(id, expiry);
 
-  res.status(201).json(formatStaff(data));
+  res.status(201).json({ ...formatStaff(data), username, password });
 });
 
 router.get("/staff/:id", async (req, res): Promise<void> => {

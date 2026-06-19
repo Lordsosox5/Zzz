@@ -10,7 +10,9 @@ export interface StaffInput {
   nameEn: string;
   nameAr?: string;
   role: string;
-  department: string;
+  department?: string;
+  unitId?: number;
+  password?: string;
   specialization?: string;
   email?: string;
   phone?: string;
