@@ -26,6 +26,26 @@ function generateMRN(): string {
   return `AMH-${String(++mrnCounter).padStart(5, "0")}`;
 }
 
+/** Call once at server startup to seed the counter from the DB max MRN. */
+export async function initMrnCounter(): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("patients")
+      .select("mrn")
+      .order("mrn", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data?.mrn) {
+      const num = parseInt(data.mrn.replace(/\D/g, ""), 10);
+      if (!isNaN(num) && num > mrnCounter) {
+        mrnCounter = num;
+      }
+    }
+  } catch {
+    // Non-fatal — fall back to default counter
+  }
+}
+
 async function getCallerInfo(authHeader: string | undefined): Promise<{ id: number; role: string } | null> {
   if (!authHeader) return null;
   try {
