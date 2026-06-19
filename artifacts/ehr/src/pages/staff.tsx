@@ -223,7 +223,8 @@ export default function Staff() {
             : (editForm.department || undefined),
           email: editForm.email || undefined,
           phone: editForm.phone || undefined,
-        },
+          unitId: editForm.unitId ? Number(editForm.unitId) : undefined,
+        } as any,
       },
       {
         onSuccess: () => {

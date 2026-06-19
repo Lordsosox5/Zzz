@@ -2,12 +2,9 @@ import { Router } from "express";
 import { supabase, mapRow } from "../lib/supabase";
 import { LoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
-import { userUnitMap } from "../lib/unit-store";
-
 const router = Router();
 
 function formatUser(u: Record<string, unknown>) {
-  const id = Number(u.id);
   return {
     id: u.id,
     username: u.username,
@@ -15,7 +12,7 @@ function formatUser(u: Record<string, unknown>) {
     nameAr: u.nameAr ?? null,
     role: u.role,
     department: u.department ?? null,
-    unitId: userUnitMap.get(id) ?? null,
+    unitId: (u.unitId as number | null) ?? null,
     email: u.email ?? null,
     phone: u.phone ?? null,
     avatarUrl: u.avatarUrl ?? null,
