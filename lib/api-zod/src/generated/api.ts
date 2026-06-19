@@ -17,6 +17,99 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary List hospital units
+ */
+export const ListUnitsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListUnitsResponseItem = zod.object({
+  "id": zod.number(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string().nullish(),
+  "type": zod.string(),
+  "description": zod.string().nullish(),
+  "floor": zod.string().nullish(),
+  "capacity": zod.number(),
+  "headDoctorId": zod.number().nullish(),
+  "headDoctorName": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListUnitsResponse = zod.array(ListUnitsResponseItem)
+
+
+/**
+ * @summary Create unit
+ */
+export const CreateUnitBody = zod.object({
+  "nameEn": zod.string(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "description": zod.string().optional(),
+  "floor": zod.string().optional(),
+  "capacity": zod.number().optional(),
+  "headDoctorId": zod.number().optional(),
+  "status": zod.string().optional()
+})
+
+
+/**
+ * @summary Get unit
+ */
+export const GetUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetUnitResponse = zod.object({
+  "id": zod.number(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string().nullish(),
+  "type": zod.string(),
+  "description": zod.string().nullish(),
+  "floor": zod.string().nullish(),
+  "capacity": zod.number(),
+  "headDoctorId": zod.number().nullish(),
+  "headDoctorName": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update unit
+ */
+export const UpdateUnitParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateUnitBody = zod.object({
+  "nameEn": zod.string().optional(),
+  "nameAr": zod.string().optional(),
+  "type": zod.string().optional(),
+  "description": zod.string().optional(),
+  "floor": zod.string().optional(),
+  "capacity": zod.number().optional(),
+  "headDoctorId": zod.number().optional(),
+  "status": zod.string().optional()
+})
+
+export const UpdateUnitResponse = zod.object({
+  "id": zod.number(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string().nullish(),
+  "type": zod.string(),
+  "description": zod.string().nullish(),
+  "floor": zod.string().nullish(),
+  "capacity": zod.number(),
+  "headDoctorId": zod.number().nullish(),
+  "headDoctorName": zod.string().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Login
  */
 export const LoginBody = zod.object({
@@ -119,7 +212,8 @@ export const CreatePatientBody = zod.object({
   "guardianName": zod.string().optional(),
   "guardianRelation": zod.string().optional(),
   "guardianPhone": zod.string().optional(),
-  "allergies": zod.string().optional()
+  "allergies": zod.string().optional(),
+  "unitId": zod.number().optional()
 })
 
 
@@ -178,6 +272,7 @@ export const UpdatePatientBody = zod.object({
   "guardianPhone": zod.string().optional(),
   "allergies": zod.string().optional(),
   "bloodGroup": zod.string().optional(),
+  "unitId": zod.number().optional(),
   "status": zod.string().optional()
 })
 

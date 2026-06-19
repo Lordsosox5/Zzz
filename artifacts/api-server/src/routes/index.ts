@@ -12,6 +12,7 @@ import staffRouter from "./staff";
 import vaccinationsRouter from "./vaccinations";
 import dashboardRouter from "./dashboard";
 import admissionsRouter from "./admissions";
+import unitsRouter from "./units";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(staffRouter);
 router.use(vaccinationsRouter);
 router.use(dashboardRouter);
 router.use(admissionsRouter);
+router.use(unitsRouter);
 
 export default router;

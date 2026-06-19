@@ -21,5 +21,6 @@ export interface PatientUpdate {
   guardianPhone?: string;
   allergies?: string;
   bloodGroup?: string;
+  unitId?: number;
   status?: string;
 }

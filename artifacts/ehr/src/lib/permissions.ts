@@ -108,6 +108,34 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     ],
     allowedNav: ["/dashboard", "/lab"],
   },
+  house_officer: {
+    label: { en: "House Officer", ar: "طبيب مقيم" },
+    description: { en: "Junior doctor providing inpatient and emergency care under supervision", ar: "طبيب مقيم يقدم رعاية للمرضى الداخليين وطوارئ تحت الإشراف" },
+    badgeClass: "bg-teal-100 text-teal-800 border border-teal-200 dark:bg-teal-900/30 dark:text-teal-300",
+    authorities: [
+      { en: "View and update patient records under supervision", ar: "عرض وتحديث سجلات المرضى تحت الإشراف" },
+      { en: "Write clinical notes and progress reports", ar: "كتابة الملاحظات السريرية وتقارير التقدم" },
+      { en: "Order lab and radiology tests", ar: "طلب فحوصات المختبر والأشعة" },
+      { en: "Prescribe medications under consultant approval", ar: "وصف الأدوية بموافقة الاستشاري" },
+      { en: "Manage appointments and admissions", ar: "إدارة المواعيد والدخول" },
+      { en: "Respond to on-call and emergency requests", ar: "الرد على النداءات والحالات الطارئة" },
+    ],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/units"],
+  },
+  medical_officer: {
+    label: { en: "Medical Officer", ar: "ضابط طبي" },
+    description: { en: "Experienced medical officer managing general clinical duties", ar: "ضابط طبي متمرس يدير الواجبات السريرية العامة" },
+    badgeClass: "bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300",
+    authorities: [
+      { en: "Full patient record access and management", ar: "وصول كامل لسجلات المرضى وإدارتها" },
+      { en: "Write clinical notes, diagnoses and referrals", ar: "كتابة الملاحظات السريرية والتشخيصات والإحالات" },
+      { en: "Prescribe medications independently", ar: "وصف الأدوية بشكل مستقل" },
+      { en: "Order and review lab and radiology tests", ar: "طلب ومراجعة فحوصات المختبر والأشعة" },
+      { en: "Manage unit admissions and discharges", ar: "إدارة دخول وخروج مرضى الوحدة" },
+      { en: "Supervise house officers", ar: "الإشراف على الأطباء المقيمين" },
+    ],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units"],
+  },
 };
 
 export type PatientTab = "overview" | "notes" | "prescriptions" | "labs";
@@ -137,11 +165,11 @@ export function canEnterLabResults(role: string): boolean {
 }
 
 export function canWriteClinicalNotes(role: string): boolean {
-  return ["admin", "consultant", "specialist"].includes(role);
+  return ["admin", "consultant", "specialist", "house_officer", "medical_officer"].includes(role);
 }
 
 export function canPrescribe(role: string): boolean {
-  return ["admin", "consultant", "specialist"].includes(role);
+  return ["admin", "consultant", "specialist", "house_officer", "medical_officer"].includes(role);
 }
 
 export function canDispensePrescription(role: string): boolean {
@@ -153,11 +181,15 @@ export function canManagePharmacyInventory(role: string): boolean {
 }
 
 export function canRecordVitals(role: string): boolean {
-  return ["admin", "nurse", "consultant", "specialist"].includes(role);
+  return ["admin", "nurse", "consultant", "specialist", "house_officer", "medical_officer"].includes(role);
 }
 
 export function canAdmitNewPatient(role: string): boolean {
-  return ["admin", "consultant", "specialist", "nurse"].includes(role);
+  return ["admin", "consultant", "specialist", "nurse", "house_officer", "medical_officer"].includes(role);
+}
+
+export function canManageUnits(role: string): boolean {
+  return ["admin"].includes(role);
 }
 
 export function getNavForRole(role: string): string[] | "all" {

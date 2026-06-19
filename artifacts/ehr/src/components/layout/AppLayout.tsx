@@ -6,7 +6,7 @@ import { getNavForRole, getRoleLabel } from "@/lib/permissions";
 import { 
   LayoutDashboard, Users, Calendar, FileText, Pill, 
   FlaskConical, Activity, HeartPulse, Receipt, UserRound, 
-  ShieldAlert, Settings, LogOut, Bell, Menu, Moon, Sun, Languages, TrendingUp
+  ShieldAlert, Settings, LogOut, Bell, Menu, Moon, Sun, Languages, TrendingUp, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -33,6 +33,7 @@ const ALL_NAV_ITEMS = [
   { href: "/staff", icon: UserRound, labelKey: "nav.staff" },
   { href: "/vaccinations", icon: ShieldAlert, labelKey: "nav.vaccinations" },
   { href: "/growth", icon: TrendingUp, labelKey: "nav.growth" },
+  { href: "/units", icon: Building2, labelKey: "nav.units" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

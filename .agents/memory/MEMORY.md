@@ -1,3 +1,4 @@
 - [EHR project setup](ehr-project-setup.md) — Almuzini Children Hospital EHR: full-stack React+Vite + Express 5 + Drizzle/PostgreSQL; all modules wired end-to-end.
 - [Admission assessment feature](admission-assessment.md) — 5-section new-patient form backed by `admissionAssessmentsTable` + new API routes; codegen pipeline and DB migration approach documented.
-- [Supabase to Replit DB migration](supabase-migration.md) — All API routes migrated from Supabase client to Drizzle ORM using Replit PostgreSQL; supabase.ts kept in place but all routes now import from lib/db.ts instead.
+- [Supabase direct DB unreachable](supabase-direct-db.md) — Supabase direct DB host (db.PROJECT.supabase.co) is NOT DNS-resolvable from Replit; only PostgREST REST API works. New tables must use in-memory or local DB workaround.
+- [Units feature implementation](units-feature.md) — Units page, in-memory API route, new roles (house_officer, medical_officer), unit selector in new-patient form; all wired end-to-end.

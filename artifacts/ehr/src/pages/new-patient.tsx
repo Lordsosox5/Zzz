@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useCreatePatient, useCreateAdmissionAssessment, getListPatientsQueryKey } from "@workspace/api-client-react";
+import { useCreatePatient, useCreateAdmissionAssessment, useListUnits, getListPatientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
@@ -203,6 +203,7 @@ export default function NewPatient() {
 
   const createPatient   = useCreatePatient();
   const createAssessment = useCreateAdmissionAssessment();
+  const { data: units = [] } = useListUnits({ status: "active" });
 
   const [step, setStep]     = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -214,7 +215,7 @@ export default function NewPatient() {
     phone: "", address: "", residence: "",
     weight: "", height: "", admissionDate: "", dischargeDate: "",
     guardianName: "", guardianRelation: "parent", guardianPhone: "",
-    allergies: "",
+    allergies: "", unitId: "",
   });
 
   // ── History (Step 2) ──
@@ -319,6 +320,7 @@ export default function NewPatient() {
       "weight","height","admissionDate","dischargeDate","guardianName","guardianRelation","guardianPhone","allergies",
     ];
     for (const k of optionals) { if (demo[k]) patientData[k] = demo[k]; }
+    // unitId stored for UX but not yet persisted to DB (Supabase schema migration pending)
 
     createPatient.mutate({ data: patientData as Parameters<typeof createPatient.mutate>[0]["data"] }, {
       onSuccess: (patient: { id: number }) => {
@@ -413,6 +415,20 @@ export default function NewPatient() {
       </Field>
       <Field label={t("patient.dischargeDate")}>
         <Input name="dischargeDate" type="date" value={demo.dischargeDate} onChange={handleDemo} />
+      </Field>
+      <Field label={t("patient.unit")}>
+        <Select value={demo.unitId} onValueChange={v => setDemo(p => ({ ...p, unitId: v }))}>
+          <SelectTrigger>
+            <SelectValue placeholder={t("units.selectUnit")} />
+          </SelectTrigger>
+          <SelectContent>
+            {units.map((u) => (
+              <SelectItem key={u.id} value={String(u.id)}>
+                {u.nameEn}{u.nameAr ? ` — ${u.nameAr}` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
       <Field label={t("patient.residence")}>
         <Input name="residence" value={demo.residence} onChange={handleDemo} placeholder="City / Area" />

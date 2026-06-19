@@ -96,6 +96,7 @@ export interface PatientInput {
   guardianRelation?: string;
   guardianPhone?: string;
   allergies?: string;
+  unitId?: number;
 }
 
 export interface PatientUpdate {
@@ -113,6 +114,7 @@ export interface PatientUpdate {
   guardianPhone?: string;
   allergies?: string;
   bloodGroup?: string;
+  unitId?: number;
   status?: string;
 }
 
@@ -679,6 +681,47 @@ export interface GrowthRecordInput {
   notes?: string;
 }
 
+export interface Unit {
+  id: number;
+  nameEn: string;
+  /** @nullable */
+  nameAr?: string | null;
+  type: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  floor?: string | null;
+  capacity: number;
+  /** @nullable */
+  headDoctorId?: number | null;
+  /** @nullable */
+  headDoctorName?: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface UnitInput {
+  nameEn: string;
+  nameAr?: string;
+  type?: string;
+  description?: string;
+  floor?: string;
+  capacity?: number;
+  headDoctorId?: number;
+  status?: string;
+}
+
+export interface UnitUpdate {
+  nameEn?: string;
+  nameAr?: string;
+  type?: string;
+  description?: string;
+  floor?: string;
+  capacity?: number;
+  headDoctorId?: number;
+  status?: string;
+}
+
 export interface DashboardStats {
   totalPatients: number;
   todayAppointments: number;
@@ -754,6 +797,10 @@ export interface RevenueStats {
   byPaymentMethod?: RevenueByMethod[];
   daily?: DailyRevenue[];
 }
+
+export type ListUnitsParams = {
+status?: string;
+};
 
 export type ListPatientsParams = {
 search?: string;

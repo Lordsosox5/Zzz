@@ -22,6 +22,7 @@ tags:
   - name: vaccinations
   - name: growth
   - name: admissions
+  - name: units
 
 paths:
   /healthz:
@@ -36,6 +37,83 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # UNITS
+  /units:
+    get:
+      operationId: listUnits
+      tags: [units]
+      summary: List hospital units
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
+    post:
+      operationId: createUnit
+      tags: [units]
+      summary: Create unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+
+  /units/{id}:
+    get:
+      operationId: getUnit
+      tags: [units]
+      summary: Get unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+    patch:
+      operationId: updateUnit
+      tags: [units]
+      summary: Update unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
 
   # AUTH
   /auth/login:
@@ -1144,6 +1222,7 @@ components:
         guardianRelation: { type: string }
         guardianPhone: { type: string }
         allergies: { type: string }
+        unitId: { type: integer }
 
     PatientUpdate:
       type: object
@@ -1162,6 +1241,7 @@ components:
         guardianPhone: { type: string }
         allergies: { type: string }
         bloodGroup: { type: string }
+        unitId: { type: integer }
         status: { type: string }
 
     AdmissionAssessment:
@@ -1736,6 +1816,48 @@ components:
         height: { type: number }
         headCircumference: { type: number }
         notes: { type: string }
+
+    # UNITS
+    Unit:
+      type: object
+      required: [id, nameEn, type, status, capacity, createdAt]
+      properties:
+        id: { type: integer }
+        nameEn: { type: string }
+        nameAr: { type: ["string", "null"] }
+        type: { type: string }
+        description: { type: ["string", "null"] }
+        floor: { type: ["string", "null"] }
+        capacity: { type: integer }
+        headDoctorId: { type: ["integer", "null"] }
+        headDoctorName: { type: ["string", "null"] }
+        status: { type: string }
+        createdAt: { type: string }
+
+    UnitInput:
+      type: object
+      required: [nameEn]
+      properties:
+        nameEn: { type: string }
+        nameAr: { type: string }
+        type: { type: string }
+        description: { type: string }
+        floor: { type: string }
+        capacity: { type: integer }
+        headDoctorId: { type: integer }
+        status: { type: string }
+
+    UnitUpdate:
+      type: object
+      properties:
+        nameEn: { type: string }
+        nameAr: { type: string }
+        type: { type: string }
+        description: { type: string }
+        floor: { type: string }
+        capacity: { type: integer }
+        headDoctorId: { type: integer }
+        status: { type: string }
 
     # DASHBOARD
     DashboardStats:

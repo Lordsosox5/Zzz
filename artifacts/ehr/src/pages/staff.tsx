@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 const ROLES = [
   { value: "consultant", labelKey: "staff.consultant" },
   { value: "specialist", labelKey: "staff.specialist" },
+  { value: "house_officer", labelKey: "staff.houseOfficer" },
+  { value: "medical_officer", labelKey: "staff.medicalOfficer" },
   { value: "nurse", labelKey: "staff.nurse" },
   { value: "pharmacist", labelKey: "staff.pharmacist" },
   { value: "lab_specialist", labelKey: "staff.labSpecialist" },
