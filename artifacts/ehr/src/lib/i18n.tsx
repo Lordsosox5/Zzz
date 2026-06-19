@@ -64,6 +64,12 @@ const translations: Translations = {
   "patient.transferSuccess": { en: "Patient transferred successfully", ar: "تم نقل المريض بنجاح" },
   "patient.removeFromUnit": { en: "Remove from unit", ar: "إزالة من القسم" },
   "patient.transferConfirm": { en: "Transfer", ar: "نقل" },
+  "patient.editPatient": { en: "Edit Patient", ar: "تعديل بيانات المريض" },
+  "patient.editSuccess": { en: "Patient updated successfully", ar: "تم تحديث بيانات المريض بنجاح" },
+  "patient.patientStatus": { en: "Status", ar: "الحالة" },
+  "patient.statusAdmitted": { en: "Admitted", ar: "مقيم" },
+  "patient.statusOutpatient": { en: "Outpatient", ar: "خارجي" },
+  "patient.statusDischarged": { en: "Discharged", ar: "خُرِّج" },
 
   // Login
   "login.title": { en: "Sign In", ar: "تسجيل الدخول" },

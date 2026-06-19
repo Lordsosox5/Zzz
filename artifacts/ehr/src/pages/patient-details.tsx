@@ -7,6 +7,8 @@ import {
   useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey,
   useCreateAdmissionAssessment,
   useListUnits,
+  useUpdatePatient,
+  getGetPatientSummaryQueryKey as _getPatientSummaryKey,
 } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -15,7 +17,7 @@ import {
   canEnterLabResults, getAllowedPatientTabs,
   canWriteClinicalNotes, canPrescribe,
   canDispensePrescription, canRecordVitals,
-  canTransferPatient,
+  canTransferPatient, canEditPatient,
 } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,7 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
-  Building2, ArrowRightLeft,
+  Building2, ArrowRightLeft, Pencil,
 } from "lucide-react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -276,6 +278,212 @@ function AddPrescriptionDialog({ patientId, onSuccess }: { patientId: number; on
   );
 }
 
+/* ── Edit Patient dialog ── */
+function EditPatientDialog({
+  patient,
+  onSuccess,
+}: {
+  patient: any;
+  onSuccess: () => void;
+}) {
+  const { t, isRtl } = useTranslation();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const updatePatient = useUpdatePatient();
+
+  const [form, setForm] = useState({
+    nameEn: patient.nameEn ?? "",
+    nameAr: patient.nameAr ?? "",
+    bloodGroup: patient.bloodGroup ?? "",
+    phone: patient.phone ?? "",
+    address: patient.address ?? "",
+    residence: patient.residence ?? "",
+    guardianName: patient.guardianName ?? "",
+    guardianRelation: patient.guardianRelation ?? "parent",
+    guardianPhone: patient.guardianPhone ?? "",
+    allergies: patient.allergies ?? "",
+    weight: patient.weight ?? "",
+    height: patient.height ?? "",
+    admissionDate: patient.admissionDate ? patient.admissionDate.slice(0, 10) : "",
+    dischargeDate: patient.dischargeDate ? patient.dischargeDate.slice(0, 10) : "",
+    status: patient.status ?? "admitted",
+  });
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(p => ({ ...p, [k]: e.target.value }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const data: any = {};
+    if (form.nameEn)         data.nameEn         = form.nameEn;
+    if (form.nameAr)         data.nameAr         = form.nameAr;
+    if (form.bloodGroup)     data.bloodGroup     = form.bloodGroup;
+    if (form.phone)          data.phone          = form.phone;
+    if (form.address)        data.address        = form.address;
+    if (form.residence)      data.residence      = form.residence;
+    if (form.guardianName)   data.guardianName   = form.guardianName;
+    if (form.guardianRelation) data.guardianRelation = form.guardianRelation;
+    if (form.guardianPhone)  data.guardianPhone  = form.guardianPhone;
+    if (form.allergies)      data.allergies      = form.allergies;
+    if (form.weight)         data.weight         = form.weight;
+    if (form.height)         data.height         = form.height;
+    if (form.admissionDate)  data.admissionDate  = new Date(form.admissionDate).toISOString();
+    if (form.dischargeDate)  data.dischargeDate  = new Date(form.dischargeDate).toISOString();
+    if (form.status)         data.status         = form.status;
+
+    updatePatient.mutate(
+      { id: patient.id, data },
+      {
+        onSuccess: () => {
+          toast({ title: t("generic.success"), description: t("patient.editSuccess") });
+          setOpen(false);
+          onSuccess();
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2">
+          <Pencil className="h-4 w-4" />
+          {t("generic.edit")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-primary" />
+            {t("patient.editPatient")}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-5 py-2">
+          {/* Identity */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1.5 mb-3">{t("patient.personalInfo")}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("patient.fullNameEn")}</Label>
+                <Input value={form.nameEn} onChange={set("nameEn")} placeholder="Full name in English" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.fullNameAr")}</Label>
+                <Input value={form.nameAr} onChange={set("nameAr")} placeholder="الاسم بالعربي" dir="rtl" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.bloodGroup")}</Label>
+                <Select value={form.bloodGroup} onValueChange={v => setForm(p => ({ ...p, bloodGroup: v }))}>
+                  <SelectTrigger><SelectValue placeholder={t("patient.selectBloodGroup")} /></SelectTrigger>
+                  <SelectContent>
+                    {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(g => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.patientStatus")}</Label>
+                <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admitted">{t("patient.statusAdmitted")}</SelectItem>
+                    <SelectItem value="outpatient">{t("patient.statusOutpatient")}</SelectItem>
+                    <SelectItem value="discharged">{t("patient.statusDischarged")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1.5 mb-3">{t("patient.contactGuardian")}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("patient.homePhone")}</Label>
+                <Input value={form.phone} onChange={set("phone")} placeholder="+966 5x xxx xxxx" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.residence")}</Label>
+                <Input value={form.residence} onChange={set("residence")} placeholder="e.g. Riyadh" />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>{t("generic.address")}</Label>
+                <Input value={form.address} onChange={set("address")} placeholder="Street address" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.guardianName")}</Label>
+                <Input value={form.guardianName} onChange={set("guardianName")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.guardianPhone")}</Label>
+                <Input value={form.guardianPhone} onChange={set("guardianPhone")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.guardianRelation")}</Label>
+                <Select value={form.guardianRelation} onValueChange={v => setForm(p => ({ ...p, guardianRelation: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="parent">{t("patient.parent")}</SelectItem>
+                    <SelectItem value="sibling">{t("patient.sibling")}</SelectItem>
+                    <SelectItem value="other">{t("patient.other")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Medical */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1.5 mb-3">{t("patient.medicalAlerts")}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("patient.weight")} (kg)</Label>
+                <Input value={form.weight} onChange={set("weight")} placeholder="e.g. 14.5" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.height")} (cm)</Label>
+                <Input value={form.height} onChange={set("height")} placeholder="e.g. 98" />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>{t("patient.knownAllergies")}</Label>
+                <Input value={form.allergies} onChange={set("allergies")} placeholder={t("patient.allergiesPlaceholder")} />
+              </div>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1.5 mb-3">{t("patient.admissionDate")} / {t("patient.dischargeDate")}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("patient.admissionDate")}</Label>
+                <Input type="date" value={form.admissionDate} onChange={set("admissionDate")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.dischargeDate")}</Label>
+                <Input type="date" value={form.dischargeDate} onChange={set("dischargeDate")} />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
+            <Button type="submit" disabled={updatePatient.isPending}>
+              {updatePatient.isPending
+                ? <Loader2 className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4 animate-spin`} />
+                : <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
+              {t("generic.save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ── Transfer Unit dialog (super_admin / consultant / medical_officer) ── */
 function TransferUnitDialog({
   patientId,
@@ -377,6 +585,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const canDispense      = canDispensePrescription(role);
   const canVitals        = canRecordVitals(role);
   const canTransfer      = canTransferPatient(role);
+  const canEdit          = canEditPatient(role);
   const allowedTabs      = getAllowedPatientTabs(role);
 
   const updateRxMutation = useUpdatePrescription();
@@ -494,6 +703,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           </div>
           {/* Role-gated action buttons */}
           <div className="flex flex-wrap gap-2">
+            {canEdit && (
+              <EditPatientDialog
+                patient={patient}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: getGetPatientSummaryQueryKey(patientId) })}
+              />
+            )}
             {canVitals && <RecordVitalsDialog patientId={patientId} onSuccess={() => {}} />}
             {canWrite && <AddNoteDialog patientId={patientId} onSuccess={handleNoteSuccess} />}
             {canRx && <AddPrescriptionDialog patientId={patientId} onSuccess={handleRxSuccess} />}
