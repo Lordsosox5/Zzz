@@ -17,7 +17,7 @@ import {
   canEnterLabResults, getAllowedPatientTabs,
   canWriteClinicalNotes, canPrescribe,
   canDispensePrescription, canRecordVitals,
-  canTransferPatient, canEditPatient,
+  canTransferPatient, canEditPatient, canCreateDischargeSummary,
 } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
-  Building2, Pencil,
+  Building2, Pencil, ClipboardList,
 } from "lucide-react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -547,6 +547,140 @@ function AssignUnitDropdown({
   );
 }
 
+/* ── Discharge Summary dialog ── */
+function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patientId: number; patientName: string; onSuccess: () => void }) {
+  const { t, isRtl } = useTranslation();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    admissionDate: "",
+    dischargeDate: new Date().toISOString().slice(0, 10),
+    primaryDiagnosis: "",
+    secondaryDiagnoses: "",
+    hospitalCourse: "",
+    conditionAtDischarge: "good",
+    dischargeMedications: "",
+    followUpInstructions: "",
+    dietInstructions: "",
+    activityRestrictions: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const token = getToken();
+      const user = getUser();
+      const res = await fetch("/api/discharge-summaries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          patientId,
+          createdBy: user?.id ?? null,
+          createdByName: user?.nameEn ?? user?.username ?? null,
+          ...form,
+          admissionDate: form.admissionDate || null,
+          secondaryDiagnoses: form.secondaryDiagnoses || null,
+          dischargeMedications: form.dischargeMedications || null,
+          followUpInstructions: form.followUpInstructions || null,
+          dietInstructions: form.dietInstructions || null,
+          activityRestrictions: form.activityRestrictions || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({ title: t("generic.success"), description: t("generic.addSuccess") });
+      setOpen(false);
+      setForm({ admissionDate: "", dischargeDate: new Date().toISOString().slice(0, 10), primaryDiagnosis: "", secondaryDiagnoses: "", hospitalCourse: "", conditionAtDischarge: "good", dischargeMedications: "", followUpInstructions: "", dietInstructions: "", activityRestrictions: "" });
+      onSuccess();
+    } catch {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="gap-2"><ClipboardList className="h-4 w-4" />{t("discharge.createSummary")}</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5 text-primary" />
+            {t("discharge.createSummary")} — {patientName}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>{t("discharge.admissionDate")}</Label>
+              <Input type="date" name="admissionDate" value={form.admissionDate} onChange={handleChange} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("discharge.dischargeDate")}</Label>
+              <Input type="date" name="dischargeDate" required value={form.dischargeDate} onChange={handleChange} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("discharge.primaryDiagnosis")} *</Label>
+            <Input name="primaryDiagnosis" required value={form.primaryDiagnosis} onChange={handleChange} placeholder="e.g. Community-acquired pneumonia" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("discharge.secondaryDiagnoses")}</Label>
+            <Input name="secondaryDiagnoses" value={form.secondaryDiagnoses} onChange={handleChange} placeholder="e.g. Mild dehydration, Iron deficiency anaemia" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("discharge.hospitalCourse")} *</Label>
+            <Textarea name="hospitalCourse" required value={form.hospitalCourse} onChange={handleChange} className="min-h-[100px]" placeholder="Summary of treatment, investigations, and response..." />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("discharge.condition")}</Label>
+            <Select value={form.conditionAtDischarge} onValueChange={v => setForm(p => ({ ...p, conditionAtDischarge: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="good">{t("discharge.condition.good")}</SelectItem>
+                <SelectItem value="improved">{t("discharge.condition.improved")}</SelectItem>
+                <SelectItem value="fair">{t("discharge.condition.fair")}</SelectItem>
+                <SelectItem value="poor">{t("discharge.condition.poor")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("discharge.medications")}</Label>
+            <Textarea name="dischargeMedications" value={form.dischargeMedications} onChange={handleChange} className="min-h-[80px]" placeholder="List discharge medications, doses, and durations..." />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("discharge.followUp")}</Label>
+            <Textarea name="followUpInstructions" value={form.followUpInstructions} onChange={handleChange} className="min-h-[60px]" placeholder="Follow-up clinic, review dates, specialist referrals..." />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>{t("discharge.diet")}</Label>
+              <Input name="dietInstructions" value={form.dietInstructions} onChange={handleChange} placeholder="e.g. Regular diet, high fluid intake" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("discharge.activity")}</Label>
+              <Input name="activityRestrictions" value={form.activityRestrictions} onChange={handleChange} placeholder="e.g. Bed rest for 3 days" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4 animate-spin`} /> : <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
+              {t("generic.save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ── Main page ── */
 export default function PatientDetails({ params }: { params: { id: string } }) {
   const patientId = parseInt(params.id, 10);
@@ -563,6 +697,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const canVitals        = canRecordVitals(role);
   const canTransfer      = canTransferPatient(role);
   const canEdit          = canEditPatient(role);
+  const canDischarge     = canCreateDischargeSummary(role);
   const allowedTabs      = getAllowedPatientTabs(role);
 
   const updateRxMutation = useUpdatePrescription();
@@ -597,6 +732,21 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const { data: notesList, isLoading: loadingNotes } = useListClinicalNotes(
     { patientId }, { query: { enabled: !!patientId && allowedTabs.includes("notes") } }
   );
+
+  /* ── Discharge summaries query ── */
+  const dischargeSummaryQueryKey = ["discharge-summaries", patientId];
+  const { data: dischargeSummaries = [] } = useQuery({
+    queryKey: dischargeSummaryQueryKey,
+    queryFn: async () => {
+      const token = getToken();
+      const res = await fetch(`/api/discharge-summaries?patientId=${patientId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return [];
+      return res.json() as Promise<any[]>;
+    },
+    enabled: !!patientId && allowedTabs.includes("discharge"),
+  });
 
   const handleResultSuccess = () => queryClient.invalidateQueries({ queryKey: getListLabOrdersQueryKey({ patientId }) });
   const handleRxSuccess     = () => queryClient.invalidateQueries({ queryKey: getListPrescriptionsQueryKey({ patientId }) });
@@ -706,9 +856,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
         <TabsList className="w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
           {allowedTabs.map(tab => (
             <TabsTrigger key={tab} value={tab} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
-              {tab === "overview" ? t("patient.overview") :
-               tab === "notes" ? t("patient.clinicalNotes") :
+              {tab === "overview"      ? t("patient.overview") :
+               tab === "notes"         ? t("patient.clinicalNotes") :
                tab === "prescriptions" ? t("nav.prescriptions") :
+               tab === "discharge"     ? t("discharge.tab") :
                t("patient.labsRadiology")}
             </TabsTrigger>
           ))}
@@ -971,6 +1122,69 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       ))
                     ) : (
                       <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">{t("lab.noRadOrders")}</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+        {/* ── Discharge Summary tab ── */}
+        {allowedTabs.includes("discharge") && (
+          <TabsContent value="discharge" className="mt-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                {t("discharge.tab")}
+              </h2>
+              {canDischarge && (
+                <DischargeSummaryDialog
+                  patientId={patientId}
+                  patientName={name}
+                  onSuccess={() => queryClient.invalidateQueries({ queryKey: dischargeSummaryQueryKey })}
+                />
+              )}
+            </div>
+            <Card>
+              <CardContent className="px-4 pb-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("generic.date")}</TableHead>
+                      <TableHead>{t("discharge.primaryDiagnosis")}</TableHead>
+                      <TableHead>{t("discharge.condition")}</TableHead>
+                      <TableHead>{t("notes.author")}</TableHead>
+                      <TableHead className="text-end">{t("generic.actions")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dischargeSummaries.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          {t("discharge.noneYet")}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      dischargeSummaries.map((ds: any) => (
+                        <TableRow key={ds.id}>
+                          <TableCell className="text-sm">{new Date(ds.dischargeDate).toLocaleDateString()}</TableCell>
+                          <TableCell className="font-medium">{ds.primaryDiagnosis}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {t(`discharge.condition.${ds.conditionAtDischarge}`) || ds.conditionAtDischarge}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{ds.createdByName ?? "—"}</TableCell>
+                          <TableCell className="text-end">
+                            <Button
+                              size="sm" variant="outline" className="gap-1"
+                              onClick={() => window.open(`/patients/${patientId}/discharge-print/${ds.id}`, "_blank")}
+                            >
+                              <Printer className="h-3 w-3" /> {t("discharge.printLetter")}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
                   </TableBody>
                 </Table>

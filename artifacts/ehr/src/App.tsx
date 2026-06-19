@@ -16,6 +16,7 @@ import Patients from "@/pages/patients";
 import NewPatient from "@/pages/new-patient";
 import PatientDetails from "@/pages/patient-details";
 import PatientPrint from "@/pages/patient-print";
+import DischargePrint from "@/pages/discharge-print";
 import Appointments from "@/pages/appointments";
 import ClinicalNotes from "@/pages/clinical-notes";
 import Prescriptions from "@/pages/prescriptions";
@@ -98,6 +99,10 @@ function Router() {
 
       <Route path="/patients/new">
         {() => <ProtectedRoute component={NewPatient} requiredPath="/patients" />}
+      </Route>
+
+      <Route path="/patients/:id/discharge-print/:summaryId">
+        {params => <DischargePrint params={params} />}
       </Route>
 
       <Route path="/patients/:id/print">

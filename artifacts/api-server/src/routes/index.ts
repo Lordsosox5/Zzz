@@ -13,6 +13,7 @@ import vaccinationsRouter from "./vaccinations";
 import dashboardRouter from "./dashboard";
 import admissionsRouter from "./admissions";
 import unitsRouter from "./units";
+import dischargeSummariesRouter from "./discharge-summaries";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(vaccinationsRouter);
 router.use(dashboardRouter);
 router.use(admissionsRouter);
 router.use(unitsRouter);
+router.use(dischargeSummariesRouter);
 
 export default router;

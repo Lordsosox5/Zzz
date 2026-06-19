@@ -160,16 +160,16 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
   },
 };
 
-export type PatientTab = "overview" | "notes" | "prescriptions" | "labs";
+export type PatientTab = "overview" | "notes" | "prescriptions" | "labs" | "discharge";
 
 const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
-  super_admin:          ["overview", "notes", "prescriptions", "labs"],
-  pediatric_consultant: ["overview", "notes", "prescriptions", "labs"],
-  pediatric_specialist: ["overview", "notes", "prescriptions", "labs"],
-  emergency_physician:  ["overview", "notes", "prescriptions", "labs"],
-  house_officer:        ["overview", "notes", "prescriptions", "labs"],
-  medical_officer:      ["overview", "notes", "prescriptions", "labs"],
-  registrar:            ["overview", "notes", "prescriptions", "labs"],
+  super_admin:          ["overview", "notes", "prescriptions", "labs", "discharge"],
+  pediatric_consultant: ["overview", "notes", "prescriptions", "labs", "discharge"],
+  pediatric_specialist: ["overview", "notes", "prescriptions", "labs", "discharge"],
+  emergency_physician:  ["overview", "notes", "prescriptions", "labs", "discharge"],
+  house_officer:        ["overview", "notes", "prescriptions", "labs", "discharge"],
+  medical_officer:      ["overview", "notes", "prescriptions", "labs", "discharge"],
+  registrar:            ["overview", "notes", "prescriptions", "labs", "discharge"],
   nurse:                ["overview"],
   pharmacist:           ["overview", "prescriptions"],
   lab_technician:       ["labs"],
@@ -226,6 +226,10 @@ export function canTransferPatient(role: string): boolean {
 
 export function canEditPatient(role: string): boolean {
   return ["super_admin", "pediatric_consultant", "pediatric_specialist", "nurse", "registrar"].includes(role);
+}
+
+export function canCreateDischargeSummary(role: string): boolean {
+  return ["super_admin", "pediatric_consultant", "pediatric_specialist", "emergency_physician", "medical_officer", "registrar"].includes(role);
 }
 
 export function canManageStaff(role: string): boolean {
