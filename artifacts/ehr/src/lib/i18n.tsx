@@ -29,7 +29,7 @@ const translations: Translations = {
   "nav.settings": { en: "Settings", ar: "الإعدادات" },
   "nav.logout": { en: "Logout", ar: "تسجيل الخروج" },
   "nav.units": { en: "Units", ar: "الوحدات" },
-  "nav.myPatients": { en: "My Patients", ar: "مرضاي" },
+  "nav.myPatients": { en: "My Patients", ar: "المرضى" },
 
   // Units
   "units.title": { en: "Hospital Units", ar: "الوحدات الطبية" },

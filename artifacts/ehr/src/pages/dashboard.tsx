@@ -5,7 +5,8 @@ import {
   useGetBedOccupancy,
   useGetRevenueStats,
   useListLabOrders,
-  useListAppointments,
+  useListPatients,
+  useListUnits,
   getGetDashboardStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
@@ -678,25 +679,22 @@ function UnitDashboard() {
   const user = getUser();
   const hour = new Date().getHours();
   const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
-  const todayStr = new Date().toISOString().split("T")[0];
 
-  const { data: myAppointments, isLoading: apptLoading } = useListAppointments({
-    date: todayStr,
-    doctorId: user?.id,
-  });
+  const { data: patientsData, isLoading: patientsLoading } = useListPatients({ limit: 50 });
+  const { data: unitsData = [] } = useListUnits();
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
     query: { queryKey: getGetDashboardStatsQueryKey() },
   });
   const { data: alerts, isLoading: alertsLoading } = useGetDashboardAlerts();
 
-  const myPatients = myAppointments ?? [];
-  const uniquePatientCount = new Set(myPatients.map((a: any) => a.patientId)).size;
+  const unitPatients = patientsData?.patients ?? [];
+  const userUnit = user?.unitId ? unitsData.find((u) => u.id === user.unitId) : null;
+  const unitName = userUnit
+    ? (isRtl && userUnit.nameAr ? userUnit.nameAr : userUnit.nameEn)
+    : null;
 
   const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
   const roleLabelMap: Record<string, { en: string; ar: string }> = {
@@ -704,17 +702,17 @@ function UnitDashboard() {
     medical_officer: { en: "Medical Officer Dashboard", ar: "لوحة تحكم الضابط الطبي" },
   };
   const roleLabel = isRtl
-    ? (roleLabelMap[user?.role]?.ar ?? "Unit Dashboard")
-    : (roleLabelMap[user?.role]?.en ?? "Unit Dashboard");
+    ? (roleLabelMap[user?.role ?? ""]?.ar ?? "Unit Dashboard")
+    : (roleLabelMap[user?.role ?? ""]?.en ?? "Unit Dashboard");
 
   const unitStats = [
     {
-      label: isRtl ? "مرضاي اليوم" : "My Patients Today",
-      value: apptLoading ? undefined : uniquePatientCount,
+      label: isRtl ? "مرضى الوحدة" : "Unit Patients",
+      value: patientsLoading ? undefined : unitPatients.length,
       icon: Users,
       iconColor: "text-blue-600",
       iconBg: "bg-blue-500/10",
-      loading: apptLoading,
+      loading: patientsLoading,
     },
     {
       label: t("dash.pendingLabs"),
@@ -744,6 +742,7 @@ function UnitDashboard() {
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -752,18 +751,25 @@ function UnitDashboard() {
           <h1 className="text-2xl font-bold tracking-tight">
             {t(getGreeting(hour))}, {displayName} 👋
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {isRtl ? "عرض مرضاك المعيّنين اليوم" : "Showing your assigned patients for today"}
-          </p>
+          {unitName && (
+            <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5" />
+              {isRtl ? `الوحدة: ${unitName}` : `Unit: ${unitName}`}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" onClick={() => navigate("/lab?new=1")} className="gap-1.5">
+          <Button size="sm" onClick={() => navigate("/my-patients")} className="gap-1.5">
+            <Users className="h-4 w-4" />
+            {isRtl ? "قائمة المرضى" : "Patient List"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/clinical-notes")} className="gap-1.5">
+            <FileText className="h-4 w-4" />
+            {t("nav.notes")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/lab")} className="gap-1.5">
             <FlaskConical className="h-4 w-4" />
             {t("nav.lab")}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate("/prescriptions?new=1")} className="gap-1.5">
-            <Pill className="h-4 w-4" />
-            {t("nav.prescriptions")}
           </Button>
         </div>
       </div>
@@ -794,20 +800,27 @@ function UnitDashboard() {
         })}
       </div>
 
-      {/* My Patients Today + Alerts */}
+      {/* Unit Patients + Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* My Patients Today */}
+        {/* Unit Patient List */}
         <Card className="lg:col-span-2 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
-              {isRtl ? "مرضاي اليوم" : "My Patients Today"}
+              {isRtl ? "مرضى الوحدة" : "Unit Patients"}
             </CardTitle>
-            <Badge variant="secondary">{myPatients.length} {isRtl ? "موعد" : "appointments"}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {patientsLoading ? "—" : unitPatients.length} {isRtl ? "مريض" : "patients"}
+              </Badge>
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/my-patients")}>
+                {t("dash.viewAll")}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0 flex-1">
-            {apptLoading ? (
+            {patientsLoading ? (
               <div className="space-y-0">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
@@ -819,34 +832,47 @@ function UnitDashboard() {
                   </div>
                 ))}
               </div>
-            ) : myPatients.length > 0 ? (
+            ) : unitPatients.length > 0 ? (
               <div className="divide-y">
-                {myPatients.map((appt: any) => {
-                  const time = new Date(appt.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                {unitPatients.slice(0, 8).map((patient) => {
+                  const name = isRtl && patient.nameAr ? patient.nameAr : patient.nameEn;
                   return (
-                    <div key={appt.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                    <div
+                      key={patient.id}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/patients/${patient.id}`)}
+                    >
                       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                        {initials(appt.patientName)}
+                        {initials(patient.nameEn)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{appt.patientName ?? `#${appt.patientId}`}</p>
+                        <p className="text-sm font-medium truncate">{name}</p>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-xs text-muted-foreground">{time}</span>
-                          <span className="text-muted-foreground/40">·</span>
-                          {apptTypeBadge(appt.type)}
+                          <span className="text-xs text-muted-foreground font-mono">{patient.mrn}</span>
+                          {patient.bloodGroup && (
+                            <>
+                              <span className="text-muted-foreground/40">·</span>
+                              <span className="text-xs text-destructive font-medium">{patient.bloodGroup}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-2">
-                        {apptStatusBadge(appt.status)}
-                      </div>
+                      <Badge
+                        variant={patient.status === "active" ? "default" : "secondary"}
+                        className="text-xs capitalize shrink-0"
+                      >
+                        {patient.status ?? "active"}
+                      </Badge>
                     </div>
                   );
                 })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <Clock className="h-8 w-8 mb-2 opacity-40" />
-                <p className="text-sm">{isRtl ? "لا مواعيد اليوم" : "No appointments assigned to you today"}</p>
+                <Users className="h-8 w-8 mb-2 opacity-30" />
+                <p className="text-sm">
+                  {isRtl ? "لا يوجد مرضى في وحدتك حالياً" : "No patients in your unit yet"}
+                </p>
               </div>
             )}
           </CardContent>
@@ -900,7 +926,7 @@ function UnitDashboard() {
         </Card>
       </div>
 
-      {/* Quick actions for clinical work */}
+      {/* Quick access cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: isRtl ? "الملاحظات السريرية" : "Clinical Notes", icon: FileText, path: "/clinical-notes", color: "text-blue-600", bg: "bg-blue-500/10" },
