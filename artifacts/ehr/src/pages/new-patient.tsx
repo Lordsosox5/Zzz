@@ -320,7 +320,7 @@ export default function NewPatient() {
       "weight","height","admissionDate","dischargeDate","guardianName","guardianRelation","guardianPhone","allergies",
     ];
     for (const k of optionals) { if (demo[k]) patientData[k] = demo[k]; }
-    // unitId stored for UX but not yet persisted to DB (Supabase schema migration pending)
+    if (demo.unitId) patientData.unitId = Number(demo.unitId);
 
     createPatient.mutate({ data: patientData as Parameters<typeof createPatient.mutate>[0]["data"] }, {
       onSuccess: (patient: { id: number }) => {

@@ -8,12 +8,37 @@ import {
   UpdatePatientBody,
   GetPatientSummaryParams,
 } from "@workspace/api-zod";
+import {
+  assignPatientToUnit,
+  getPatientsInUnit,
+  getUnitForUser,
+} from "../lib/unit-store";
 
 const router = Router();
+
+const UNIT_RESTRICTED_ROLES = ["house_officer", "medical_officer"];
 
 let mrnCounter = 1000;
 function generateMRN(): string {
   return `AMH-${String(++mrnCounter).padStart(5, "0")}`;
+}
+
+async function getCallerInfo(authHeader: string | undefined): Promise<{ id: number; role: string } | null> {
+  if (!authHeader) return null;
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const decoded = Buffer.from(token, "base64").toString("utf-8");
+    const [userId] = decoded.split(":");
+    const { data: user } = await supabase
+      .from("users")
+      .select("id, role")
+      .eq("id", parseInt(userId, 10))
+      .maybeSingle();
+    if (!user) return null;
+    return { id: Number(user.id), role: user.role as string };
+  } catch {
+    return null;
+  }
 }
 
 router.get("/patients", async (req, res): Promise<void> => {
@@ -25,6 +50,40 @@ router.get("/patients", async (req, res): Promise<void> => {
   const { search, page = 1, limit = 20 } = params.data;
   const offset = (page - 1) * limit;
 
+  // Check if the caller is a unit-restricted role
+  const caller = await getCallerInfo(req.headers.authorization);
+  const isUnitRestricted = caller && UNIT_RESTRICTED_ROLES.includes(caller.role);
+
+  if (isUnitRestricted) {
+    const unitId = getUnitForUser(caller.id);
+    if (unitId !== undefined) {
+      // Return only patients assigned to this unit
+      const patientIds = getPatientsInUnit(unitId);
+      if (patientIds.length === 0) {
+        res.json({ patients: [], total: 0, page, limit });
+        return;
+      }
+
+      let query = supabase
+        .from("patients")
+        .select("*", { count: "exact" })
+        .in("id", patientIds);
+      if (search) {
+        query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%,name_ar.ilike.%${search}%`);
+      }
+      query = query.order("created_at").range(offset, offset + limit - 1);
+
+      const { data, error, count } = await query;
+      if (dbError(error, res)) return;
+      res.json({ patients: mapRows(data ?? []), total: count ?? 0, page, limit });
+      return;
+    }
+    // Unit-restricted role but no unit assigned yet → return empty list
+    res.json({ patients: [], total: 0, page, limit });
+    return;
+  }
+
+  // Unrestricted role — return all patients
   let query = supabase.from("patients").select("*", { count: "exact" });
   if (search) {
     query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%,name_ar.ilike.%${search}%`);
@@ -42,6 +101,9 @@ router.get("/patients", async (req, res): Promise<void> => {
 });
 
 router.post("/patients", async (req, res): Promise<void> => {
+  // Extract unitId before Zod strips unknown fields
+  const unitId = req.body.unitId ? Number(req.body.unitId) : undefined;
+
   const parsed = CreatePatientBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -54,6 +116,12 @@ router.post("/patients", async (req, res): Promise<void> => {
     .select()
     .single();
   if (dbError(error, res)) return;
+
+  // Record unit assignment if provided
+  if (unitId && data?.id) {
+    assignPatientToUnit(Number(data.id), unitId);
+  }
+
   res.status(201).json(mapRow(data));
 });
 

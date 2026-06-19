@@ -7,6 +7,7 @@ import {
   UpdateStaffParams,
   UpdateStaffBody,
 } from "@workspace/api-zod";
+import { assignUserToUnit, userUnitMap } from "../lib/unit-store";
 
 const router = Router();
 
@@ -33,6 +34,7 @@ function formatStaff(u: Record<string, unknown>) {
     nameAr: u.name_ar ?? null,
     role: u.role,
     department: u.department ?? "General",
+    unitId: userUnitMap.get(id) ?? null,
     specialization: null,
     email: u.email ?? null,
     phone: u.phone ?? null,
@@ -55,6 +57,8 @@ router.get("/staff", async (req, res): Promise<void> => {
 });
 
 router.post("/staff", async (req, res): Promise<void> => {
+  const unitId = req.body.unitId ? Number(req.body.unitId) : undefined;
+
   const parsed = CreateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const username = parsed.data.username?.trim()
@@ -81,6 +85,10 @@ router.post("/staff", async (req, res): Promise<void> => {
   const expiry = computeExpiryDate(parsed.data.role);
   expiryStore.set(id, expiry);
 
+  if (unitId) {
+    assignUserToUnit(id, unitId);
+  }
+
   res.status(201).json({ ...formatStaff(data), username, password });
 });
 
@@ -100,6 +108,9 @@ router.get("/staff/:id", async (req, res): Promise<void> => {
 router.patch("/staff/:id", async (req, res): Promise<void> => {
   const params = UpdateStaffParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const unitId = req.body.unitId !== undefined ? (req.body.unitId ? Number(req.body.unitId) : null) : undefined;
+
   const parsed = UpdateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const updates: Record<string, unknown> = {};
@@ -117,6 +128,16 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
     .maybeSingle();
   if (error) { res.status(500).json({ error: error.message }); return; }
   if (!data) { res.status(404).json({ error: "Staff member not found" }); return; }
+
+  const staffId = Number(data.id);
+  if (unitId !== undefined) {
+    if (unitId === null) {
+      userUnitMap.delete(staffId);
+    } else {
+      assignUserToUnit(staffId, unitId);
+    }
+  }
+
   res.json(formatStaff(data));
 });
 

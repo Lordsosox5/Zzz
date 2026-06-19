@@ -1,18 +1,28 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useListPatients } from "@workspace/api-client-react";
+import { useListPatients, useListUnits } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
+import { getUser } from "@/lib/auth";
+import { isUnitRole } from "@/lib/permissions";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, Loader2 } from "lucide-react";
+import { Search, UserPlus, Loader2, Building2 } from "lucide-react";
 
 export default function Patients() {
   const { t, isRtl } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const user = getUser();
+  const unitRestricted = user && isUnitRole(user.role);
+
+  const { data: unitsData = [] } = useListUnits();
+  const userUnit = unitRestricted && user?.unitId
+    ? unitsData.find((u) => u.id === user.unitId)
+    : null;
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -35,6 +45,21 @@ export default function Patients() {
           </Link>
         </Button>
       </div>
+
+      {unitRestricted && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+          <Building2 className="h-4 w-4 shrink-0" />
+          <span>
+            {userUnit
+              ? (isRtl
+                  ? `عرض المرضى المقيدين بوحدة: ${userUnit.nameAr ?? userUnit.nameEn}`
+                  : `Showing patients restricted to unit: ${userUnit.nameEn}`)
+              : (isRtl
+                  ? "لم يتم تعيين وحدة لحسابك — لا يوجد مرضى متاحون بعد."
+                  : "No unit assigned to your account — no patients available yet.")}
+          </span>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="p-4 border-b">
