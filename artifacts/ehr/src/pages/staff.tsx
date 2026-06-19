@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Plus, Loader2, Save, CheckCircle2, ShieldCheck, CalendarClock,
-  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, KeyRound,
+  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, KeyRound, Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -186,6 +186,55 @@ export default function Staff() {
   const [resetPassword, setResetPassword] = useState("");
   const [resetShowPass, setResetShowPass] = useState(false);
   const [resetCopied, setResetCopied] = useState(false);
+
+  // Edit staff dialog
+  const [editTarget, setEditTarget] = useState<{ id: number } | null>(null);
+  const [editForm, setEditForm] = useState({
+    nameEn: "", nameAr: "", role: "", department: "", unitId: "", email: "", phone: "",
+  });
+
+  const openEdit = (member: NonNullable<typeof staff>[number]) => {
+    setEditForm({
+      nameEn: member.nameEn ?? "",
+      nameAr: member.nameAr ?? "",
+      role: member.role ?? "",
+      department: member.department ?? "",
+      unitId: "",
+      email: member.email ?? "",
+      phone: member.phone ?? "",
+    });
+    setEditTarget({ id: member.id });
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    const isDoc = DOCTOR_ROLES.includes(editForm.role);
+    const selectedUnit = units.find(u => String(u.id) === editForm.unitId);
+    updateMutation.mutate(
+      {
+        id: editTarget.id,
+        data: {
+          nameEn: editForm.nameEn || undefined,
+          nameAr: editForm.nameAr || undefined,
+          role: editForm.role || undefined,
+          department: isDoc
+            ? (selectedUnit?.nameEn ?? editForm.department ?? undefined)
+            : (editForm.department || undefined),
+          email: editForm.email || undefined,
+          phone: editForm.phone || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
+          toast({ title: "Staff updated", description: `${editForm.nameEn} has been updated.` });
+          setEditTarget(null);
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to update staff member." }),
+      }
+    );
+  };
 
   const { data: staff, isLoading } = useListStaff({});
   const { data: units = [] } = useListUnits();
@@ -639,6 +688,115 @@ export default function Staff() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Staff Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={v => { if (!v) setEditTarget(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" />
+              Edit Staff Profile
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("staff.nameEn")} *</Label>
+                <Input required value={editForm.nameEn}
+                  onChange={e => setEditForm(p => ({ ...p, nameEn: e.target.value }))}
+                  placeholder="e.g. Dr. Ahmed Ali" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("staff.nameAr")}</Label>
+                <Input dir="rtl" value={editForm.nameAr}
+                  onChange={e => setEditForm(p => ({ ...p, nameAr: e.target.value }))}
+                  className="font-tajawal" placeholder="مثال: د. أحمد علي" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("generic.role")} *</Label>
+                <Select value={editForm.role} onValueChange={v => setEditForm(p => ({ ...p, role: v, unitId: "", department: "" }))}>
+                  <SelectTrigger><SelectValue placeholder={t("staff.selectRole")} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel className="flex items-center gap-1.5 text-primary font-semibold">🩺 {t("staff.doctorCategory")}</SelectLabel>
+                      <SelectItem value="house_officer">{t("staff.houseOfficer")}</SelectItem>
+                      <SelectItem value="medical_officer">{t("staff.medicalOfficer")}</SelectItem>
+                      <SelectItem value="registrar">Registrar</SelectItem>
+                      <SelectItem value="consultant">{t("staff.consultant")}</SelectItem>
+                      <SelectItem value="specialist">{t("staff.specialist")}</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel className="text-muted-foreground font-semibold">{t("staff.clinicalCategory")}</SelectLabel>
+                      <SelectItem value="nurse">{t("staff.nurse")}</SelectItem>
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel className="text-muted-foreground font-semibold">{t("staff.supportCategory")}</SelectLabel>
+                      <SelectItem value="pharmacist">{t("staff.pharmacist")}</SelectItem>
+                      <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
+                      <SelectItem value="admin">{t("staff.admin")}</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                {DOCTOR_ROLES.includes(editForm.role) ? (
+                  <>
+                    <Label>{t("patient.unit")}</Label>
+                    <Select value={editForm.unitId} onValueChange={v => setEditForm(p => ({ ...p, unitId: v }))}>
+                      <SelectTrigger><SelectValue placeholder={t("units.selectUnit")} /></SelectTrigger>
+                      <SelectContent>
+                        {units.filter(u => u.status === "active").map(u => (
+                          <SelectItem key={u.id} value={String(u.id)}>
+                            <span className="font-medium">{u.nameEn}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                ) : (
+                  <>
+                    <Label>{t("generic.department")} *</Label>
+                    <Input required={!DOCTOR_ROLES.includes(editForm.role)} value={editForm.department}
+                      onChange={e => setEditForm(p => ({ ...p, department: e.target.value }))}
+                      placeholder="e.g. Pediatrics" />
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>{t("generic.email")}</Label>
+                <Input type="email" value={editForm.email}
+                  onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("generic.phone")}</Label>
+                <Input type="tel" value={editForm.phone}
+                  onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>
+                {t("generic.cancel")}
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending
+                  ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  : <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
+                {t("generic.save")}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Role Authorities Panel */}
       {showAuthorities && (
         <Card>
@@ -806,18 +964,29 @@ export default function Staff() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {isActive && (
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs"
-                            disabled={updateMutation.isPending}
-                            onClick={() => handleCancelAccount(member.id, member.nameEn)}
+                            className="gap-1.5 text-xs"
+                            onClick={() => openEdit(member)}
                           >
-                            <UserX className="h-3.5 w-3.5" />
-                            Cancel Account
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
                           </Button>
-                        )}
+                          {isActive && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs"
+                              disabled={updateMutation.isPending}
+                              onClick={() => handleCancelAccount(member.id, member.nameEn)}
+                            >
+                              <UserX className="h-3.5 w-3.5" />
+                              Cancel Account
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
