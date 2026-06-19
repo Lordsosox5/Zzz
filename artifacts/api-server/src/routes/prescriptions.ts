@@ -25,7 +25,20 @@ router.get("/prescriptions", async (req, res): Promise<void> => {
   if (params.data.status) query = query.eq("status", params.data.status);
   const { data, error } = await query;
   if (dbError(error, res)) return;
-  res.json((data ?? []).map(formatRx));
+  const rxList = data ?? [];
+  const patientIds = [...new Set(rxList.map((o: Record<string, unknown>) => o.patient_id).filter(Boolean))];
+  let patientMap: Record<number, string> = {};
+  if (patientIds.length > 0) {
+    const { data: patients } = await supabase.from("patients").select("id,name_en").in("id", patientIds);
+    if (patients) {
+      for (const p of patients as Array<{ id: number; name_en: string }>) patientMap[p.id] = p.name_en;
+    }
+  }
+  res.json(rxList.map((row: Record<string, unknown>) => ({
+    ...mapRow(row),
+    patientName: patientMap[(row.patient_id as number)] ?? null,
+    prescriberName: null,
+  })));
 });
 
 router.post("/prescriptions", async (req, res): Promise<void> => {

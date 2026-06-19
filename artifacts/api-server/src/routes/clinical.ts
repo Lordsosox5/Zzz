@@ -20,7 +20,20 @@ router.get("/clinical-notes", async (req, res): Promise<void> => {
   if (params.data.type) query = query.eq("type", params.data.type);
   const { data, error } = await query;
   if (dbError(error, res)) return;
-  res.json(mapRows(data ?? []).map((n: Record<string, unknown>) => ({ ...n, authorName: null })));
+  const notes = data ?? [];
+  const patientIds = [...new Set(notes.map((n: Record<string, unknown>) => n.patient_id).filter(Boolean))];
+  let patientMap: Record<number, string> = {};
+  if (patientIds.length > 0) {
+    const { data: patients } = await supabase.from("patients").select("id,name_en").in("id", patientIds);
+    if (patients) {
+      for (const p of patients as Array<{ id: number; name_en: string }>) patientMap[p.id] = p.name_en;
+    }
+  }
+  res.json(mapRows(notes).map((n: Record<string, unknown>) => ({
+    ...n,
+    patientName: patientMap[(n.patientId as number)] ?? null,
+    authorName: null,
+  })));
 });
 
 router.post("/clinical-notes", async (req, res): Promise<void> => {

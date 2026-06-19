@@ -106,6 +106,7 @@ export default function ClinicalNotes() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("generic.date")}</TableHead>
+                <TableHead>{t("generic.patient")}</TableHead>
                 <TableHead>{t("generic.type")}</TableHead>
                 <TableHead>{t("notes.author")}</TableHead>
                 <TableHead>{t("notes.preview")}</TableHead>
@@ -114,11 +115,12 @@ export default function ClinicalNotes() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
               ) : notes && notes.length > 0 ? (
                 notes.map((note) => (
                   <TableRow key={note.id}>
                     <TableCell>{new Date(note.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-medium">{(note as Record<string, unknown>).patientName as string ?? '-'}</TableCell>
                     <TableCell><Badge variant="outline">{note.type}</Badge></TableCell>
                     <TableCell>{note.authorName ?? '-'}</TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">{note.content}</TableCell>
@@ -126,7 +128,7 @@ export default function ClinicalNotes() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">{t("notes.noNotes")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{t("notes.noNotes")}</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

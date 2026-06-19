@@ -115,7 +115,7 @@ export default function Radiology() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("generic.date")}</TableHead>
-                <TableHead>{t("generic.patientId")}</TableHead>
+                <TableHead>{t("generic.patient")}</TableHead>
                 <TableHead>{t("radiology.modality")}</TableHead>
                 <TableHead>{t("radiology.studyDesc")}</TableHead>
                 <TableHead>{t("generic.priority")}</TableHead>
@@ -129,7 +129,7 @@ export default function Radiology() {
                 orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>{order.patientId}</TableCell>
+                    <TableCell>{order.patientName ?? order.patientId}</TableCell>
                     <TableCell className="uppercase font-mono text-xs">{order.modality}</TableCell>
                     <TableCell>{order.studyDescription}</TableCell>
                     <TableCell>
