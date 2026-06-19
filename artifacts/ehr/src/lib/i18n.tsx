@@ -12,6 +12,7 @@ interface Translations {
 const translations: Translations = {
   // General
   "app.title": { en: "Almuzini Children Hospital", ar: "مستشفى المزيني للأطفال" },
+  "app.shortTitle": { en: "Almuzini Hospital", ar: "مستشفى المزيني" },
   "app.subtitle": { en: "Pediatric EHR", ar: "نظام السجلات الطبية للأطفال" },
   "nav.dashboard": { en: "Dashboard", ar: "لوحة القيادة" },
   "nav.patients": { en: "Patients", ar: "المرضى" },

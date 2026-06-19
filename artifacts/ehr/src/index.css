@@ -67,6 +67,15 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-width: 1024px;
+}
+
 :root {
   --background: 210 20% 98%;
   --foreground: 222.2 84% 4.9%;
