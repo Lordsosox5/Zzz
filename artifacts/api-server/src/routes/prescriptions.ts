@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
+import { db, prescriptionsTable } from "../lib/db";
+import { eq, asc } from "drizzle-orm";
 import {
   ListPrescriptionsQueryParams,
   CreatePrescriptionBody,
@@ -11,7 +12,7 @@ import {
 const router = Router();
 
 function formatRx(row: Record<string, unknown>) {
-  return { ...mapRow(row), patientName: null, prescriberName: null };
+  return { ...row, patientName: null, prescriberName: null };
 }
 
 router.get("/prescriptions", async (req, res): Promise<void> => {
@@ -20,12 +21,16 @@ router.get("/prescriptions", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  let query = supabase.from("prescriptions").select().order("created_at");
-  if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
-  if (params.data.status) query = query.eq("status", params.data.status);
-  const { data, error } = await query;
-  if (dbError(error, res)) return;
-  res.json((data ?? []).map(formatRx));
+  try {
+    let query = db.select().from(prescriptionsTable).orderBy(asc(prescriptionsTable.createdAt));
+    if (params.data.patientId) {
+      query = query.where(eq(prescriptionsTable.patientId, params.data.patientId)) as typeof query;
+    }
+    const data = await query;
+    res.json(data.map((r) => formatRx(r as unknown as Record<string, unknown>)));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 router.post("/prescriptions", async (req, res): Promise<void> => {
@@ -34,13 +39,15 @@ router.post("/prescriptions", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { data, error } = await supabase
-    .from("prescriptions")
-    .insert({ ...toSnake(parsed.data as Record<string, unknown>), prescriber_id: 1 })
-    .select()
-    .single();
-  if (dbError(error, res)) return;
-  res.status(201).json(formatRx(data));
+  try {
+    const rows = await db
+      .insert(prescriptionsTable)
+      .values({ ...parsed.data, prescriberId: 1 })
+      .returning();
+    res.status(201).json(formatRx(rows[0] as unknown as Record<string, unknown>));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 router.get("/prescriptions/:id", async (req, res): Promise<void> => {
@@ -49,14 +56,13 @@ router.get("/prescriptions/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const { data, error } = await supabase
-    .from("prescriptions")
-    .select()
-    .eq("id", params.data.id)
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Prescription not found" }); return; }
-  res.json(formatRx(data));
+  try {
+    const rows = await db.select().from(prescriptionsTable).where(eq(prescriptionsTable.id, params.data.id)).limit(1);
+    if (!rows[0]) { res.status(404).json({ error: "Prescription not found" }); return; }
+    res.json(formatRx(rows[0] as unknown as Record<string, unknown>));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 router.patch("/prescriptions/:id", async (req, res): Promise<void> => {
@@ -70,15 +76,17 @@ router.patch("/prescriptions/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { data, error } = await supabase
-    .from("prescriptions")
-    .update(toSnake(parsed.data as Record<string, unknown>))
-    .eq("id", params.data.id)
-    .select()
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Prescription not found" }); return; }
-  res.json(formatRx(data));
+  try {
+    const rows = await db
+      .update(prescriptionsTable)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(eq(prescriptionsTable.id, params.data.id))
+      .returning();
+    if (!rows[0]) { res.status(404).json({ error: "Prescription not found" }); return; }
+    res.json(formatRx(rows[0] as unknown as Record<string, unknown>));
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 export default router;
