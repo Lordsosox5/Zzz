@@ -8,13 +8,6 @@ import {
   UpdatePatientBody,
   GetPatientSummaryParams,
 } from "@workspace/api-zod";
-import {
-  assignPatientToUnit,
-  removePatientFromUnit,
-  getPatientsInUnit,
-  getUnitForUser,
-  getUnitForPatient,
-} from "../lib/unit-store";
 import { units } from "./units";
 
 const router = Router();
@@ -46,7 +39,7 @@ export async function initMrnCounter(): Promise<void> {
   }
 }
 
-async function getCallerInfo(authHeader: string | undefined): Promise<{ id: number; role: string } | null> {
+async function getCallerInfo(authHeader: string | undefined): Promise<{ id: number; role: string; unitId: number | null } | null> {
   if (!authHeader) return null;
   try {
     const token = authHeader.replace("Bearer ", "");
@@ -54,11 +47,11 @@ async function getCallerInfo(authHeader: string | undefined): Promise<{ id: numb
     const [userId] = decoded.split(":");
     const { data: user } = await supabase
       .from("users")
-      .select("id, role")
+      .select("id, role, unit_id")
       .eq("id", parseInt(userId, 10))
       .maybeSingle();
     if (!user) return null;
-    return { id: Number(user.id), role: user.role as string };
+    return { id: Number(user.id), role: user.role as string, unitId: (user.unit_id as number | null) ?? null };
   } catch {
     return null;
   }
@@ -78,19 +71,12 @@ router.get("/patients", async (req, res): Promise<void> => {
   const isUnitRestricted = caller && UNIT_RESTRICTED_ROLES.includes(caller.role);
 
   if (isUnitRestricted) {
-    const unitId = getUnitForUser(caller.id);
-    if (unitId !== undefined) {
-      // Return only patients assigned to this unit
-      const patientIds = getPatientsInUnit(unitId);
-      if (patientIds.length === 0) {
-        res.json({ patients: [], total: 0, page, limit });
-        return;
-      }
-
+    if (caller.unitId !== null) {
+      // Return only patients assigned to this unit (read from Supabase unit_id column)
       let query = supabase
         .from("patients")
         .select("*", { count: "exact" })
-        .in("id", patientIds);
+        .eq("unit_id", caller.unitId);
       if (search) {
         query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%,name_ar.ilike.%${search}%`);
       }
@@ -101,7 +87,7 @@ router.get("/patients", async (req, res): Promise<void> => {
       res.json({ patients: mapRows(data ?? []), total: count ?? 0, page, limit });
       return;
     }
-    // Unit-restricted role but no unit assigned yet → return empty list
+    // Unit-restricted role but no unit assigned → return empty list
     res.json({ patients: [], total: 0, page, limit });
     return;
   }
@@ -135,15 +121,10 @@ router.post("/patients", async (req, res): Promise<void> => {
   const mrn = generateMRN();
   const { data, error } = await supabase
     .from("patients")
-    .insert({ ...toSnake(parsed.data as Record<string, unknown>), mrn })
+    .insert({ ...toSnake(parsed.data as Record<string, unknown>), mrn, unit_id: unitId ?? null })
     .select()
     .single();
   if (dbError(error, res)) return;
-
-  // Record unit assignment if provided
-  if (unitId && data?.id) {
-    assignPatientToUnit(Number(data.id), unitId);
-  }
 
   res.status(201).json(mapRow(data));
 });
@@ -189,8 +170,13 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
 router.get("/patients/:id/unit", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid patient id" }); return; }
-  const unitId = getUnitForPatient(id);
-  if (unitId === undefined) {
+  const { data: patient } = await supabase
+    .from("patients")
+    .select("unit_id")
+    .eq("id", id)
+    .maybeSingle();
+  const unitId = patient?.unit_id ?? null;
+  if (!unitId) {
     res.json({ unitId: null, unitNameEn: null, unitNameAr: null });
     return;
   }
@@ -209,7 +195,7 @@ router.patch("/patients/:id/unit", async (req, res): Promise<void> => {
   const { unitId } = req.body as { unitId: number | null };
 
   if (unitId === null || unitId === undefined) {
-    removePatientFromUnit(id);
+    await supabase.from("patients").update({ unit_id: null }).eq("id", id);
     res.json({ unitId: null, unitNameEn: null, unitNameAr: null });
     return;
   }
@@ -217,7 +203,7 @@ router.patch("/patients/:id/unit", async (req, res): Promise<void> => {
   const unit = units.find(u => u.id === unitId);
   if (!unit) { res.status(404).json({ error: "Unit not found" }); return; }
 
-  assignPatientToUnit(id, unitId);
+  await supabase.from("patients").update({ unit_id: unitId }).eq("id", id);
   res.json({
     unitId,
     unitNameEn: unit.nameEn,

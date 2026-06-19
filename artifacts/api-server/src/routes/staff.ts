@@ -7,7 +7,6 @@ import {
   UpdateStaffParams,
   UpdateStaffBody,
 } from "@workspace/api-zod";
-import { assignUserToUnit, userUnitMap } from "../lib/unit-store";
 
 const router = Router();
 
@@ -24,17 +23,18 @@ function computeExpiryDate(role: string): string | null {
 
 function formatStaff(u: Record<string, unknown>) {
   const id = Number(u.id);
+  const role = u.role as string;
   const accountExpiryDate = expiryStore.has(id)
     ? expiryStore.get(id) ?? null
-    : u.role === "house_officer" ? computeExpiryDate("house_officer") : null;
+    : role === "house_officer" ? computeExpiryDate("house_officer") : null;
 
   return {
     id: u.id,
     nameEn: u.name_en,
     nameAr: u.name_ar ?? null,
-    role: u.role,
+    role,
     department: u.department ?? "General",
-    unitId: userUnitMap.get(id) ?? null,
+    unitId: u.unit_id ?? null,
     specialization: null,
     email: u.email ?? null,
     phone: u.phone ?? null,
@@ -76,6 +76,7 @@ router.post("/staff", async (req, res): Promise<void> => {
       email: parsed.data.email ?? null,
       phone: parsed.data.phone ?? null,
       is_active: true,
+      unit_id: unitId ?? null,
     })
     .select()
     .single();
@@ -84,10 +85,6 @@ router.post("/staff", async (req, res): Promise<void> => {
   const id = Number(data.id);
   const expiry = computeExpiryDate(parsed.data.role);
   expiryStore.set(id, expiry);
-
-  if (unitId) {
-    assignUserToUnit(id, unitId);
-  }
 
   res.status(201).json({ ...formatStaff(data), username, password });
 });
@@ -115,11 +112,15 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const updates: Record<string, unknown> = {};
   if (parsed.data.nameEn) updates.name_en = parsed.data.nameEn;
-  if (parsed.data.nameAr) updates.name_ar = parsed.data.nameAr;
+  if (parsed.data.nameAr !== undefined) updates.name_ar = parsed.data.nameAr;
+  if (parsed.data.role) updates.role = parsed.data.role;
   if (parsed.data.department) updates.department = parsed.data.department;
-  if (parsed.data.phone) updates.phone = parsed.data.phone;
+  if (parsed.data.email !== undefined) updates.email = parsed.data.email;
+  if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
   if (parsed.data.status) updates.is_active = parsed.data.status === "active";
   if (parsed.data.password) updates.password = parsed.data.password;
+  if (unitId !== undefined) updates.unit_id = unitId;
+
   const { data, error } = await supabase
     .from("users")
     .update(updates)
@@ -128,15 +129,6 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
     .maybeSingle();
   if (error) { res.status(500).json({ error: error.message }); return; }
   if (!data) { res.status(404).json({ error: "Staff member not found" }); return; }
-
-  const staffId = Number(data.id);
-  if (unitId !== undefined) {
-    if (unitId === null) {
-      userUnitMap.delete(staffId);
-    } else {
-      assignUserToUnit(staffId, unitId);
-    }
-  }
 
   res.json(formatStaff(data));
 });
