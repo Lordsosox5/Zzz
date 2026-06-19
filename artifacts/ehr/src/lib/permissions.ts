@@ -129,7 +129,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Prescribe medications under consultant approval", ar: "وصف الأدوية بموافقة الاستشاري" },
       { en: "Manage appointments and admissions", ar: "إدارة المواعيد والدخول" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/units"],
+    allowedNav: ["/dashboard", "/clinical-notes", "/prescriptions", "/lab", "/radiology"],
   },
   medical_officer: {
     label: { en: "Medical Officer", ar: "ضابط طبي" },
@@ -143,7 +143,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Manage unit admissions and discharges", ar: "إدارة دخول وخروج مرضى الوحدة" },
       { en: "Supervise house officers", ar: "الإشراف على الأطباء المقيمين" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units"],
+    allowedNav: ["/dashboard", "/clinical-notes", "/prescriptions", "/lab", "/radiology"],
   },
   registrar: {
     label: { en: "Registrar", ar: "طبيب تخصصي" },
@@ -178,6 +178,10 @@ const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
 
 export function isLabRole(role: string): boolean {
   return ["lab_technician"].includes(role);
+}
+
+export function isUnitRole(role: string): boolean {
+  return ["house_officer", "medical_officer"].includes(role);
 }
 
 export function getAllowedPatientTabs(role: string): PatientTab[] {

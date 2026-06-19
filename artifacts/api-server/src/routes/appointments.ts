@@ -62,17 +62,20 @@ router.post("/appointments", async (req, res): Promise<void> => {
   res.status(201).json(await enrichAppointment(data));
 });
 
-router.get("/appointments/today", async (_req, res): Promise<void> => {
+router.get("/appointments/today", async (req, res): Promise<void> => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = new Date();
   end.setHours(23, 59, 59, 999);
-  const { data, error } = await supabase
+  const doctorId = req.query.doctorId ? Number(req.query.doctorId) : null;
+  let query = supabase
     .from("appointments")
     .select()
     .gte("scheduled_at", start.toISOString())
     .lte("scheduled_at", end.toISOString())
     .order("scheduled_at");
+  if (doctorId) query = query.eq("doctor_id", doctorId);
+  const { data, error } = await query;
   if (dbError(error, res)) return;
   const enriched = await Promise.all((data ?? []).map(enrichAppointment));
   res.json(enriched);

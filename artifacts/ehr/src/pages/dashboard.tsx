@@ -5,11 +5,12 @@ import {
   useGetBedOccupancy,
   useGetRevenueStats,
   useListLabOrders,
+  useListAppointments,
   getGetDashboardStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
-import { isLabRole } from "@/lib/permissions";
+import { isLabRole, isUnitRole } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,7 @@ import {
   Users, Calendar, Activity, FlaskConical, DollarSign,
   BedDouble, AlertTriangle, Info, Clock, CheckCircle2,
   ArrowUpRight, ArrowDownRight, Minus, UserPlus,
-  Pill, ClipboardList, TrendingUp, ShieldAlert, Package,
+  Pill, ClipboardList, TrendingUp, ShieldAlert, Package, FileText,
 } from "lucide-react";
 
 function getGreeting(hour: number): "dash.goodMorning" | "dash.goodAfternoon" | "dash.goodEvening" {
@@ -671,7 +672,268 @@ function LabDashboard() {
   );
 }
 
+function UnitDashboard() {
+  const { t, isRtl } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const { data: myAppointments, isLoading: apptLoading } = useListAppointments({
+    date: todayStr,
+    doctorId: user?.id,
+  });
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
+    query: { queryKey: getGetDashboardStatsQueryKey() },
+  });
+  const { data: alerts, isLoading: alertsLoading } = useGetDashboardAlerts();
+
+  const myPatients = myAppointments ?? [];
+  const uniquePatientCount = new Set(myPatients.map((a: any) => a.patientId)).size;
+
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const roleLabelMap: Record<string, { en: string; ar: string }> = {
+    house_officer: { en: "House Officer Dashboard", ar: "لوحة تحكم الطبيب المقيم" },
+    medical_officer: { en: "Medical Officer Dashboard", ar: "لوحة تحكم الضابط الطبي" },
+  };
+  const roleLabel = isRtl
+    ? (roleLabelMap[user?.role]?.ar ?? "Unit Dashboard")
+    : (roleLabelMap[user?.role]?.en ?? "Unit Dashboard");
+
+  const unitStats = [
+    {
+      label: isRtl ? "مرضاي اليوم" : "My Patients Today",
+      value: apptLoading ? undefined : uniquePatientCount,
+      icon: Users,
+      iconColor: "text-blue-600",
+      iconBg: "bg-blue-500/10",
+      loading: apptLoading,
+    },
+    {
+      label: t("dash.pendingLabs"),
+      value: stats?.pendingLabOrders,
+      icon: FlaskConical,
+      iconColor: "text-amber-600",
+      iconBg: "bg-amber-500/10",
+      loading: statsLoading,
+    },
+    {
+      label: t("dash.pendingRx"),
+      value: stats?.pendingPrescriptions,
+      icon: Pill,
+      iconColor: "text-orange-600",
+      iconBg: "bg-orange-500/10",
+      loading: statsLoading,
+    },
+    {
+      label: t("dash.alerts"),
+      value: stats?.criticalAlerts,
+      icon: AlertTriangle,
+      iconColor: "text-red-600",
+      iconBg: "bg-red-500/10",
+      loading: statsLoading,
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{roleLabel}</p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {t(getGreeting(hour))}, {displayName} 👋
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isRtl ? "عرض مرضاك المعيّنين اليوم" : "Showing your assigned patients for today"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={() => navigate("/lab?new=1")} className="gap-1.5">
+            <FlaskConical className="h-4 w-4" />
+            {t("nav.lab")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/prescriptions?new=1")} className="gap-1.5">
+            <Pill className="h-4 w-4" />
+            {t("nav.prescriptions")}
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {unitStats.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="relative overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? (
+                      <Skeleton className="h-8 w-16" />
+                    ) : (
+                      <p className="text-3xl font-bold tracking-tight">{s.value ?? 0}</p>
+                    )}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.iconBg} ${s.iconColor} shrink-0`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* My Patients Today + Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* My Patients Today */}
+        <Card className="lg:col-span-2 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              {isRtl ? "مرضاي اليوم" : "My Patients Today"}
+            </CardTitle>
+            <Badge variant="secondary">{myPatients.length} {isRtl ? "موعد" : "appointments"}</Badge>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            {apptLoading ? (
+              <div className="space-y-0">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
+                    <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-3.5 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : myPatients.length > 0 ? (
+              <div className="divide-y">
+                {myPatients.map((appt: any) => {
+                  const time = new Date(appt.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <div key={appt.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                        {initials(appt.patientName)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{appt.patientName ?? `#${appt.patientId}`}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-xs text-muted-foreground">{time}</span>
+                          <span className="text-muted-foreground/40">·</span>
+                          {apptTypeBadge(appt.type)}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-2">
+                        {apptStatusBadge(appt.status)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Clock className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">{isRtl ? "لا مواعيد اليوم" : "No appointments assigned to you today"}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Alerts */}
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-500" />
+              {t("dash.alerts")}
+            </CardTitle>
+            {alerts && alerts.length > 0 && (
+              <Badge variant="destructive" className="text-xs">{alerts.length}</Badge>
+            )}
+          </CardHeader>
+          <CardContent className="p-4 flex-1">
+            {alertsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+              </div>
+            ) : alerts && alerts.length > 0 ? (
+              <div className="space-y-2.5">
+                {alerts.slice(0, 5).map((alert: any) => (
+                  <div
+                    key={alert.id}
+                    className={`flex items-start gap-2.5 p-3 rounded-lg border text-sm ${alertStyle(alert.severity ?? "info")}`}
+                  >
+                    <AlertSeverityIcon severity={alert.severity ?? "info"} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium leading-snug text-sm">
+                        {isRtl && alert.messageAr ? alert.messageAr : alert.message}
+                      </p>
+                      {alert.patientName && (
+                        <p className="text-xs text-muted-foreground mt-1">{t("dash.patient")}: {alert.patientName}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(alert.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{t("dash.noAlerts")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick actions for clinical work */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: isRtl ? "الملاحظات السريرية" : "Clinical Notes", icon: FileText, path: "/clinical-notes", color: "text-blue-600", bg: "bg-blue-500/10" },
+          { label: isRtl ? "الوصفات الطبية" : "Prescriptions", icon: Pill, path: "/prescriptions", color: "text-orange-600", bg: "bg-orange-500/10" },
+          { label: isRtl ? "المختبر" : "Laboratory", icon: FlaskConical, path: "/lab", color: "text-amber-600", bg: "bg-amber-500/10" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card
+              key={item.path}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate(item.path)}
+            >
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${item.bg} ${item.color}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{isRtl ? "انقر للفتح" : "Click to open"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const user = getUser();
-  return isLabRole(user?.role ?? "") ? <LabDashboard /> : <GeneralDashboard />;
+  if (isLabRole(user?.role ?? "")) return <LabDashboard />;
+  if (isUnitRole(user?.role ?? "")) return <UnitDashboard />;
+  return <GeneralDashboard />;
 }
