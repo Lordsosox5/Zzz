@@ -136,6 +136,22 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     ],
     allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units"],
   },
+  registrar: {
+    label: { en: "Registrar", ar: "طبيب تخصصي" },
+    description: { en: "Specialist-in-training managing ward patients and specialist clinics under consultant oversight", ar: "طبيب في التدريب التخصصي يدير مرضى الجناح والعيادات المتخصصة تحت إشراف الاستشاري" },
+    badgeClass: "bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-900/30 dark:text-rose-300",
+    authorities: [
+      { en: "View and manage patient records in assigned unit", ar: "عرض وإدارة سجلات المرضى في الوحدة المعينة" },
+      { en: "Write clinical notes, progress notes and discharge summaries", ar: "كتابة الملاحظات السريرية وملاحظات التقدم وملخصات الخروج" },
+      { en: "Prescribe medications within consultant-approved protocols", ar: "وصف الأدوية ضمن البروتوكولات المعتمدة من الاستشاري" },
+      { en: "Order and review lab and radiology investigations", ar: "طلب ومراجعة الفحوصات المخبرية والأشعة" },
+      { en: "Perform ward rounds and patient assessments", ar: "إجراء جولات الجناح وتقييم المرضى" },
+      { en: "Manage on-call admissions under supervision", ar: "إدارة دخول مرضى النداء تحت الإشراف" },
+      { en: "Supervise and teach house officers", ar: "الإشراف على الأطباء المقيمين وتدريبهم" },
+      { en: "Participate in specialist outpatient clinics", ar: "المشاركة في العيادات الخارجية المتخصصة" },
+    ],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units"],
+  },
 };
 
 export type PatientTab = "overview" | "notes" | "prescriptions" | "labs";
@@ -165,11 +181,11 @@ export function canEnterLabResults(role: string): boolean {
 }
 
 export function canWriteClinicalNotes(role: string): boolean {
-  return ["admin", "consultant", "specialist", "house_officer", "medical_officer"].includes(role);
+  return ["admin", "consultant", "specialist", "house_officer", "medical_officer", "registrar"].includes(role);
 }
 
 export function canPrescribe(role: string): boolean {
-  return ["admin", "consultant", "specialist", "house_officer", "medical_officer"].includes(role);
+  return ["admin", "consultant", "specialist", "house_officer", "medical_officer", "registrar"].includes(role);
 }
 
 export function canDispensePrescription(role: string): boolean {

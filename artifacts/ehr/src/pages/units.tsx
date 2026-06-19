@@ -3,20 +3,22 @@ import { useListUnits, useCreateUnit, useUpdateUnit, getListUnitsQueryKey } from
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
-import { canManageUnits } from "@/lib/permissions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { canManageUnits, ROLE_DEFINITIONS } from "@/lib/permissions";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Plus, Pencil, BedDouble, Layers, Users, PowerOff, Power, Loader2,
+  ChevronDown, ChevronRight, ShieldCheck,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,6 +33,7 @@ interface UnitForm {
   floor: string;
   capacity: string;
   status: UnitStatus;
+  allowedRoles: Record<string, boolean>;
 }
 
 const UNIT_TYPES: { value: UnitType; labelKey: string; color: string }[] = [
@@ -42,9 +45,95 @@ const UNIT_TYPES: { value: UnitType; labelKey: string; color: string }[] = [
   { value: "outpatient", labelKey: "units.outpatient", color: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300" },
 ];
 
+// The three junior medical roles configurable per unit
+const UNIT_STAFF_ROLES = ["house_officer", "medical_officer", "registrar"] as const;
+
+const DEFAULT_ALLOWED_ROLES: Record<string, boolean> = {
+  house_officer: true,
+  medical_officer: true,
+  registrar: true,
+};
+
 const EMPTY_FORM: UnitForm = {
   nameEn: "", nameAr: "", type: "ward", description: "", floor: "", capacity: "", status: "active",
+  allowedRoles: { ...DEFAULT_ALLOWED_ROLES },
 };
+
+// ── Role permission panel ──────────────────────────────────────────────────────
+function RolePermissionPanel({
+  roleKey,
+  enabled,
+  onToggle,
+}: {
+  roleKey: string;
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const def = ROLE_DEFINITIONS[roleKey];
+  if (!def) return null;
+
+  return (
+    <div className={`rounded-lg border transition-colors ${enabled ? "border-border bg-card" : "border-dashed border-muted-foreground/30 bg-muted/20 opacity-60"}`}>
+      {/* Role header row */}
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <Checkbox
+          id={`role-${roleKey}`}
+          checked={enabled}
+          onCheckedChange={(v) => onToggle(Boolean(v))}
+        />
+        <div className="flex-1 min-w-0">
+          <label
+            htmlFor={`role-${roleKey}`}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <Badge variant="outline" className={`text-xs font-medium shrink-0 ${def.badgeClass}`}>
+              {def.label.en}
+            </Badge>
+            <span className="text-xs text-muted-foreground font-tajawal truncate" dir="rtl">
+              {def.label.ar}
+            </span>
+          </label>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded(p => !p)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Permissions
+          {expanded
+            ? <ChevronDown className="h-3 w-3" />
+            : <ChevronRight className="h-3 w-3" />}
+        </button>
+      </div>
+
+      {/* Expandable permissions list */}
+      {expanded && (
+        <div className="px-3 pb-3 border-t pt-2.5 space-y-1">
+          <p className="text-xs text-muted-foreground mb-2 italic">{def.description.en}</p>
+          <ul className="space-y-1">
+            {def.authorities.map((auth, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs">
+                <span className="mt-0.5 flex-shrink-0 h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
+                  ✓
+                </span>
+                <div>
+                  <span className={enabled ? "text-foreground" : "text-muted-foreground"}>
+                    {auth.en}
+                  </span>
+                  <span className="block text-muted-foreground font-tajawal text-[11px]" dir="rtl">
+                    {auth.ar}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Unit card ─────────────────────────────────────────────────────────────────
 function UnitCard({
@@ -142,6 +231,8 @@ export default function Units() {
   const [showInactive, setShowInactive] = useState(false);
 
   const setField = (k: keyof UnitForm, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const toggleRole = (roleKey: string, enabled: boolean) =>
+    setForm(p => ({ ...p, allowedRoles: { ...p.allowedRoles, [roleKey]: enabled } }));
 
   const openAdd = () => { setForm(EMPTY_FORM); setEditingId(null); setDialogOpen(true); };
   const openEdit = (unit: typeof units[0]) => {
@@ -153,6 +244,7 @@ export default function Units() {
       floor: (unit as { floor?: string | null }).floor ?? "",
       capacity: String(unit.capacity),
       status: (unit.status as UnitStatus) ?? "active",
+      allowedRoles: { ...DEFAULT_ALLOWED_ROLES },
     });
     setEditingId(unit.id);
     setDialogOpen(true);
@@ -293,12 +385,13 @@ export default function Units() {
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? t("units.edit") : t("units.add")}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-5 py-2">
+            {/* Basic info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>{t("units.nameEn")} *</Label>
@@ -353,6 +446,28 @@ export default function Units() {
               <Label>{t("units.description")}</Label>
               <Textarea value={form.description} onChange={e => setField("description", e.target.value)}
                 placeholder="Optional description…" className="min-h-[70px]" />
+            </div>
+
+            {/* Staff Roles & Permissions */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Staff Roles &amp; Permissions</h3>
+                <span className="text-xs text-muted-foreground">— configure access for this unit</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enable or disable each role for this unit. Click <strong>Permissions</strong> to view what each role can do.
+              </p>
+              <div className="space-y-2">
+                {UNIT_STAFF_ROLES.map(roleKey => (
+                  <RolePermissionPanel
+                    key={roleKey}
+                    roleKey={roleKey}
+                    enabled={form.allowedRoles[roleKey] ?? true}
+                    onToggle={v => toggleRole(roleKey, v)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
