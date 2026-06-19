@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,11 +28,15 @@ export default function Prescriptions() {
   const createMutation = useCreatePrescription();
   const updateMutation = useUpdatePrescription();
 
-  const [form, setForm] = useState({ patientId: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
+  const [form, setForm] = useState({ patientId: "", patientName: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.patientId) {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("generic.selectPatient") });
+      return;
+    }
     createMutation.mutate(
       { data: { patientId: Number(form.patientId), drugName: form.drugName, dosage: form.dosage, frequency: form.frequency, duration: form.duration || undefined, route: form.route || undefined, instructions: form.instructions || undefined } },
       {
@@ -39,7 +44,7 @@ export default function Prescriptions() {
           queryClient.invalidateQueries({ queryKey: getListPrescriptionsQueryKey() });
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setIsOpen(false);
-          setForm({ patientId: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
+          setForm({ patientId: "", patientName: "", drugName: "", dosage: "", frequency: "", duration: "", route: "", instructions: "" });
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
@@ -59,8 +64,11 @@ export default function Prescriptions() {
             <DialogHeader><DialogTitle>{t("rx.newPrescription")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="space-y-3">
-                <Label>{t("generic.patientId")} *</Label>
-                <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
+                <Label>{t("generic.patient")} *</Label>
+                <PatientSearchCombobox
+                  value={form.patientId}
+                  onChange={(id, name) => setForm(p => ({ ...p, patientId: id, patientName: name }))}
+                />
               </div>
               <div className="space-y-3">
                 <Label>{t("rx.drugName")} *</Label>

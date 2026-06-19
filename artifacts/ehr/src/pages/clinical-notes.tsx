@@ -6,9 +6,9 @@ import { getUser } from "@/lib/auth";
 import { canWriteClinicalNotes } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,10 +26,14 @@ export default function ClinicalNotes() {
   const { data: notes, isLoading } = useListClinicalNotes({});
   const createMutation = useCreateClinicalNote();
 
-  const [form, setForm] = useState({ patientId: "", type: "soap", content: "" });
+  const [form, setForm] = useState({ patientId: "", patientName: "", type: "soap", content: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.patientId) {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("generic.selectPatient") });
+      return;
+    }
     createMutation.mutate(
       { data: { patientId: Number(form.patientId), type: form.type, content: form.content } },
       {
@@ -37,7 +41,7 @@ export default function ClinicalNotes() {
           queryClient.invalidateQueries({ queryKey: getListClinicalNotesQueryKey() });
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setIsOpen(false);
-          setForm({ patientId: "", type: "soap", content: "" });
+          setForm({ patientId: "", patientName: "", type: "soap", content: "" });
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
@@ -58,8 +62,11 @@ export default function ClinicalNotes() {
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
-                  <Label>{t("notes.patientId")} *</Label>
-                  <Input type="number" required value={form.patientId} onChange={e => setForm(p => ({ ...p, patientId: e.target.value }))} placeholder="e.g. 1" />
+                  <Label>{t("generic.patient")} *</Label>
+                  <PatientSearchCombobox
+                    value={form.patientId}
+                    onChange={(id, name) => setForm(p => ({ ...p, patientId: id, patientName: name }))}
+                  />
                 </div>
                 <div className="space-y-3">
                   <Label>{t("notes.noteType")} *</Label>

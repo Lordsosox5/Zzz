@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 
 export default function Radiology() {
   const { t, isRtl } = useTranslation();
@@ -21,11 +22,15 @@ export default function Radiology() {
   const { data: orders, isLoading } = useListRadiologyOrders({});
   const createMutation = useCreateRadiologyOrder();
 
-  const [form, setForm] = useState({ patientId: "", modality: "x-ray", studyDescription: "", priority: "routine", scheduledAt: "" });
+  const [form, setForm] = useState({ patientId: "", patientName: "", modality: "x-ray", studyDescription: "", priority: "routine", scheduledAt: "" });
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.patientId) {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("generic.selectPatient") });
+      return;
+    }
     createMutation.mutate(
       { data: { patientId: Number(form.patientId), modality: form.modality, studyDescription: form.studyDescription, priority: form.priority || undefined, scheduledAt: form.scheduledAt || undefined } },
       {
@@ -33,7 +38,7 @@ export default function Radiology() {
           queryClient.invalidateQueries({ queryKey: getListRadiologyOrdersQueryKey() });
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setIsOpen(false);
-          setForm({ patientId: "", modality: "x-ray", studyDescription: "", priority: "routine", scheduledAt: "" });
+          setForm({ patientId: "", patientName: "", modality: "x-ray", studyDescription: "", priority: "routine", scheduledAt: "" });
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
@@ -52,8 +57,11 @@ export default function Radiology() {
             <DialogHeader><DialogTitle>{t("radiology.newOrder")}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
               <div className="space-y-3">
-                <Label>{t("generic.patientId")} *</Label>
-                <Input name="patientId" type="number" required value={form.patientId} onChange={handleChange} placeholder="e.g. 1" />
+                <Label>{t("generic.patient")} *</Label>
+                <PatientSearchCombobox
+                  value={form.patientId}
+                  onChange={(id, name) => setForm(p => ({ ...p, patientId: id, patientName: name }))}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
