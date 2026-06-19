@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, appointmentsTable, patientsTable, usersTable } from "../lib/db";
-import { eq, gte, lte, and, asc } from "drizzle-orm";
+import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -12,14 +11,15 @@ import {
 const router = Router();
 
 async function enrichAppointment(a: Record<string, unknown>) {
-  const [patientRows, doctorRows] = await Promise.all([
-    db.select({ nameEn: patientsTable.nameEn }).from(patientsTable).where(eq(patientsTable.id, a.patientId as number)).limit(1),
-    db.select({ nameEn: usersTable.nameEn }).from(usersTable).where(eq(usersTable.id, a.doctorId as number)).limit(1),
+  const [{ data: patient }, { data: doctor }] = await Promise.all([
+    supabase.from("patients").select("name_en").eq("id", a.patient_id).maybeSingle(),
+    supabase.from("users").select("name_en").eq("id", a.doctor_id).maybeSingle(),
   ]);
+  const mapped = mapRow(a);
   return {
-    ...a,
-    patientName: patientRows[0]?.nameEn ?? null,
-    doctorName: doctorRows[0]?.nameEn ?? null,
+    ...mapped,
+    patientName: patient?.name_en ?? null,
+    doctorName: doctor?.name_en ?? null,
   };
 }
 
@@ -30,28 +30,21 @@ router.get("/appointments", async (req, res): Promise<void> => {
     return;
   }
   const { date, doctorId, patientId, status } = params.data;
-  try {
-    const conditions = [];
-    if (patientId) conditions.push(eq(appointmentsTable.patientId, patientId));
-    if (doctorId) conditions.push(eq(appointmentsTable.doctorId, doctorId));
-    if (status) conditions.push(eq(appointmentsTable.status, status));
-    if (date) {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      conditions.push(gte(appointmentsTable.scheduledAt, start));
-      conditions.push(lte(appointmentsTable.scheduledAt, end));
-    }
-    const query = conditions.length > 0
-      ? db.select().from(appointmentsTable).where(and(...conditions)).orderBy(asc(appointmentsTable.scheduledAt))
-      : db.select().from(appointmentsTable).orderBy(asc(appointmentsTable.scheduledAt));
-    const data = await query;
-    const enriched = await Promise.all(data.map((a) => enrichAppointment(a as unknown as Record<string, unknown>)));
-    res.json(enriched);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  let query = supabase.from("appointments").select().order("scheduled_at");
+  if (patientId) query = query.eq("patient_id", patientId);
+  if (doctorId) query = query.eq("doctor_id", doctorId);
+  if (status) query = query.eq("status", status);
+  if (date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    query = query.gte("scheduled_at", start.toISOString()).lte("scheduled_at", end.toISOString());
   }
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  const enriched = await Promise.all((data ?? []).map(enrichAppointment));
+  res.json(enriched);
 });
 
 router.post("/appointments", async (req, res): Promise<void> => {
@@ -60,15 +53,13 @@ router.post("/appointments", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  try {
-    const rows = await db
-      .insert(appointmentsTable)
-      .values({ ...parsed.data, scheduledAt: new Date(parsed.data.scheduledAt) })
-      .returning();
-    res.status(201).json(await enrichAppointment(rows[0] as unknown as Record<string, unknown>));
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  const { data, error } = await supabase
+    .from("appointments")
+    .insert(toSnake(parsed.data as Record<string, unknown>))
+    .select()
+    .single();
+  if (dbError(error, res)) return;
+  res.status(201).json(await enrichAppointment(data));
 });
 
 router.get("/appointments/today", async (_req, res): Promise<void> => {
@@ -76,17 +67,15 @@ router.get("/appointments/today", async (_req, res): Promise<void> => {
   start.setHours(0, 0, 0, 0);
   const end = new Date();
   end.setHours(23, 59, 59, 999);
-  try {
-    const data = await db
-      .select()
-      .from(appointmentsTable)
-      .where(and(gte(appointmentsTable.scheduledAt, start), lte(appointmentsTable.scheduledAt, end)))
-      .orderBy(asc(appointmentsTable.scheduledAt));
-    const enriched = await Promise.all(data.map((a) => enrichAppointment(a as unknown as Record<string, unknown>)));
-    res.json(enriched);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  const { data, error } = await supabase
+    .from("appointments")
+    .select()
+    .gte("scheduled_at", start.toISOString())
+    .lte("scheduled_at", end.toISOString())
+    .order("scheduled_at");
+  if (dbError(error, res)) return;
+  const enriched = await Promise.all((data ?? []).map(enrichAppointment));
+  res.json(enriched);
 });
 
 router.get("/appointments/:id", async (req, res): Promise<void> => {
@@ -95,13 +84,14 @@ router.get("/appointments/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  try {
-    const rows = await db.select().from(appointmentsTable).where(eq(appointmentsTable.id, params.data.id)).limit(1);
-    if (!rows[0]) { res.status(404).json({ error: "Appointment not found" }); return; }
-    res.json(await enrichAppointment(rows[0] as unknown as Record<string, unknown>));
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  const { data, error } = await supabase
+    .from("appointments")
+    .select()
+    .eq("id", params.data.id)
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Appointment not found" }); return; }
+  res.json(await enrichAppointment(data));
 });
 
 router.patch("/appointments/:id", async (req, res): Promise<void> => {
@@ -115,19 +105,15 @@ router.patch("/appointments/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  try {
-    const updateData: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
-    if (parsed.data.scheduledAt) updateData.scheduledAt = new Date(parsed.data.scheduledAt as string);
-    const rows = await db
-      .update(appointmentsTable)
-      .set(updateData)
-      .where(eq(appointmentsTable.id, params.data.id))
-      .returning();
-    if (!rows[0]) { res.status(404).json({ error: "Appointment not found" }); return; }
-    res.json(await enrichAppointment(rows[0] as unknown as Record<string, unknown>));
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  const { data, error } = await supabase
+    .from("appointments")
+    .update(toSnake(parsed.data as Record<string, unknown>))
+    .eq("id", params.data.id)
+    .select()
+    .maybeSingle();
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  if (!data) { res.status(404).json({ error: "Appointment not found" }); return; }
+  res.json(await enrichAppointment(data));
 });
 
 export default router;

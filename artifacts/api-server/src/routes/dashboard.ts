@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, patientsTable, appointmentsTable, labOrdersTable, prescriptionsTable, alertsTable, drugsTable, invoicesTable, activityLogTable } from "../lib/db";
-import { eq, gte, lte, and, count, desc } from "drizzle-orm";
+import { supabase, mapRows, dbError } from "../lib/supabase";
 
 const router = Router();
 
@@ -11,67 +10,65 @@ router.get("/dashboard/stats", async (_req, res): Promise<void> => {
   todayEnd.setHours(23, 59, 59, 999);
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  try {
-    const [
-      [{ value: totalPatients }],
-      [{ value: todayAppointments }],
-      [{ value: pendingLab }],
-      [{ value: pendingRx }],
-      [{ value: newPatients }],
-      [{ value: completedToday }],
-      [{ value: criticalAlerts }],
-      allDrugs,
-      allInvoices,
-    ] = await Promise.all([
-      db.select({ value: count() }).from(patientsTable),
-      db.select({ value: count() }).from(appointmentsTable).where(and(gte(appointmentsTable.scheduledAt, today), lte(appointmentsTable.scheduledAt, todayEnd))),
-      db.select({ value: count() }).from(labOrdersTable).where(eq(labOrdersTable.status, "pending")),
-      db.select({ value: count() }).from(prescriptionsTable).where(eq(prescriptionsTable.status, "active")),
-      db.select({ value: count() }).from(patientsTable).where(gte(patientsTable.createdAt, firstOfMonth)),
-      db.select({ value: count() }).from(appointmentsTable).where(and(eq(appointmentsTable.status, "completed"), gte(appointmentsTable.scheduledAt, today))),
-      db.select({ value: count() }).from(alertsTable).where(eq(alertsTable.isRead, false)),
-      db.select({ stockQuantity: drugsTable.stockQuantity, minStockLevel: drugsTable.minStockLevel }).from(drugsTable),
-      db.select({ totalAmount: invoicesTable.totalAmount }).from(invoicesTable),
-    ]);
+  const [
+    { count: totalPatients },
+    { count: todayAppointments },
+    { count: pendingLab },
+    { count: pendingRx },
+    { count: newPatients },
+    { count: completedToday },
+    { count: criticalAlerts },
+    { data: allDrugs },
+    { data: invoices },
+  ] = await Promise.all([
+    supabase.from("patients").select("*", { count: "exact", head: true }),
+    supabase.from("appointments").select("*", { count: "exact", head: true })
+      .gte("scheduled_at", today.toISOString())
+      .lte("scheduled_at", todayEnd.toISOString()),
+    supabase.from("lab_orders").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("prescriptions").select("*", { count: "exact", head: true }).eq("status", "active"),
+    supabase.from("patients").select("*", { count: "exact", head: true })
+      .gte("created_at", firstOfMonth.toISOString()),
+    supabase.from("appointments").select("*", { count: "exact", head: true })
+      .eq("status", "completed")
+      .gte("scheduled_at", today.toISOString()),
+    supabase.from("alerts").select("*", { count: "exact", head: true }).eq("is_read", false),
+    supabase.from("drugs").select("stock_quantity,min_stock_level"),
+    supabase.from("invoices").select("total_amount"),
+  ]);
 
-    const lowStock = allDrugs.filter(
-      (d) => Number(d.stockQuantity) <= Number(d.minStockLevel)
-    ).length;
+  const lowStock = (allDrugs ?? []).filter(
+    (d: Record<string, unknown>) => Number(d.stock_quantity) <= Number(d.min_stock_level)
+  ).length;
 
-    const totalRevenue = allInvoices.reduce(
-      (sum, inv) => sum + Number(inv.totalAmount ?? 0),
-      0
-    );
+  const totalRevenue = (invoices ?? []).reduce(
+    (sum: number, inv: Record<string, unknown>) => sum + Number(inv.total_amount ?? 0),
+    0
+  );
 
-    res.json({
-      totalPatients: Number(totalPatients),
-      todayAppointments: Number(todayAppointments),
-      activeAdmissions: 12,
-      pendingLabOrders: Number(pendingLab),
-      pendingPrescriptions: Number(pendingRx),
-      totalRevenue,
-      criticalAlerts: Number(criticalAlerts),
-      bedOccupancyRate: 74.5,
-      newPatientsThisMonth: Number(newPatients),
-      completedAppointmentsToday: Number(completedToday),
-      lowStockDrugs: lowStock,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  res.json({
+    totalPatients: totalPatients ?? 0,
+    todayAppointments: todayAppointments ?? 0,
+    activeAdmissions: 12,
+    pendingLabOrders: pendingLab ?? 0,
+    pendingPrescriptions: pendingRx ?? 0,
+    totalRevenue,
+    criticalAlerts: criticalAlerts ?? 0,
+    bedOccupancyRate: 74.5,
+    newPatientsThisMonth: newPatients ?? 0,
+    completedAppointmentsToday: completedToday ?? 0,
+    lowStockDrugs: lowStock,
+  });
 });
 
 router.get("/dashboard/recent-activity", async (_req, res): Promise<void> => {
-  try {
-    const data = await db
-      .select()
-      .from(activityLogTable)
-      .orderBy(desc(activityLogTable.timestamp))
-      .limit(20);
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select()
+    .order("timestamp", { ascending: false })
+    .limit(20);
+  if (dbError(error, res)) return;
+  res.json(mapRows(data ?? []));
 });
 
 router.get("/dashboard/bed-occupancy", async (_req, res): Promise<void> => {
@@ -91,16 +88,13 @@ router.get("/dashboard/bed-occupancy", async (_req, res): Promise<void> => {
 });
 
 router.get("/dashboard/alerts", async (_req, res): Promise<void> => {
-  try {
-    const data = await db
-      .select()
-      .from(alertsTable)
-      .orderBy(desc(alertsTable.timestamp))
-      .limit(20);
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  const { data, error } = await supabase
+    .from("alerts")
+    .select()
+    .order("timestamp", { ascending: false })
+    .limit(20);
+  if (dbError(error, res)) return;
+  res.json(mapRows(data ?? []));
 });
 
 router.get("/dashboard/revenue", async (_req, res): Promise<void> => {
@@ -109,54 +103,48 @@ router.get("/dashboard/revenue", async (_req, res): Promise<void> => {
   const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  try {
-    const allInvoices = await db
-      .select({ totalAmount: invoicesTable.totalAmount, paidAmount: invoicesTable.paidAmount, status: invoicesTable.status, createdAt: invoicesTable.createdAt })
-      .from(invoicesTable);
+  const { data: allInvoices } = await supabase.from("invoices").select("total_amount,paid_amount,status,created_at");
+  const invs = allInvoices ?? [];
 
-    const totalRevenue = allInvoices.reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
-    const paidRevenue = allInvoices
-      .filter((i) => i.status === "paid")
-      .reduce((s, i) => s + Number(i.paidAmount ?? 0), 0);
-    const pendingRevenue = allInvoices
-      .filter((i) => i.status === "pending")
-      .reduce((s, i) => s + (Number(i.totalAmount ?? 0) - Number(i.paidAmount ?? 0)), 0);
-    const thisMonth = allInvoices
-      .filter((i) => i.createdAt && new Date(i.createdAt) >= firstOfMonth)
-      .reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
-    const lastMonth = allInvoices
-      .filter((i) => {
-        if (!i.createdAt) return false;
-        const d = new Date(i.createdAt);
-        return d >= firstOfLastMonth && d <= lastOfLastMonth;
-      })
-      .reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
+  const totalRevenue = invs.reduce((s: number, i: Record<string, unknown>) => s + Number(i.total_amount ?? 0), 0);
+  const paidRevenue = invs
+    .filter((i: Record<string, unknown>) => i.status === "paid")
+    .reduce((s: number, i: Record<string, unknown>) => s + Number(i.paid_amount ?? 0), 0);
+  const pendingRevenue = invs
+    .filter((i: Record<string, unknown>) => i.status === "pending")
+    .reduce((s: number, i: Record<string, unknown>) => s + (Number(i.total_amount ?? 0) - Number(i.paid_amount ?? 0)), 0);
+  const thisMonth = invs
+    .filter((i: Record<string, unknown>) => new Date(i.created_at as string) >= firstOfMonth)
+    .reduce((s: number, i: Record<string, unknown>) => s + Number(i.total_amount ?? 0), 0);
+  const lastMonth = invs
+    .filter((i: Record<string, unknown>) => {
+      const d = new Date(i.created_at as string);
+      return d >= firstOfLastMonth && d <= lastOfLastMonth;
+    })
+    .reduce((s: number, i: Record<string, unknown>) => s + Number(i.total_amount ?? 0), 0);
 
-    const daily = Array.from({ length: 7 }, (_, idx) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - idx));
-      return {
-        date: d.toISOString().split("T")[0],
-        amount: Math.floor(Math.random() * 15000) + 5000,
-      };
-    });
+  const daily = Array.from({ length: 7 }, (_, idx) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - idx));
+    return {
+      date: d.toISOString().split("T")[0],
+      amount: Math.floor(Math.random() * 15000) + 5000,
+    };
+  });
 
-    res.json({
-      totalRevenue,
-      paidRevenue,
-      pendingRevenue,
-      thisMonth,
-      lastMonth,
-      byPaymentMethod: [
-        { method: "cash", amount: totalRevenue * 0.4 },
-        { method: "insurance", amount: totalRevenue * 0.45 },
-        { method: "credit", amount: totalRevenue * 0.15 },
-      ],
-      daily,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-  }
+  res.json({
+    totalRevenue,
+    paidRevenue,
+    pendingRevenue,
+    thisMonth,
+    lastMonth,
+    byPaymentMethod: [
+      { method: "cash", amount: totalRevenue * 0.4 },
+      { method: "insurance", amount: totalRevenue * 0.45 },
+      { method: "credit", amount: totalRevenue * 0.15 },
+    ],
+    daily,
+  });
 });
 
 export default router;
