@@ -108,6 +108,7 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   if (parsed.data.department) updates.department = parsed.data.department;
   if (parsed.data.phone) updates.phone = parsed.data.phone;
   if (parsed.data.status) updates.is_active = parsed.data.status === "active";
+  if (parsed.data.password) updates.password = parsed.data.password;
   const { data, error } = await supabase
     .from("users")
     .update(updates)

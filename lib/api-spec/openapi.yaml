@@ -1761,6 +1761,7 @@ components:
         specialization: { type: string }
         phone: { type: string }
         status: { type: string }
+        password: { type: string }
 
     # VACCINATIONS
     Vaccination:

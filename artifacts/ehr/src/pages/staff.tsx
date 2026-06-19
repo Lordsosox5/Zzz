@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Plus, Loader2, Save, CheckCircle2, ShieldCheck, CalendarClock,
-  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX,
+  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, KeyRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -181,6 +181,12 @@ export default function Staff() {
   const [showPass, setShowPass] = useState(false);
   const [newCreds, setNewCreds] = useState<{ username: string; password: string } | null>(null);
 
+  // Reset password dialog
+  const [resetTarget, setResetTarget] = useState<{ id: number; nameEn: string } | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetShowPass, setResetShowPass] = useState(false);
+  const [resetCopied, setResetCopied] = useState(false);
+
   const { data: staff, isLoading } = useListStaff({});
   const { data: units = [] } = useListUnits();
   const createMutation = useCreateStaff();
@@ -249,6 +255,27 @@ export default function Staff() {
         },
         onError: () =>
           toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
+      }
+    );
+  };
+
+  const openReset = (id: number, nameEn: string) => {
+    setResetTarget({ id, nameEn });
+    setResetPassword(generatePassword());
+    setResetShowPass(false);
+    setResetCopied(false);
+  };
+
+  const handleResetPassword = () => {
+    if (!resetTarget || !resetPassword.trim()) return;
+    updateMutation.mutate(
+      { id: resetTarget.id, data: { password: resetPassword.trim() } },
+      {
+        onSuccess: () => {
+          toast({ title: "Password reset", description: `New password set for ${resetTarget.nameEn}.` });
+          setResetTarget(null);
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to reset password." }),
       }
     );
   };
@@ -532,6 +559,85 @@ export default function Staff() {
           </Dialog>
         </div>
       </div>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={v => { if (!v) setResetTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              Reset Password
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Setting a new password for <span className="font-semibold text-foreground">{resetTarget?.nameEn}</span>.
+              The current password will be replaced immediately.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label>{t("login.password")}</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={resetShowPass ? "text" : "password"}
+                    value={resetPassword}
+                    onChange={e => setResetPassword(e.target.value)}
+                    className="pr-9 font-mono"
+                    placeholder="New password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                    onClick={() => setResetShowPass(v => !v)}
+                  >
+                    {resetShowPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  title="Generate new password"
+                  onClick={() => { setResetPassword(generatePassword()); setResetCopied(false); }}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button" variant="outline" size="icon"
+                  title="Copy password"
+                  onClick={() => {
+                    navigator.clipboard.writeText(resetPassword);
+                    setResetCopied(true);
+                    setTimeout(() => setResetCopied(false), 2000);
+                  }}
+                >
+                  {resetCopied
+                    ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Copy the password before saving — it won't be shown again.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setResetTarget(null)}>
+                {t("generic.cancel")}
+              </Button>
+              <Button
+                onClick={handleResetPassword}
+                disabled={updateMutation.isPending || !resetPassword.trim()}
+                className="gap-2"
+              >
+                {updateMutation.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <KeyRound className="h-4 w-4" />}
+                Reset Password
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Role Authorities Panel */}
       {showAuthorities && (

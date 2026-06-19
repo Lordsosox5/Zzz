@@ -1382,7 +1382,8 @@ export const UpdateStaffBody = zod.object({
   "department": zod.string().optional(),
   "specialization": zod.string().optional(),
   "phone": zod.string().optional(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "password": zod.string().optional()
 })
 
 export const UpdateStaffResponse = zod.object({

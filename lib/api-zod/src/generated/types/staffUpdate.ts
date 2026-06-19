@@ -13,4 +13,5 @@ export interface StaffUpdate {
   specialization?: string;
   phone?: string;
   status?: string;
+  password?: string;
 }
