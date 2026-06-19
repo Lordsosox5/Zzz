@@ -646,6 +646,7 @@ export interface StaffMember {
 export interface StaffInput {
   nameEn: string;
   nameAr?: string;
+  username?: string;
   role: string;
   department?: string;
   unitId?: number;

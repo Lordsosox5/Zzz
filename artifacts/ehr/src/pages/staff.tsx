@@ -187,12 +187,23 @@ export default function Staff() {
   const updateMutation = useUpdateStaff();
 
   const [form, setForm] = useState({
-    nameEn: "", nameAr: "", role: "nurse", department: "", unitId: "",
+    nameEn: "", nameAr: "", username: "", role: "nurse", department: "", unitId: "",
     email: "", phone: "", password: generatePassword(),
   });
+  const [usernameTouched, setUsernameTouched] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm(p => {
+      const next = { ...p, [name]: value };
+      // Auto-suggest username from English name unless admin already typed one
+      if (name === "nameEn" && !usernameTouched) {
+        next.username = value.toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+      }
+      return next;
+    });
+    if (name === "username") setUsernameTouched(true);
+  };
 
   const isDoctor = DOCTOR_ROLES.includes(form.role);
   const isHouseOfficer = form.role === "house_officer";
@@ -200,7 +211,8 @@ export default function Staff() {
   const previewExpiry = isHouseOfficer ? addDays(90) : null;
 
   const resetForm = () => {
-    setForm({ nameEn: "", nameAr: "", role: "nurse", department: "", unitId: "", email: "", phone: "", password: generatePassword() });
+    setForm({ nameEn: "", nameAr: "", username: "", role: "nurse", department: "", unitId: "", email: "", phone: "", password: generatePassword() });
+    setUsernameTouched(false);
     setNewCreds(null);
     setShowPass(false);
   };
@@ -215,6 +227,7 @@ export default function Staff() {
         data: {
           nameEn: form.nameEn,
           nameAr: form.nameAr || undefined,
+          username: form.username || undefined,
           role: form.role,
           department: isDoctor
             ? (selectedUnit?.nameEn ?? form.department ?? "Medical")
@@ -291,13 +304,36 @@ export default function Staff() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>{t("staff.nameEn")} *</Label>
-                      <Input name="nameEn" required value={form.nameEn} onChange={handleChange} />
+                      <Input name="nameEn" required value={form.nameEn} onChange={handleChange} placeholder="e.g. Dr. Ahmed Ali" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>{t("staff.nameAr")}</Label>
                       <Input name="nameAr" dir="rtl" value={form.nameAr} onChange={handleChange}
-                        className="font-tajawal" />
+                        className="font-tajawal" placeholder="مثال: د. أحمد علي" />
                     </div>
+                  </div>
+
+                  {/* Username */}
+                  <div className="space-y-1.5">
+                    <Label>{t("login.username")} *</Label>
+                    <div className="relative">
+                      <Input
+                        name="username"
+                        required
+                        value={form.username}
+                        onChange={handleChange}
+                        placeholder="e.g. dr.ahmed"
+                        className="font-mono pr-24"
+                      />
+                      {!usernameTouched && form.username && (
+                        <span className="absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground pointer-events-none">
+                          auto-suggested
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Used to sign in. Auto-filled from the name — edit freely.
+                    </p>
                   </div>
 
                   {/* Role + Department/Unit */}

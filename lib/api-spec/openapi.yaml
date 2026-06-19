@@ -1742,6 +1742,7 @@ components:
       properties:
         nameEn: { type: string }
         nameAr: { type: string }
+        username: { type: string }
         role: { type: string }
         department: { type: string }
         unitId: { type: integer }

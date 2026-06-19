@@ -57,8 +57,9 @@ router.get("/staff", async (req, res): Promise<void> => {
 router.post("/staff", async (req, res): Promise<void> => {
   const parsed = CreateStaffBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const username = parsed.data.nameEn.toLowerCase().replace(/\s+/g, ".") + Math.floor(Math.random() * 1000);
-  const password = parsed.data.password ?? "password123";
+  const username = parsed.data.username?.trim()
+    || (parsed.data.nameEn.toLowerCase().replace(/\s+/g, ".") + Math.floor(Math.random() * 1000));
+  const password = parsed.data.password?.trim() || "password123";
   const { data, error } = await supabase
     .from("users")
     .insert({
@@ -70,6 +71,7 @@ router.post("/staff", async (req, res): Promise<void> => {
       department: parsed.data.department ?? null,
       email: parsed.data.email ?? null,
       phone: parsed.data.phone ?? null,
+      is_active: true,
     })
     .select()
     .single();

@@ -1334,6 +1334,7 @@ export const ListStaffResponse = zod.array(ListStaffResponseItem)
 export const CreateStaffBody = zod.object({
   "nameEn": zod.string(),
   "nameAr": zod.string().optional(),
+  "username": zod.string().optional(),
   "role": zod.string(),
   "department": zod.string().optional(),
   "unitId": zod.number().optional(),
