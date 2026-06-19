@@ -34,7 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
-  Building2, ArrowRightLeft, Pencil,
+  Building2, Pencil,
 } from "lucide-react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
@@ -484,8 +484,8 @@ function EditPatientDialog({
   );
 }
 
-/* ── Transfer Unit dialog (super_admin / consultant / medical_officer) ── */
-function TransferUnitDialog({
+/* ── Inline unit assign dropdown ── */
+function AssignUnitDropdown({
   patientId,
   currentUnitId,
   onSuccess,
@@ -496,15 +496,13 @@ function TransferUnitDialog({
 }) {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(currentUnitId?.toString() ?? "");
-  const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const { data: unitList } = useListUnits();
   const activeUnits = (unitList ?? []).filter((u: any) => u.status === "active");
 
-  const handleTransfer = async () => {
-    setSubmitting(true);
+  const handleChange = async (value: string) => {
+    setSaving(true);
     try {
       const token = getToken();
       const res = await fetch(`/api/patients/${patientId}/unit`, {
@@ -513,60 +511,39 @@ function TransferUnitDialog({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ unitId: selectedUnitId ? parseInt(selectedUnitId, 10) : null }),
+        body: JSON.stringify({ unitId: value === "none" ? null : parseInt(value, 10) }),
       });
-      if (!res.ok) throw new Error("Transfer failed");
+      if (!res.ok) throw new Error("Failed");
       toast({ title: t("generic.success"), description: t("patient.transferSuccess") });
-      setOpen(false);
       onSuccess();
     } catch {
       toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") });
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <ArrowRightLeft className="h-3.5 w-3.5" />
-          {t("patient.transferUnit")}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            {t("patient.transferUnit")}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>{t("patient.currentUnit")}</Label>
-            <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("patient.noUnit")} />
-              </SelectTrigger>
-              <SelectContent>
-                {activeUnits.map((u: any) => (
-                  <SelectItem key={u.id} value={u.id.toString()}>
-                    {isRtl && u.nameAr ? u.nameAr : u.nameEn}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
-            <Button onClick={handleTransfer} disabled={submitting || !selectedUnitId}>
-              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRightLeft className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
-              {t("patient.transferConfirm")}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="flex items-center gap-1.5">
+      <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <Select value={currentUnitId?.toString() ?? "none"} onValueChange={handleChange} disabled={saving}>
+        <SelectTrigger className="h-7 text-xs border-dashed w-[170px] gap-1">
+          {saving
+            ? <Loader2 className="h-3 w-3 animate-spin" />
+            : <SelectValue placeholder={t("patient.noUnit")} />}
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">
+            <span className="text-muted-foreground italic">{t("patient.noUnit")}</span>
+          </SelectItem>
+          {activeUnits.map((u: any) => (
+            <SelectItem key={u.id} value={u.id.toString()}>
+              {isRtl && u.nameAr ? u.nameAr : u.nameEn}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -680,7 +657,13 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </div>
               {/* Unit indicator */}
               <div className="flex items-center gap-2 mt-2">
-                {patientUnitData?.unitId ? (
+                {canTransfer ? (
+                  <AssignUnitDropdown
+                    patientId={patientId}
+                    currentUnitId={patientUnitData?.unitId ?? null}
+                    onSuccess={() => refetchUnit()}
+                  />
+                ) : patientUnitData?.unitId ? (
                   <Badge variant="secondary" className="gap-1.5 text-xs font-medium">
                     <Building2 className="h-3 w-3" />
                     {isRtl && patientUnitData.unitNameAr ? patientUnitData.unitNameAr : patientUnitData.unitNameEn}
@@ -690,13 +673,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     <Building2 className="h-3 w-3" />
                     {t("patient.noUnit")}
                   </span>
-                )}
-                {canTransfer && (
-                  <TransferUnitDialog
-                    patientId={patientId}
-                    currentUnitId={patientUnitData?.unitId ?? null}
-                    onSuccess={() => refetchUnit()}
-                  />
                 )}
               </div>
             </div>
