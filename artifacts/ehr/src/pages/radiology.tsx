@@ -1,19 +1,92 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useListRadiologyOrders, useCreateRadiologyOrder, getListRadiologyOrdersQueryKey } from "@workspace/api-client-react";
+import {
+  useListRadiologyOrders, useCreateRadiologyOrder, useUpdateRadiologyOrder,
+  getListRadiologyOrdersQueryKey,
+  type RadiologyOrder,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
+import { getUser } from "@/lib/auth";
+import { canEnterLabResults } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, Save } from "lucide-react";
+import { Plus, Loader2, Save, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PatientSearchCombobox } from "@/components/patient-search-combobox";
+import { RadiologyReportViewDialog, type RadiologyOrderForReport } from "@/components/radiology-report-view-dialog";
+
+/* ── Enter Radiology Report Dialog ── */
+function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { orderId: number; studyDescription: string; onSuccess: () => void }) {
+  const { t, isRtl } = useTranslation();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const updateMutation = useUpdateRadiologyOrder();
+  const [form, setForm] = useState({ report: "", completedAt: new Date().toISOString().slice(0, 16) });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.report.trim()) {
+      toast({ variant: "destructive", title: t("generic.error"), description: "Report text is required." });
+      return;
+    }
+    updateMutation.mutate(
+      { id: orderId, data: { status: "reported", report: form.report, completedAt: new Date(form.completedAt).toISOString() } },
+      {
+        onSuccess: () => {
+          toast({ title: t("generic.success"), description: "Radiology report saved." });
+          setOpen(false);
+          setForm({ report: "", completedAt: new Date().toISOString().slice(0, 16) });
+          onSuccess();
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1.5">
+          <FileText className="h-3.5 w-3.5" /> Enter Report
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Radiology Report: {studyDescription}</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="space-y-3">
+            <Label>Report *</Label>
+            <Textarea
+              required
+              value={form.report}
+              onChange={e => setForm(p => ({ ...p, report: e.target.value }))}
+              className="min-h-[180px]"
+              placeholder="Enter findings, impression, and conclusion..."
+            />
+          </div>
+          <div className="space-y-3">
+            <Label>Reported At</Label>
+            <Input type="datetime-local" value={form.completedAt} onChange={e => setForm(p => ({ ...p, completedAt: e.target.value }))} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
+              {t("generic.save")}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Radiology() {
   const { t, isRtl } = useTranslation();
@@ -24,8 +97,14 @@ export default function Radiology() {
   const { data: orders, isLoading } = useListRadiologyOrders({});
   const createMutation = useCreateRadiologyOrder();
 
+  const user = getUser();
+  const role = user?.role ?? "";
+  const canReport = canEnterLabResults(role);
+
   const [form, setForm] = useState({ patientId: "", patientName: "", modality: "x-ray", studyDescription: "", priority: "routine", scheduledAt: "" });
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  const refreshOrders = () => queryClient.invalidateQueries({ queryKey: getListRadiologyOrdersQueryKey() });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +116,7 @@ export default function Radiology() {
       { data: { patientId: Number(form.patientId), modality: form.modality, studyDescription: form.studyDescription, priority: form.priority || undefined, scheduledAt: form.scheduledAt || undefined } },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListRadiologyOrdersQueryKey() });
+          refreshOrders();
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setIsOpen(false);
           setForm({ patientId: "", patientName: "", modality: "x-ray", studyDescription: "", priority: "routine", scheduledAt: "" });
@@ -122,13 +201,14 @@ export default function Radiology() {
                 <TableHead>{t("radiology.studyDesc")}</TableHead>
                 <TableHead>{t("generic.priority")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
+                <TableHead className="text-end">{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
               ) : orders && orders.length > 0 ? (
-                orders.map((order) => (
+                orders.map((order: RadiologyOrder) => (
                   <TableRow key={order.id}>
                     <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
@@ -139,18 +219,38 @@ export default function Radiology() {
                         {order.patientName ?? order.patientId}
                       </button>
                     </TableCell>
-                    <TableCell className="uppercase font-mono text-xs">{order.modality}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="uppercase font-mono text-xs">{order.modality}</Badge>
+                    </TableCell>
                     <TableCell>{order.studyDescription}</TableCell>
                     <TableCell>
-                      <Badge variant={order.priority === 'stat' ? 'destructive' : order.priority === 'urgent' ? 'default' : 'secondary'}>
+                      <Badge variant={order.priority === 'stat' ? 'destructive' : order.priority === 'urgent' ? 'default' : 'secondary'} className="capitalize">
                         {order.priority}
                       </Badge>
                     </TableCell>
-                    <TableCell><Badge variant="outline">{order.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={order.status === "reported" ? "default" : "outline"} className="capitalize">
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <div className="flex items-center justify-end gap-2">
+                        {order.status === "reported" && (
+                          <RadiologyReportViewDialog order={order as RadiologyOrderForReport} />
+                        )}
+                        {order.status !== "reported" && canReport && (
+                          <EnterRadiologyReportDialog
+                            orderId={order.id}
+                            studyDescription={order.studyDescription}
+                            onSuccess={refreshOrders}
+                          />
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
-                <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{t("radiology.noOrders")}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">{t("radiology.noOrders")}</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

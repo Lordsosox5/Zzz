@@ -36,6 +36,8 @@ import {
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
   Building2, Pencil, ClipboardList,
 } from "lucide-react";
+import { LabResultViewDialog, type OrderForReport } from "@/components/lab-result-view-dialog";
+import { RadiologyReportViewDialog, type RadiologyOrderForReport } from "@/components/radiology-report-view-dialog";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -1041,12 +1043,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       <TableHead>{t("generic.result")}</TableHead>
                       <TableHead>{t("lab.resultValue")}</TableHead>
                       <TableHead>{t("lab.referenceRange")}</TableHead>
-                      {canEnterResults && <TableHead className="text-end">{t("generic.actions")}</TableHead>}
+                      <TableHead className="text-end">{t("generic.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loadingLab ? (
-                      <TableRow><TableCell colSpan={canEnterResults ? 8 : 7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
                     ) : labOrders && labOrders.length > 0 ? (
                       labOrders.map(order => (
                         <TableRow key={order.id} className={order.isCritical ? "bg-destructive/5" : undefined}>
@@ -1066,21 +1068,24 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           </TableCell>
                           <TableCell>
                             {order.resultValue
-                              ? <span className="font-mono">{order.resultValue}{order.unit ? ` ${order.unit}` : ''}</span>
+                              ? <span className="font-mono text-xs">{order.resultValue}{order.unit ? ` ${order.unit}` : ''}</span>
                               : <span className="text-muted-foreground">-</span>}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{order.referenceRange ?? '-'}</TableCell>
-                          {canEnterResults && (
-                            <TableCell className="text-end">
-                              {order.status !== 'resulted' && (
+                          <TableCell className="text-end">
+                            <div className="flex items-center justify-end gap-2">
+                              {order.status === 'resulted' && (
+                                <LabResultViewDialog order={order as OrderForReport} />
+                              )}
+                              {order.status !== 'resulted' && canEnterResults && (
                                 <EnterResultDialog orderId={order.id} testName={order.testName} onSuccess={handleResultSuccess} />
                               )}
-                            </TableCell>
-                          )}
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
-                      <TableRow><TableCell colSpan={canEnterResults ? 8 : 7} className="h-24 text-center text-muted-foreground">{t("lab.noLabOrders")}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="h-24 text-center text-muted-foreground">{t("lab.noLabOrders")}</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -1102,7 +1107,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       <TableHead>{t("radiology.studyDesc")}</TableHead>
                       <TableHead>{t("generic.priority")}</TableHead>
                       <TableHead>{t("generic.status")}</TableHead>
-                      <TableHead>{t("lab.report")}</TableHead>
+                      <TableHead className="text-end">{t("generic.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1111,13 +1116,19 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                     ) : radOrders && radOrders.length > 0 ? (
                       radOrders.map(order => (
                         <TableRow key={order.id}>
-                          <TableCell className="uppercase font-mono text-xs font-semibold">{order.modality}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="uppercase font-mono text-xs">{order.modality}</Badge>
+                          </TableCell>
                           <TableCell>{order.studyDescription}</TableCell>
                           <TableCell>
                             <Badge variant={order.priority === 'stat' ? 'destructive' : order.priority === 'urgent' ? 'default' : 'outline'} className="capitalize">{order.priority}</Badge>
                           </TableCell>
                           <TableCell><StatusBadge status={order.status} /></TableCell>
-                          <TableCell className="text-muted-foreground text-sm max-w-xs truncate">{order.report ?? '-'}</TableCell>
+                          <TableCell className="text-end">
+                            {order.status === 'reported' && (
+                              <RadiologyReportViewDialog order={order as RadiologyOrderForReport} />
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
