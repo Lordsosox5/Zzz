@@ -31,6 +31,14 @@ const translations: Translations = {
   "nav.units": { en: "Units", ar: "الوحدات" },
   "nav.myPatients": { en: "My Patients", ar: "المرضى" },
 
+  // Notifications
+  "notif.title": { en: "Notifications", ar: "الإشعارات" },
+  "notif.markAllRead": { en: "Mark all read", ar: "تحديد الكل كمقروء" },
+  "notif.empty": { en: "No notifications", ar: "لا توجد إشعارات" },
+  "notif.justNow": { en: "Just now", ar: "الآن" },
+  "notif.minutesAgo": { en: "m ago", ar: "د" },
+  "notif.hoursAgo": { en: "h ago", ar: "س" },
+
   // Units
   "units.title": { en: "Hospital Units", ar: "الوحدات الطبية" },
   "units.subtitle": { en: "Manage hospital wards and clinical units", ar: "إدارة الأجنحة والوحدات السريرية" },

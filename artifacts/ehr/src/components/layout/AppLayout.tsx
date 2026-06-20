@@ -3,21 +3,25 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "@/lib/i18n";
 import { logout, getUser } from "@/lib/auth";
 import { getNavForRole, getRoleLabel } from "@/lib/permissions";
+import { useNotifications, type Notification } from "@/lib/notifications";
 import {
   LayoutDashboard, Users, Users2, Calendar, FileText, Pill,
   FlaskConical, Activity, HeartPulse, Receipt, UserRound,
   ShieldAlert, Settings, LogOut, Bell, Moon, Sun, Languages, TrendingUp, Building2,
+  X, FlaskRound, UserPlus, CalendarPlus, PackageOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 const ALL_NAV_ITEMS = [
   { href: "/dashboard",      icon: LayoutDashboard, labelKey: "nav.dashboard" },
@@ -50,11 +54,72 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   registrar:            "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
+const NOTIF_ICONS: Record<string, React.ElementType> = {
+  critical_lab:     FlaskRound,
+  new_patient:      UserPlus,
+  new_appointment:  CalendarPlus,
+  low_stock:        PackageOpen,
+};
+
+const NOTIF_COLORS: Record<string, string> = {
+  critical_lab:    "text-red-500 bg-red-100 dark:bg-red-900/40",
+  new_patient:     "text-blue-500 bg-blue-100 dark:bg-blue-900/40",
+  new_appointment: "text-emerald-500 bg-emerald-100 dark:bg-emerald-900/40",
+  low_stock:       "text-orange-500 bg-orange-100 dark:bg-orange-900/40",
+};
+
+function timeAgo(date: Date, language: string): string {
+  const diffMs = Date.now() - date.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return language === "ar" ? "الآن" : "Just now";
+  if (mins < 60) return language === "ar" ? `${mins} د` : `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return language === "ar" ? `${hrs} س` : `${hrs}h ago`;
+}
+
+function NotifItem({ n, language, onDismiss, onRead }: {
+  n: Notification;
+  language: string;
+  onDismiss: (id: string) => void;
+  onRead: (id: string) => void;
+}) {
+  const Icon = NOTIF_ICONS[n.type] ?? Bell;
+  const color = NOTIF_COLORS[n.type] ?? "text-muted-foreground bg-muted";
+  const title = n.title[language as "en" | "ar"] ?? n.title.en;
+  const body = n.body[language as "en" | "ar"] ?? n.body.en;
+  const isUnread = !n.readAt;
+
+  return (
+    <div
+      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors group ${isUnread ? "bg-primary/5" : ""}`}
+      onClick={() => onRead(n.id)}
+    >
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5 ${color}`}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-xs font-semibold truncate ${isUnread ? "text-foreground" : "text-muted-foreground"}`}>
+          {title}
+        </p>
+        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-0.5">{body}</p>
+        <p className="text-[10px] text-muted-foreground/70 mt-1">{timeAgo(n.createdAt, language)}</p>
+      </div>
+      <button
+        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground mt-1"
+        onClick={e => { e.stopPropagation(); onDismiss(n.id); }}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { t, language, setLanguage, isRtl } = useTranslation();
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const user = getUser();
+  const { notifications, unreadCount, markAllRead, markRead, dismiss } = useNotifications();
 
   const allowedNav = getNavForRole(user?.role ?? "super_admin");
   const navItems = allowedNav === "all"
@@ -77,6 +142,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setTheme(next);
     localStorage.setItem("ehr_theme", next);
     document.documentElement.classList.toggle("dark", next === "dark");
+  };
+
+  const handleNotifClick = (n: Notification) => {
+    markRead(n.id);
+    if (n.href) navigate(n.href);
   };
 
   const roleLabel = getRoleLabel(user?.role ?? "", language as "en" | "ar");
@@ -196,19 +266,60 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </Button>
 
+            {/* Notifications Bell */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground">
                   <Bell className="h-4 w-4" />
-                  <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-destructive" />
+                  {unreadCount > 0 && (
+                    <Badge
+                      className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 text-[10px] font-bold bg-destructive text-destructive-foreground border-0 rounded-full flex items-center justify-center"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Notifications
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="py-6 text-center text-sm text-muted-foreground">No new notifications</div>
+              <DropdownMenuContent align="end" className="w-80 p-0" sideOffset={6}>
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b">
+                  <DropdownMenuLabel className="p-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {t("notif.title")}
+                    {unreadCount > 0 && (
+                      <span className="ms-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </DropdownMenuLabel>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      {t("notif.markAllRead")}
+                    </button>
+                  )}
+                </div>
+
+                {/* List */}
+                {notifications.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">
+                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    {t("notif.empty")}
+                  </div>
+                ) : (
+                  <ScrollArea className="max-h-80">
+                    {notifications.map(n => (
+                      <NotifItem
+                        key={n.id}
+                        n={n}
+                        language={language}
+                        onDismiss={dismiss}
+                        onRead={() => handleNotifClick(n)}
+                      />
+                    ))}
+                  </ScrollArea>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
