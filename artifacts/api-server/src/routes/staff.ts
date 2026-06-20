@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, toSnake, dbError } from "../lib/supabase";
+import { db, usersTable } from "../lib/db";
 import {
   ListStaffQueryParams,
   CreateStaffBody,
@@ -7,6 +7,8 @@ import {
   UpdateStaffParams,
   UpdateStaffBody,
 } from "@workspace/api-zod";
+import { eq, and, SQL } from "drizzle-orm";
+import type { User } from "@workspace/db";
 
 const router = Router();
 
@@ -21,17 +23,15 @@ function computeExpiryDate(role: string): string | null {
   return null;
 }
 
-function formatStaff(u: Record<string, unknown>) {
-  const id = u.id as number;
-  const role = u.role as string;
-  const accountExpiryDate = expiryStore.has(id)
-    ? expiryStore.get(id) ?? null
-    : role === "house_officer" ? computeExpiryDate("house_officer") : null;
+function formatStaff(u: User) {
+  const accountExpiryDate = expiryStore.has(u.id)
+    ? expiryStore.get(u.id) ?? null
+    : u.role === "house_officer" ? computeExpiryDate("house_officer") : null;
   return {
-    id,
+    id: u.id,
     nameEn: u.nameEn,
     nameAr: u.nameAr ?? null,
-    role,
+    role: u.role,
     department: u.department ?? "General",
     unitId: u.unitId ?? null,
     specialization: null,
@@ -48,12 +48,13 @@ router.get("/staff", async (req, res): Promise<void> => {
   const params = ListStaffQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    let q = supabase.from("users").select("*");
-    if (params.data.role) q = q.eq("role", params.data.role);
-    if (params.data.department) q = q.eq("department", params.data.department);
-    const { data, error } = await q;
-    if (dbError(error, res)) return;
-    res.json(mapRows(data ?? []).map(formatStaff));
+    const conditions: SQL[] = [];
+    if (params.data.role) conditions.push(eq(usersTable.role, params.data.role));
+    if (params.data.department) conditions.push(eq(usersTable.department, params.data.department));
+    const rows = conditions.length > 0
+      ? await db.select().from(usersTable).where(and(...conditions))
+      : await db.select().from(usersTable);
+    res.json(rows.map(formatStaff));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -67,24 +68,22 @@ router.post("/staff", async (req, res): Promise<void> => {
     const username = parsed.data.username?.trim()
       || (parsed.data.nameEn.toLowerCase().replace(/\s+/g, ".") + Math.floor(Math.random() * 1000));
     const password = parsed.data.password?.trim() || "password123";
-    const row = {
+    const rows = await db.insert(usersTable).values({
       username,
       password,
-      name_en: parsed.data.nameEn,
-      name_ar: parsed.data.nameAr ?? null,
+      nameEn: parsed.data.nameEn,
+      nameAr: parsed.data.nameAr ?? null,
       role: parsed.data.role,
       department: parsed.data.department ?? null,
       email: parsed.data.email ?? null,
       phone: parsed.data.phone ?? null,
-      is_active: true,
-      unit_id: unitId ?? null,
-    };
-    const { data, error } = await supabase.from("users").insert(row).select();
-    if (dbError(error, res)) return;
-    const mapped = mapRow<Record<string, unknown>>(data![0]);
+      isActive: true,
+      unitId: unitId ?? null,
+    }).returning();
+    const user = rows[0];
     const expiry = computeExpiryDate(parsed.data.role);
-    expiryStore.set(mapped.id as number, expiry);
-    res.status(201).json({ ...formatStaff(mapped), username, password });
+    expiryStore.set(user.id, expiry);
+    res.status(201).json({ ...formatStaff(user), username, password });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -94,10 +93,9 @@ router.get("/staff/:id", async (req, res): Promise<void> => {
   const params = GetStaffMemberParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("users").select("*").eq("id", params.data.id).limit(1);
-    if (dbError(error, res)) return;
-    if (!data?.[0]) { res.status(404).json({ error: "Staff member not found" }); return; }
-    res.json(formatStaff(mapRow(data[0])));
+    const rows = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id)).limit(1);
+    if (!rows[0]) { res.status(404).json({ error: "Staff member not found" }); return; }
+    res.json(formatStaff(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -110,19 +108,18 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
     const updates: Record<string, unknown> = {};
-    if (parsed.data.nameEn) updates.name_en = parsed.data.nameEn;
-    if (parsed.data.nameAr !== undefined) updates.name_ar = parsed.data.nameAr;
+    if (parsed.data.nameEn) updates.nameEn = parsed.data.nameEn;
+    if (parsed.data.nameAr !== undefined) updates.nameAr = parsed.data.nameAr;
     if (parsed.data.role) updates.role = parsed.data.role;
     if (parsed.data.department) updates.department = parsed.data.department;
     if (parsed.data.email !== undefined) updates.email = parsed.data.email;
     if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
-    if (parsed.data.status) updates.is_active = parsed.data.status === "active";
+    if (parsed.data.status) updates.isActive = parsed.data.status === "active";
     if (parsed.data.password) updates.password = parsed.data.password;
-    if (parsed.data.unitId !== undefined) updates.unit_id = parsed.data.unitId ? Number(parsed.data.unitId) : null;
-    const { data, error } = await supabase.from("users").update(updates).eq("id", params.data.id).select();
-    if (dbError(error, res)) return;
-    if (!data?.[0]) { res.status(404).json({ error: "Staff member not found" }); return; }
-    res.json(formatStaff(mapRow(data[0])));
+    if (parsed.data.unitId !== undefined) updates.unitId = parsed.data.unitId ? Number(parsed.data.unitId) : null;
+    const rows = await db.update(usersTable).set(updates as any).where(eq(usersTable.id, params.data.id)).returning();
+    if (!rows[0]) { res.status(404).json({ error: "Staff member not found" }); return; }
+    res.json(formatStaff(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

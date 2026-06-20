@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { supabase, mapRow, dbError } from "../lib/supabase";
+import { db, usersTable } from "../lib/db";
 import { LoginBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -26,13 +27,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { username, password } = parsed.data;
   try {
-    const { data, error } = await supabase.from("users").select("*").eq("username", username).limit(1);
-    if (dbError(error, res)) return;
-    const raw = data?.[0];
-    if (!raw || raw.password !== password) { res.status(401).json({ error: "Invalid credentials" }); return; }
-    const user = mapRow<Record<string, unknown>>(raw);
+    const rows = await db.select().from(usersTable).where(eq(usersTable.username, username)).limit(1);
+    const user = rows[0];
+    if (!user || user.password !== password) { res.status(401).json({ error: "Invalid credentials" }); return; }
     const token = Buffer.from(`${user.id}:${user.username}:${Date.now()}`).toString("base64");
-    res.json({ token, user: formatUser(user) });
+    res.json({ token, user: formatUser(user as unknown as Record<string, unknown>) });
   } catch (err) {
     logger.error({ err }, "DB error in /auth/login");
     res.status(500).json({ error: "Internal server error" });
@@ -50,11 +49,10 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     const token = authHeader.replace("Bearer ", "");
     const decoded = Buffer.from(token, "base64").toString("utf-8");
     const [userId] = decoded.split(":");
-    const { data, error } = await supabase.from("users").select("*").eq("id", parseInt(userId, 10)).limit(1);
-    if (dbError(error, res)) return;
-    const raw = data?.[0];
-    if (!raw) { res.status(401).json({ error: "User not found" }); return; }
-    res.json(formatUser(mapRow<Record<string, unknown>>(raw)));
+    const rows = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(userId, 10))).limit(1);
+    const user = rows[0];
+    if (!user) { res.status(401).json({ error: "User not found" }); return; }
+    res.json(formatUser(user as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Error in /auth/me");
     res.status(401).json({ error: "Invalid token" });

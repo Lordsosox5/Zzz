@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, toSnake, dbError } from "../lib/supabase";
+import { db, invoicesTable } from "../lib/db";
 import {
   ListInvoicesQueryParams,
   CreateInvoiceBody,
@@ -7,6 +7,8 @@ import {
   UpdateInvoiceParams,
   UpdateInvoiceBody,
 } from "@workspace/api-zod";
+import { eq, and, SQL } from "drizzle-orm";
+import type { Invoice } from "@workspace/db";
 
 const router = Router();
 
@@ -15,7 +17,7 @@ function generateInvoiceNumber(): string {
   return `INV-${new Date().getFullYear()}-${String(++invoiceCounter).padStart(5, "0")}`;
 }
 
-function formatInvoice(row: Record<string, unknown>) {
+function formatInvoice(row: Invoice) {
   return {
     ...row,
     patientName: null,
@@ -30,12 +32,13 @@ router.get("/invoices", async (req, res): Promise<void> => {
   const params = ListInvoicesQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    let q = supabase.from("invoices").select("*");
-    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
-    if (params.data.status) q = q.eq("status", params.data.status);
-    const { data, error } = await q;
-    if (dbError(error, res)) return;
-    res.json(mapRows(data ?? []).map(formatInvoice));
+    const conditions: SQL[] = [];
+    if (params.data.patientId) conditions.push(eq(invoicesTable.patientId, params.data.patientId));
+    if (params.data.status) conditions.push(eq(invoicesTable.status, params.data.status));
+    const rows = conditions.length > 0
+      ? await db.select().from(invoicesTable).where(and(...conditions))
+      : await db.select().from(invoicesTable);
+    res.json(rows.map(formatInvoice));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -48,10 +51,8 @@ router.post("/invoices", async (req, res): Promise<void> => {
     const items = parsed.data.items ?? [];
     const totalAmount = items.reduce((sum: number, item: { total: number }) => sum + item.total, 0).toFixed(2);
     const invoiceNumber = generateInvoiceNumber();
-    const row = toSnake({ ...parsed.data, invoiceNumber, totalAmount } as Record<string, unknown>);
-    const { data, error } = await supabase.from("invoices").insert(row).select();
-    if (dbError(error, res)) return;
-    res.status(201).json(formatInvoice(mapRow(data![0])));
+    const rows = await db.insert(invoicesTable).values({ ...parsed.data, invoiceNumber, totalAmount } as any).returning();
+    res.status(201).json(formatInvoice(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -61,10 +62,9 @@ router.get("/invoices/:id", async (req, res): Promise<void> => {
   const params = GetInvoiceParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("invoices").select("*").eq("id", params.data.id).limit(1);
-    if (dbError(error, res)) return;
-    if (!data?.[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
-    res.json(formatInvoice(mapRow(data[0])));
+    const rows = await db.select().from(invoicesTable).where(eq(invoicesTable.id, params.data.id)).limit(1);
+    if (!rows[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
+    res.json(formatInvoice(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -78,12 +78,11 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
   try {
     const updates: Record<string, unknown> = {};
     if (parsed.data.status) updates.status = parsed.data.status;
-    if (parsed.data.paidAmount !== undefined) updates.paid_amount = parsed.data.paidAmount.toFixed(2);
+    if (parsed.data.paidAmount !== undefined) updates.paidAmount = parsed.data.paidAmount.toFixed(2);
     if (parsed.data.notes) updates.notes = parsed.data.notes;
-    const { data, error } = await supabase.from("invoices").update(updates).eq("id", params.data.id).select();
-    if (dbError(error, res)) return;
-    if (!data?.[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
-    res.json(formatInvoice(mapRow(data[0])));
+    const rows = await db.update(invoicesTable).set(updates as any).where(eq(invoicesTable.id, params.data.id)).returning();
+    if (!rows[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
+    res.json(formatInvoice(rows[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

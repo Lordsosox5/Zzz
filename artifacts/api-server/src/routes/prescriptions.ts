@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, toSnake, dbError } from "../lib/supabase";
+import { db, prescriptionsTable, patientsTable, usersTable } from "../lib/db";
 import {
   ListPrescriptionsQueryParams,
   CreatePrescriptionBody,
@@ -7,6 +7,7 @@ import {
   UpdatePrescriptionParams,
   UpdatePrescriptionBody,
 } from "@workspace/api-zod";
+import { eq, inArray, and, SQL } from "drizzle-orm";
 
 const router = Router();
 
@@ -15,16 +16,16 @@ async function getCallerUnitId(authHeader: string | undefined): Promise<number |
   try {
     const token = authHeader.replace("Bearer ", "");
     const [userId] = Buffer.from(token, "base64").toString("utf-8").split(":");
-    const { data } = await supabase.from("users").select("unit_id").eq("id", parseInt(userId, 10)).limit(1);
-    return (data?.[0]?.unit_id as number | null) ?? null;
+    const rows = await db.select({ unitId: usersTable.unitId }).from(usersTable).where(eq(usersTable.id, parseInt(userId, 10))).limit(1);
+    return rows[0]?.unitId ?? null;
   } catch {
     return null;
   }
 }
 
 async function unitPatientIds(unitId: number): Promise<number[]> {
-  const { data } = await supabase.from("patients").select("id").eq("unit_id", unitId);
-  return (data ?? []).map((r: any) => r.id as number);
+  const rows = await db.select({ id: patientsTable.id }).from(patientsTable).where(eq(patientsTable.unitId, unitId));
+  return rows.map(r => r.id);
 }
 
 router.get("/prescriptions", async (req, res): Promise<void> => {
@@ -39,30 +40,27 @@ router.get("/prescriptions", async (req, res): Promise<void> => {
       if (allowedPatientIds.length === 0) { res.json([]); return; }
     }
 
-    let q = supabase.from("prescriptions").select("*");
-
+    const conditions: SQL[] = [];
     if (params.data.patientId) {
       const pid = params.data.patientId;
-      if (allowedPatientIds !== null && !allowedPatientIds.includes(pid)) {
-        res.json([]);
-        return;
-      }
-      q = q.eq("patient_id", pid);
+      if (allowedPatientIds !== null && !allowedPatientIds.includes(pid)) { res.json([]); return; }
+      conditions.push(eq(prescriptionsTable.patientId, pid));
     } else if (allowedPatientIds !== null) {
-      q = q.in("patient_id", allowedPatientIds);
+      conditions.push(inArray(prescriptionsTable.patientId, allowedPatientIds));
     }
+    if (params.data.status) conditions.push(eq(prescriptionsTable.status, params.data.status));
 
-    if (params.data.status) q = q.eq("status", params.data.status);
-    const { data, error } = await q;
-    if (dbError(error, res)) return;
-    const rxList = mapRows(data ?? []);
-    const patientIds = [...new Set(rxList.map((r: any) => r.patientId).filter(Boolean))];
+    const rxList = conditions.length > 0
+      ? await db.select().from(prescriptionsTable).where(and(...conditions))
+      : await db.select().from(prescriptionsTable);
+
+    const patientIds = [...new Set(rxList.map(r => r.patientId).filter(Boolean))];
     let patientMap: Record<number, string> = {};
     if (patientIds.length > 0) {
-      const { data: pd } = await supabase.from("patients").select("id, name_en").in("id", patientIds);
-      for (const p of pd ?? []) patientMap[p.id as number] = p.name_en as string;
+      const pd = await db.select({ id: patientsTable.id, nameEn: patientsTable.nameEn }).from(patientsTable).where(inArray(patientsTable.id, patientIds));
+      for (const p of pd) patientMap[p.id] = p.nameEn;
     }
-    res.json(rxList.map((r: any) => ({ ...r, patientName: patientMap[r.patientId] ?? null, prescriberName: null })));
+    res.json(rxList.map(r => ({ ...r, patientName: patientMap[r.patientId] ?? null, prescriberName: null })));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -72,10 +70,8 @@ router.post("/prescriptions", async (req, res): Promise<void> => {
   const parsed = CreatePrescriptionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const row = toSnake({ ...parsed.data, prescriberId: 1 } as Record<string, unknown>);
-    const { data, error } = await supabase.from("prescriptions").insert(row).select();
-    if (dbError(error, res)) return;
-    res.status(201).json({ ...mapRow(data![0]), patientName: null, prescriberName: null });
+    const rows = await db.insert(prescriptionsTable).values({ ...parsed.data, prescriberId: 1 } as any).returning();
+    res.status(201).json({ ...rows[0], patientName: null, prescriberName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -85,10 +81,9 @@ router.get("/prescriptions/:id", async (req, res): Promise<void> => {
   const params = GetPrescriptionParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("prescriptions").select("*").eq("id", params.data.id).limit(1);
-    if (dbError(error, res)) return;
-    if (!data?.[0]) { res.status(404).json({ error: "Prescription not found" }); return; }
-    res.json({ ...mapRow(data[0]), patientName: null, prescriberName: null });
+    const rows = await db.select().from(prescriptionsTable).where(eq(prescriptionsTable.id, params.data.id)).limit(1);
+    if (!rows[0]) { res.status(404).json({ error: "Prescription not found" }); return; }
+    res.json({ ...rows[0], patientName: null, prescriberName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -100,10 +95,9 @@ router.patch("/prescriptions/:id", async (req, res): Promise<void> => {
   const parsed = UpdatePrescriptionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("prescriptions").update(toSnake(parsed.data as Record<string, unknown>)).eq("id", params.data.id).select();
-    if (dbError(error, res)) return;
-    if (!data?.[0]) { res.status(404).json({ error: "Prescription not found" }); return; }
-    res.json({ ...mapRow(data[0]), patientName: null, prescriberName: null });
+    const rows = await db.update(prescriptionsTable).set(parsed.data as any).where(eq(prescriptionsTable.id, params.data.id)).returning();
+    if (!rows[0]) { res.status(404).json({ error: "Prescription not found" }); return; }
+    res.json({ ...rows[0], patientName: null, prescriberName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
