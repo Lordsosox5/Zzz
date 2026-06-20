@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Users2, Calendar, FileText, Pill,
   FlaskConical, Activity, HeartPulse, Receipt, UserRound,
   ShieldAlert, Settings, LogOut, Bell, Moon, Sun, Languages, TrendingUp, Building2,
-  X, FlaskRound, UserPlus, CalendarPlus, PackageOpen,
+  X, FlaskRound, UserPlus, CalendarPlus, PackageOpen, CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +59,11 @@ const NOTIF_ICONS: Record<string, React.ElementType> = {
   new_patient:      UserPlus,
   new_appointment:  CalendarPlus,
   low_stock:        PackageOpen,
+  pending_lab:      FlaskRound,
+  pending_rx:       Pill,
+  pending_invoice:  Receipt,
+  overdue_invoice:  Receipt,
+  system_alert:     ShieldAlert,
 };
 
 const NOTIF_COLORS: Record<string, string> = {
@@ -66,6 +71,17 @@ const NOTIF_COLORS: Record<string, string> = {
   new_patient:     "text-blue-500 bg-blue-100 dark:bg-blue-900/40",
   new_appointment: "text-emerald-500 bg-emerald-100 dark:bg-emerald-900/40",
   low_stock:       "text-orange-500 bg-orange-100 dark:bg-orange-900/40",
+  pending_lab:     "text-amber-500 bg-amber-100 dark:bg-amber-900/40",
+  pending_rx:      "text-violet-500 bg-violet-100 dark:bg-violet-900/40",
+  pending_invoice: "text-rose-500 bg-rose-100 dark:bg-rose-900/40",
+  overdue_invoice: "text-rose-600 bg-rose-100 dark:bg-rose-900/40",
+  system_alert:    "text-slate-500 bg-slate-100 dark:bg-slate-900/40",
+};
+
+const NOTIF_SEVERITY_DOT: Record<string, string> = {
+  critical: "bg-red-500",
+  warning:  "bg-amber-500",
+  info:     "bg-blue-400",
 };
 
 function timeAgo(date: Date, language: string): string {
@@ -85,17 +101,23 @@ function NotifItem({ n, language, onDismiss, onRead }: {
 }) {
   const Icon = NOTIF_ICONS[n.type] ?? Bell;
   const color = NOTIF_COLORS[n.type] ?? "text-muted-foreground bg-muted";
+  const sevDot = NOTIF_SEVERITY_DOT[n.severity ?? "info"] ?? "bg-blue-400";
   const title = n.title[language as "en" | "ar"] ?? n.title.en;
   const body = n.body[language as "en" | "ar"] ?? n.body.en;
   const isUnread = !n.readAt;
 
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors group ${isUnread ? "bg-primary/5" : ""}`}
+      className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors group ${isUnread ? "bg-primary/5 border-s-2 border-primary" : ""}`}
       onClick={() => onRead(n.id)}
     >
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5 ${color}`}>
-        <Icon className="h-4 w-4" />
+      <div className="relative shrink-0 mt-0.5">
+        <div className={`flex h-8 w-8 items-center justify-center rounded-full ${color}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        {isUnread && (
+          <span className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${sevDot}`} />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-xs font-semibold truncate ${isUnread ? "text-foreground" : "text-muted-foreground"}`}>
@@ -105,8 +127,9 @@ function NotifItem({ n, language, onDismiss, onRead }: {
         <p className="text-[10px] text-muted-foreground/70 mt-1">{timeAgo(n.createdAt, language)}</p>
       </div>
       <button
-        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground mt-1"
+        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive mt-1"
         onClick={e => { e.stopPropagation(); onDismiss(n.id); }}
+        title="Dismiss"
       >
         <X className="h-3.5 w-3.5" />
       </button>
