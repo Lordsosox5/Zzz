@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, invoicesTable } from "../lib/db";
-import { eq } from "drizzle-orm";
+import { supabase, mapRow, mapRows, toSnake, dbError } from "../lib/supabase";
 import {
   ListInvoicesQueryParams,
   CreateInvoiceBody,
@@ -16,12 +15,12 @@ function generateInvoiceNumber(): string {
   return `INV-${new Date().getFullYear()}-${String(++invoiceCounter).padStart(5, "0")}`;
 }
 
-function formatInvoice(row: typeof invoicesTable.$inferSelect) {
+function formatInvoice(row: Record<string, unknown>) {
   return {
     ...row,
     patientName: null,
-    totalAmount: Number(row.totalAmount),
-    paidAmount: Number(row.paidAmount),
+    totalAmount: Number(row.totalAmount ?? 0),
+    paidAmount: Number(row.paidAmount ?? 0),
     discount: Number(row.discount ?? 0),
     items: Array.isArray(row.items) ? row.items : [],
   };
@@ -31,10 +30,12 @@ router.get("/invoices", async (req, res): Promise<void> => {
   const params = ListInvoicesQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    let query = db.select().from(invoicesTable).$dynamic();
-    if (params.data.patientId) query = query.where(eq(invoicesTable.patientId, params.data.patientId));
-    if (params.data.status) query = query.where(eq(invoicesTable.status, params.data.status));
-    res.json((await query).map(formatInvoice));
+    let q = supabase.from("invoices").select("*");
+    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
+    if (params.data.status) q = q.eq("status", params.data.status);
+    const { data, error } = await q;
+    if (dbError(error, res)) return;
+    res.json(mapRows(data ?? []).map(formatInvoice));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -47,12 +48,10 @@ router.post("/invoices", async (req, res): Promise<void> => {
     const items = parsed.data.items ?? [];
     const totalAmount = items.reduce((sum: number, item: { total: number }) => sum + item.total, 0).toFixed(2);
     const invoiceNumber = generateInvoiceNumber();
-    const [data] = await db.insert(invoicesTable).values({
-      ...parsed.data,
-      invoiceNumber,
-      totalAmount,
-    }).returning();
-    res.status(201).json(formatInvoice(data));
+    const row = toSnake({ ...parsed.data, invoiceNumber, totalAmount } as Record<string, unknown>);
+    const { data, error } = await supabase.from("invoices").insert(row).select();
+    if (dbError(error, res)) return;
+    res.status(201).json(formatInvoice(mapRow(data![0])));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -62,9 +61,10 @@ router.get("/invoices/:id", async (req, res): Promise<void> => {
   const params = GetInvoiceParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const [data] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, params.data.id)).limit(1);
-    if (!data) { res.status(404).json({ error: "Invoice not found" }); return; }
-    res.json(formatInvoice(data));
+    const { data, error } = await supabase.from("invoices").select("*").eq("id", params.data.id).limit(1);
+    if (dbError(error, res)) return;
+    if (!data?.[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
+    res.json(formatInvoice(mapRow(data[0])));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -78,11 +78,12 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
   try {
     const updates: Record<string, unknown> = {};
     if (parsed.data.status) updates.status = parsed.data.status;
-    if (parsed.data.paidAmount !== undefined) updates.paidAmount = parsed.data.paidAmount.toFixed(2);
+    if (parsed.data.paidAmount !== undefined) updates.paid_amount = parsed.data.paidAmount.toFixed(2);
     if (parsed.data.notes) updates.notes = parsed.data.notes;
-    const [data] = await db.update(invoicesTable).set(updates).where(eq(invoicesTable.id, params.data.id)).returning();
-    if (!data) { res.status(404).json({ error: "Invoice not found" }); return; }
-    res.json(formatInvoice(data));
+    const { data, error } = await supabase.from("invoices").update(updates).eq("id", params.data.id).select();
+    if (dbError(error, res)) return;
+    if (!data?.[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
+    res.json(formatInvoice(mapRow(data[0])));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

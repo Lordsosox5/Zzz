@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, labOrdersTable, radiologyOrdersTable, patientsTable, usersTable } from "../lib/db";
-import { eq, inArray } from "drizzle-orm";
+import { supabase, mapRow, mapRows, toSnake, dbError } from "../lib/supabase";
 import {
   ListLabOrdersQueryParams,
   CreateLabOrderBody,
@@ -28,17 +27,17 @@ function userIdFromReq(req: import("express").Request): number | null {
 
 async function fetchUserNames(ids: number[]): Promise<Record<number, string>> {
   if (ids.length === 0) return {};
-  const users = await db.select({ id: usersTable.id, nameEn: usersTable.nameEn }).from(usersTable).where(inArray(usersTable.id, ids));
+  const { data } = await supabase.from("users").select("id, name_en").in("id", ids);
   const map: Record<number, string> = {};
-  for (const u of users) map[u.id] = u.nameEn;
+  for (const u of data ?? []) map[u.id as number] = u.name_en as string;
   return map;
 }
 
 async function fetchPatientNames(ids: number[]): Promise<Record<number, string>> {
   if (ids.length === 0) return {};
-  const patients = await db.select({ id: patientsTable.id, nameEn: patientsTable.nameEn }).from(patientsTable).where(inArray(patientsTable.id, ids));
+  const { data } = await supabase.from("patients").select("id, name_en").in("id", ids);
   const map: Record<number, string> = {};
-  for (const p of patients) map[p.id] = p.nameEn;
+  for (const p of data ?? []) map[p.id as number] = p.name_en as string;
   return map;
 }
 
@@ -46,14 +45,16 @@ router.get("/lab-orders", async (req, res): Promise<void> => {
   const params = ListLabOrdersQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    let query = db.select().from(labOrdersTable).$dynamic();
-    if (params.data.patientId) query = query.where(eq(labOrdersTable.patientId, params.data.patientId));
-    if (params.data.status) query = query.where(eq(labOrdersTable.status, params.data.status));
-    const orders = await query;
-    const patientIds = [...new Set(orders.map(o => o.patientId))];
-    const userIds = [...new Set(orders.map(o => o.orderedById))];
-    const [patientMap, userMap] = await Promise.all([fetchPatientNames(patientIds), fetchUserNames(userIds)]);
-    res.json(orders.map(o => ({ ...o, patientName: patientMap[o.patientId] ?? null, orderedByName: userMap[o.orderedById] ?? null })));
+    let q = supabase.from("lab_orders").select("*");
+    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
+    if (params.data.status) q = q.eq("status", params.data.status);
+    const { data, error } = await q;
+    if (dbError(error, res)) return;
+    const orders = mapRows(data ?? []);
+    const patientIds = [...new Set(orders.map((o: any) => o.patientId).filter(Boolean))];
+    const userIds = [...new Set(orders.map((o: any) => o.orderedById).filter(Boolean))];
+    const [patientMap, userMap] = await Promise.all([fetchPatientNames(patientIds as number[]), fetchUserNames(userIds as number[])]);
+    res.json(orders.map((o: any) => ({ ...o, patientName: patientMap[o.patientId] ?? null, orderedByName: userMap[o.orderedById] ?? null })));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -64,9 +65,11 @@ router.post("/lab-orders", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
     const orderedById = userIdFromReq(req) ?? 1;
-    const [data] = await db.insert(labOrdersTable).values({ ...parsed.data, orderedById }).returning();
+    const row = toSnake({ ...parsed.data, orderedById } as Record<string, unknown>);
+    const { data, error } = await supabase.from("lab_orders").insert(row).select();
+    if (dbError(error, res)) return;
     const userMap = await fetchUserNames([orderedById]);
-    res.status(201).json({ ...data, patientName: null, orderedByName: userMap[orderedById] ?? null });
+    res.status(201).json({ ...mapRow(data![0]), patientName: null, orderedByName: userMap[orderedById] ?? null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -76,9 +79,10 @@ router.get("/lab-orders/:id", async (req, res): Promise<void> => {
   const params = GetLabOrderParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const [data] = await db.select().from(labOrdersTable).where(eq(labOrdersTable.id, params.data.id)).limit(1);
-    if (!data) { res.status(404).json({ error: "Lab order not found" }); return; }
-    res.json({ ...data, patientName: null, orderedByName: null });
+    const { data, error } = await supabase.from("lab_orders").select("*").eq("id", params.data.id).limit(1);
+    if (dbError(error, res)) return;
+    if (!data?.[0]) { res.status(404).json({ error: "Lab order not found" }); return; }
+    res.json({ ...mapRow(data[0]), patientName: null, orderedByName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -90,12 +94,10 @@ router.patch("/lab-orders/:id", async (req, res): Promise<void> => {
   const parsed = UpdateLabOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const updates: Record<string, unknown> = { ...parsed.data };
-    if (parsed.data.collectedAt) updates.collectedAt = new Date(parsed.data.collectedAt);
-    if (parsed.data.resultedAt) updates.resultedAt = new Date(parsed.data.resultedAt);
-    const [data] = await db.update(labOrdersTable).set(updates).where(eq(labOrdersTable.id, params.data.id)).returning();
-    if (!data) { res.status(404).json({ error: "Lab order not found" }); return; }
-    res.json({ ...data, patientName: null, orderedByName: null });
+    const { data, error } = await supabase.from("lab_orders").update(toSnake(parsed.data as Record<string, unknown>)).eq("id", params.data.id).select();
+    if (dbError(error, res)) return;
+    if (!data?.[0]) { res.status(404).json({ error: "Lab order not found" }); return; }
+    res.json({ ...mapRow(data[0]), patientName: null, orderedByName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -105,14 +107,16 @@ router.get("/radiology-orders", async (req, res): Promise<void> => {
   const params = ListRadiologyOrdersQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    let query = db.select().from(radiologyOrdersTable).$dynamic();
-    if (params.data.patientId) query = query.where(eq(radiologyOrdersTable.patientId, params.data.patientId));
-    if (params.data.status) query = query.where(eq(radiologyOrdersTable.status, params.data.status));
-    const orders = await query;
-    const patientIds = [...new Set(orders.map(o => o.patientId))];
-    const userIds = [...new Set(orders.map(o => o.orderedById))];
-    const [patientMap, userMap] = await Promise.all([fetchPatientNames(patientIds), fetchUserNames(userIds)]);
-    res.json(orders.map(o => ({ ...o, patientName: patientMap[o.patientId] ?? null, orderedByName: userMap[o.orderedById] ?? null })));
+    let q = supabase.from("radiology_orders").select("*");
+    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
+    if (params.data.status) q = q.eq("status", params.data.status);
+    const { data, error } = await q;
+    if (dbError(error, res)) return;
+    const orders = mapRows(data ?? []);
+    const patientIds = [...new Set(orders.map((o: any) => o.patientId).filter(Boolean))];
+    const userIds = [...new Set(orders.map((o: any) => o.orderedById).filter(Boolean))];
+    const [patientMap, userMap] = await Promise.all([fetchPatientNames(patientIds as number[]), fetchUserNames(userIds as number[])]);
+    res.json(orders.map((o: any) => ({ ...o, patientName: patientMap[o.patientId] ?? null, orderedByName: userMap[o.orderedById] ?? null })));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -123,9 +127,11 @@ router.post("/radiology-orders", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
     const orderedById = userIdFromReq(req) ?? 1;
-    const [data] = await db.insert(radiologyOrdersTable).values({ ...parsed.data, orderedById }).returning();
+    const row = toSnake({ ...parsed.data, orderedById } as Record<string, unknown>);
+    const { data, error } = await supabase.from("radiology_orders").insert(row).select();
+    if (dbError(error, res)) return;
     const userMap = await fetchUserNames([orderedById]);
-    res.status(201).json({ ...data, patientName: null, orderedByName: userMap[orderedById] ?? null });
+    res.status(201).json({ ...mapRow(data![0]), patientName: null, orderedByName: userMap[orderedById] ?? null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -137,12 +143,10 @@ router.patch("/radiology-orders/:id", async (req, res): Promise<void> => {
   const parsed = UpdateRadiologyOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const updates: Record<string, unknown> = { ...parsed.data };
-    if (parsed.data.scheduledAt) updates.scheduledAt = new Date(parsed.data.scheduledAt);
-    if (parsed.data.completedAt) updates.completedAt = new Date(parsed.data.completedAt);
-    const [data] = await db.update(radiologyOrdersTable).set(updates).where(eq(radiologyOrdersTable.id, params.data.id)).returning();
-    if (!data) { res.status(404).json({ error: "Radiology order not found" }); return; }
-    res.json({ ...data, patientName: null, orderedByName: null });
+    const { data, error } = await supabase.from("radiology_orders").update(toSnake(parsed.data as Record<string, unknown>)).eq("id", params.data.id).select();
+    if (dbError(error, res)) return;
+    if (!data?.[0]) { res.status(404).json({ error: "Radiology order not found" }); return; }
+    res.json({ ...mapRow(data[0]), patientName: null, orderedByName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
