@@ -328,7 +328,7 @@ const translations: Translations = {
   // Lab dialog
   "lab.testName": { en: "Test Name", ar: "اسم الفحص" },
   "lab.testCode": { en: "Test Code", ar: "رمز الفحص" },
-  "lab.orderedBy": { en: "Ordered By", ar: "أمر بـ" },
+  "lab.orderedBy": { en: "Ordered By", ar: "الطبيب الآمر" },
   "lab.noOrders": { en: "No lab orders found.", ar: "لا توجد طلبات مختبر." },
 
   // Radiology dialog

@@ -97,7 +97,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         <Button variant="outline" onClick={() => window.close()}>Close</Button>
       </div>
 
-      <div className="max-w-[210mm] mx-auto px-8 py-10 print:px-6 print:py-6">
+      <div className="max-w-[210mm] mx-auto px-8 py-10 print:max-w-none print:w-full print:mx-0 print:px-0 print:py-0">
 
         {/* ── Hospital header ── */}
         <div className="flex items-start justify-between mb-6 pb-4 border-b-2 border-gray-800">
@@ -275,10 +275,11 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
       {/* ── Print-only global styles ── */}
       <style>{`
         @media print {
-          @page { size: A4; margin: 10mm 12mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { size: A4 portrait; margin: 14mm 16mm; }
+          body  { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; }
           .bg-gray-800 { background-color: #1f2937 !important; color: white !important; }
           .bg-gray-50  { background-color: #f9fafb !important; }
+          .print\\:hidden { display: none !important; }
         }
       `}</style>
     </div>

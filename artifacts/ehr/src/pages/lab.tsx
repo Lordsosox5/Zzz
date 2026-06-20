@@ -753,6 +753,7 @@ export default function Lab() {
                 <TableHead>{t("generic.date")}</TableHead>
                 <TableHead>{t("lab.patientName")}</TableHead>
                 <TableHead>{t("lab.testName")}</TableHead>
+                <TableHead>{t("lab.orderedBy")}</TableHead>
                 <TableHead>{t("generic.priority")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
                 <TableHead>{t("generic.result")}</TableHead>
@@ -762,7 +763,7 @@ export default function Lab() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={canEnter || isLabTech ? 7 : 6} className="h-24 text-center">
+                  <TableCell colSpan={canEnter || isLabTech ? 8 : 7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
@@ -779,6 +780,9 @@ export default function Lab() {
                       {order.testCode && (
                         <div className="text-xs text-muted-foreground font-mono">{order.testCode}</div>
                       )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {(order as any).orderedByName ?? "—"}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -812,7 +816,7 @@ export default function Lab() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canEnter || isLabTech ? 7 : 6} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={canEnter || isLabTech ? 8 : 7} className="h-24 text-center text-muted-foreground">
                     {t("lab.noOrders")}
                   </TableCell>
                 </TableRow>
