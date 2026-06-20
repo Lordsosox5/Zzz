@@ -5,6 +5,7 @@ import {
   useUpdateLabOrder, getListLabOrdersQueryKey,
   useListPrescriptions, useCreatePrescription, useUpdatePrescription, getListPrescriptionsQueryKey,
   useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey,
+  useListInvoices,
   useCreateAdmissionAssessment,
   useListUnits,
   useUpdatePatient,
@@ -34,10 +35,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
-  Building2, Pencil, ClipboardList,
+  Building2, Pencil, ClipboardList, Receipt,
 } from "lucide-react";
 import { LabResultViewDialog, type OrderForReport } from "@/components/lab-result-view-dialog";
 import { RadiologyReportViewDialog, type RadiologyOrderForReport } from "@/components/radiology-report-view-dialog";
+import { InvoiceViewDialog } from "@/components/invoice-view-dialog";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -734,6 +736,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const { data: notesList, isLoading: loadingNotes } = useListClinicalNotes(
     { patientId }, { query: { enabled: !!patientId && allowedTabs.includes("notes") } }
   );
+  const { data: invoicesList, isLoading: loadingInvoices } = useListInvoices(
+    { patientId }, { query: { enabled: !!patientId && allowedTabs.includes("billing") } } as any
+  );
 
   /* ── Discharge summaries query ── */
   const dischargeSummaryQueryKey = ["discharge-summaries", patientId];
@@ -862,6 +867,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                tab === "notes"         ? t("patient.clinicalNotes") :
                tab === "prescriptions" ? t("nav.prescriptions") :
                tab === "discharge"     ? t("discharge.tab") :
+               tab === "billing"       ? t("nav.billing") :
                t("patient.labsRadiology")}
             </TabsTrigger>
           ))}
@@ -1196,6 +1202,85 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           </TableCell>
                         </TableRow>
                       ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* ── Billing tab ── */}
+        {allowedTabs.includes("billing") && (
+          <TabsContent value="billing" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Receipt className="h-5 w-5 text-primary" />
+                  {t("billing.invoices")}
+                  {Array.isArray(invoicesList) && invoicesList.length > 0 && (
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">
+                      ({invoicesList.length})
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead>{t("generic.date")}</TableHead>
+                      <TableHead>{t("billing.method")}</TableHead>
+                      <TableHead>{t("billing.amount")}</TableHead>
+                      <TableHead>Paid</TableHead>
+                      <TableHead>{t("generic.status")}</TableHead>
+                      <TableHead className="text-end">{t("generic.actions")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingInvoices ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center">
+                          <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                        </TableCell>
+                      </TableRow>
+                    ) : Array.isArray(invoicesList) && invoicesList.length > 0 ? (
+                      invoicesList.map((inv: any) => (
+                        <TableRow key={inv.id}>
+                          <TableCell className="font-mono text-sm">
+                            {inv.invoiceNumber ? `#${inv.invoiceNumber}` : `#${String(inv.id).padStart(4, "0")}`}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {new Date(inv.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="capitalize">{inv.paymentMethod}</TableCell>
+                          <TableCell className="font-semibold tabular-nums">${inv.totalAmount.toFixed(2)}</TableCell>
+                          <TableCell className="tabular-nums text-emerald-600 dark:text-emerald-400">
+                            ${(inv.paidAmount ?? 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
+                              inv.status === "paid"
+                                ? "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                : inv.status === "partial"
+                                ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300"
+                                : "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300"
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-end">
+                            <InvoiceViewDialog invoice={inv} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                          No invoices found for this patient.
+                        </TableCell>
+                      </TableRow>
                     )}
                   </TableBody>
                 </Table>

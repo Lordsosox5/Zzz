@@ -116,7 +116,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View patient demographics (read-only)", ar: "عرض بيانات المريض (للقراءة فقط)" },
       { en: "Generate financial reports", ar: "إنشاء التقارير المالية" },
     ],
-    allowedNav: ["/dashboard", "/billing", "/patients"],
+    allowedNav: ["/dashboard", "/billing"],
   },
   house_officer: {
     label: { en: "House Officer", ar: "طبيب مقيم" },
@@ -160,10 +160,10 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
   },
 };
 
-export type PatientTab = "overview" | "notes" | "prescriptions" | "labs" | "discharge";
+export type PatientTab = "overview" | "notes" | "prescriptions" | "labs" | "discharge" | "billing";
 
 const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
-  super_admin:          ["overview", "notes", "prescriptions", "labs", "discharge"],
+  super_admin:          ["overview", "notes", "prescriptions", "labs", "discharge", "billing"],
   pediatric_consultant: ["overview", "notes", "prescriptions", "labs", "discharge"],
   pediatric_specialist: ["overview", "notes", "prescriptions", "labs", "discharge"],
   emergency_physician:  ["overview", "notes", "prescriptions", "labs", "discharge"],
@@ -173,7 +173,7 @@ const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
   nurse:                ["overview"],
   pharmacist:           ["overview", "prescriptions"],
   lab_technician:       ["labs"],
-  billing_officer:      ["overview"],
+  billing_officer:      ["overview", "billing"],
 };
 
 export function isLabRole(role: string): boolean {
