@@ -25,6 +25,23 @@ function userIdFromReq(req: import("express").Request): number | null {
   } catch { return null; }
 }
 
+async function getCallerUnitId(authHeader: string | undefined): Promise<number | null> {
+  if (!authHeader) return null;
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const [userId] = Buffer.from(token, "base64").toString("utf-8").split(":");
+    const { data } = await supabase.from("users").select("unit_id").eq("id", parseInt(userId, 10)).limit(1);
+    return (data?.[0]?.unit_id as number | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function unitPatientIds(unitId: number): Promise<number[]> {
+  const { data } = await supabase.from("patients").select("id").eq("unit_id", unitId);
+  return (data ?? []).map((r: any) => r.id as number);
+}
+
 async function fetchUserNames(ids: number[]): Promise<Record<number, string>> {
   if (ids.length === 0) return {};
   const { data } = await supabase.from("users").select("id, name_en").in("id", ids);
@@ -41,12 +58,33 @@ async function fetchPatientNames(ids: number[]): Promise<Record<number, string>>
   return map;
 }
 
+// ── Lab Orders ──────────────────────────────────────────────────────────────
+
 router.get("/lab-orders", async (req, res): Promise<void> => {
   const params = ListLabOrdersQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
+    const callerUnitId = await getCallerUnitId(req.headers.authorization);
+
+    let allowedPatientIds: number[] | null = null;
+    if (callerUnitId !== null) {
+      allowedPatientIds = await unitPatientIds(callerUnitId);
+      if (allowedPatientIds.length === 0) { res.json([]); return; }
+    }
+
     let q = supabase.from("lab_orders").select("*");
-    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
+
+    if (params.data.patientId) {
+      const pid = params.data.patientId;
+      if (allowedPatientIds !== null && !allowedPatientIds.includes(pid)) {
+        res.json([]);
+        return;
+      }
+      q = q.eq("patient_id", pid);
+    } else if (allowedPatientIds !== null) {
+      q = q.in("patient_id", allowedPatientIds);
+    }
+
     if (params.data.status) q = q.eq("status", params.data.status);
     const { data, error } = await q;
     if (dbError(error, res)) return;
@@ -103,12 +141,33 @@ router.patch("/lab-orders/:id", async (req, res): Promise<void> => {
   }
 });
 
+// ── Radiology Orders ─────────────────────────────────────────────────────────
+
 router.get("/radiology-orders", async (req, res): Promise<void> => {
   const params = ListRadiologyOrdersQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
+    const callerUnitId = await getCallerUnitId(req.headers.authorization);
+
+    let allowedPatientIds: number[] | null = null;
+    if (callerUnitId !== null) {
+      allowedPatientIds = await unitPatientIds(callerUnitId);
+      if (allowedPatientIds.length === 0) { res.json([]); return; }
+    }
+
     let q = supabase.from("radiology_orders").select("*");
-    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
+
+    if (params.data.patientId) {
+      const pid = params.data.patientId;
+      if (allowedPatientIds !== null && !allowedPatientIds.includes(pid)) {
+        res.json([]);
+        return;
+      }
+      q = q.eq("patient_id", pid);
+    } else if (allowedPatientIds !== null) {
+      q = q.in("patient_id", allowedPatientIds);
+    }
+
     if (params.data.status) q = q.eq("status", params.data.status);
     const { data, error } = await q;
     if (dbError(error, res)) return;
