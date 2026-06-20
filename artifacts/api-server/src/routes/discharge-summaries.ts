@@ -4,7 +4,9 @@ import path from "path";
 
 const router = Router();
 
-const STORE_PATH = path.join("/tmp", "discharge_summaries.json");
+const STORE_DIR  = path.join(process.cwd(), "data");
+const STORE_PATH = path.join(STORE_DIR, "discharge_summaries.json");
+try { fs.mkdirSync(STORE_DIR, { recursive: true }); } catch { }
 
 interface DischargeSummary {
   id: number;
@@ -43,6 +45,7 @@ function save(summaries: DischargeSummary[], nextId: number) {
 }
 
 let { summaries, nextId } = load();
+save(summaries, nextId);
 
 router.get("/discharge-summaries", (_req, res): void => {
   const patientId = _req.query.patientId ? parseInt(_req.query.patientId as string, 10) : null;

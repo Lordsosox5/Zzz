@@ -1,0 +1,83 @@
+{
+  "units": [
+    {
+      "id": 1,
+      "nameEn": "General Pediatrics",
+      "nameAr": "طب الأطفال العام",
+      "type": "ward",
+      "description": null,
+      "floor": "2",
+      "capacity": 40,
+      "headDoctorId": null,
+      "headDoctorName": null,
+      "status": "active",
+      "createdAt": "2026-06-20T10:21:54.387Z"
+    },
+    {
+      "id": 2,
+      "nameEn": "PICU",
+      "nameAr": "وحدة العناية المركزة للأطفال",
+      "type": "icu",
+      "description": null,
+      "floor": "3",
+      "capacity": 15,
+      "headDoctorId": null,
+      "headDoctorName": null,
+      "status": "active",
+      "createdAt": "2026-06-20T10:21:54.388Z"
+    },
+    {
+      "id": 3,
+      "nameEn": "NICU",
+      "nameAr": "وحدة العناية المركزة لحديثي الولادة",
+      "type": "nicu",
+      "description": null,
+      "floor": "3",
+      "capacity": 20,
+      "headDoctorId": null,
+      "headDoctorName": null,
+      "status": "active",
+      "createdAt": "2026-06-20T10:21:54.388Z"
+    },
+    {
+      "id": 4,
+      "nameEn": "Emergency",
+      "nameAr": "الطوارئ",
+      "type": "emergency",
+      "description": null,
+      "floor": "1",
+      "capacity": 25,
+      "headDoctorId": null,
+      "headDoctorName": null,
+      "status": "active",
+      "createdAt": "2026-06-20T10:21:54.388Z"
+    },
+    {
+      "id": 5,
+      "nameEn": "Surgical Ward",
+      "nameAr": "جناح الجراحة",
+      "type": "surgical",
+      "description": null,
+      "floor": "4",
+      "capacity": 20,
+      "headDoctorId": null,
+      "headDoctorName": null,
+      "status": "active",
+      "createdAt": "2026-06-20T10:21:54.388Z"
+    },
+    {
+      "id": 6,
+      "nameEn": "Outpatient Clinic",
+      "nameAr": "العيادات الخارجية",
+      "type": "outpatient",
+      "description": null,
+      "floor": "1",
+      "capacity": 0,
+      "headDoctorId": null,
+      "headDoctorName": null,
+      "status": "active",
+      "createdAt": "2026-06-20T10:21:54.388Z"
+    }
+  ],
+  "nextId": 7
+}

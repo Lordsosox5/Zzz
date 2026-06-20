@@ -8,7 +8,11 @@ const router = Router();
 // Saved to /tmp/units.json so units survive server restarts in the Replit env.
 // For production, migrate this to a real DB table in Supabase.
 
-const STORE_PATH = path.join("/tmp", "units.json");
+// Use a workspace-relative path so data survives container restarts/sleep.
+// /tmp is wiped on every restart; process.cwd() is artifacts/api-server when running.
+const STORE_DIR  = path.join(process.cwd(), "data");
+const STORE_PATH = path.join(STORE_DIR, "units.json");
+try { fs.mkdirSync(STORE_DIR, { recursive: true }); } catch { }
 
 interface Unit {
   id: number;
@@ -54,6 +58,8 @@ function save(units: Unit[], nextId: number) {
 }
 
 let { units, nextId } = load();
+// Flush to disk on startup so the file always exists in the persistent location
+save(units, nextId);
 
 // Export so other routes (e.g. patients) can read unit names
 export { units };
