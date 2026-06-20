@@ -17,14 +17,24 @@ function generateInvoiceNumber(): string {
   return `INV-${new Date().getFullYear()}-${String(++invoiceCounter).padStart(5, "0")}`;
 }
 
+function normalizeItem(item: Record<string, unknown>) {
+  return {
+    description: (item.description ?? item.name ?? "") as string,
+    quantity: Number(item.quantity ?? item.qty ?? 1),
+    unitPrice: Number(item.unitPrice ?? item.price ?? 0),
+    total: Number(item.total ?? 0),
+  };
+}
+
 function formatInvoice(row: Invoice) {
+  const rawItems = Array.isArray(row.items) ? row.items : [];
   return {
     ...row,
     patientName: null,
     totalAmount: Number(row.totalAmount ?? 0),
     paidAmount: Number(row.paidAmount ?? 0),
     discount: Number(row.discount ?? 0),
-    items: Array.isArray(row.items) ? row.items : [],
+    items: rawItems.map((item) => normalizeItem(item as Record<string, unknown>)),
   };
 }
 
