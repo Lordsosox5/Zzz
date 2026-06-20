@@ -7,12 +7,24 @@ import {
   UpdateInvoiceParams,
   UpdateInvoiceBody,
 } from "@workspace/api-zod";
-import { eq, and, SQL } from "drizzle-orm";
+import { eq, and, SQL, desc } from "drizzle-orm";
 import type { Invoice } from "@workspace/db";
 
 const router = Router();
 
 let invoiceCounter = 100;
+
+export async function initInvoiceCounter(): Promise<void> {
+  try {
+    const rows = await db.select({ num: invoicesTable.invoiceNumber }).from(invoicesTable).orderBy(desc(invoicesTable.id)).limit(1);
+    const raw = rows[0]?.num;
+    if (raw) {
+      const num = parseInt(String(raw).replace(/\D/g, "").slice(-5), 10);
+      if (!isNaN(num) && num > invoiceCounter) invoiceCounter = num;
+    }
+  } catch { }
+}
+
 function generateInvoiceNumber(): string {
   return `INV-${new Date().getFullYear()}-${String(++invoiceCounter).padStart(5, "0")}`;
 }

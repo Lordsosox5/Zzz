@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initMrnCounter } from "./routes/patients";
+import { initInvoiceCounter } from "./routes/billing";
 
 const rawPort = process.env["PORT"];
 
@@ -16,8 +17,8 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Seed the MRN counter from the DB before accepting requests
-initMrnCounter()
+// Seed counters from the DB before accepting requests
+Promise.all([initMrnCounter(), initInvoiceCounter()])
   .then(() => {
     app.listen(port, (err) => {
       if (err) {
