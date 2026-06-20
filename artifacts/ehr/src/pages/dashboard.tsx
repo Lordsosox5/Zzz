@@ -7,6 +7,10 @@ import {
   useListLabOrders,
   useListPatients,
   useListUnits,
+  useListDrugs,
+  useListPrescriptions,
+  useListInvoices,
+  useListVaccinations,
   getGetDashboardStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
@@ -957,9 +961,535 @@ function UnitDashboard() {
   );
 }
 
+// ─── Nurse Dashboard ──────────────────────────────────────────────────────────
+
+function NurseDashboard() {
+  const { t, isRtl, language } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: patientsResp, isLoading: loadingPatients } = useListPatients({});
+  const { data: appointments, isLoading: loadingAppts } = useGetTodayAppointments();
+  const { data: alerts, isLoading: loadingAlerts } = useGetDashboardAlerts();
+  const { data: vaccinations, isLoading: loadingVax } = useListVaccinations({});
+
+  const patients: any[] = (patientsResp as any)?.patients ?? (Array.isArray(patientsResp) ? patientsResp : []);
+  const appts: any[] = Array.isArray(appointments) ? appointments : [];
+  const vaxList: any[] = Array.isArray(vaccinations) ? vaccinations : [];
+  const alertsList: any[] = Array.isArray(alerts) ? alerts : [];
+
+  const kpiCards = [
+    { label: t("dash.nurse.totalPatients"), value: loadingPatients ? undefined : patients.length, icon: Users, color: "text-blue-600", bg: "bg-blue-500/10", loading: loadingPatients },
+    { label: t("dash.nurse.upcomingAppts"), value: loadingAppts ? undefined : appts.length, icon: Calendar, color: "text-green-600", bg: "bg-green-500/10", loading: loadingAppts },
+    { label: t("dash.nurse.vaccinations"), value: loadingVax ? undefined : vaxList.length, icon: Activity, color: "text-purple-600", bg: "bg-purple-500/10", loading: loadingVax },
+    { label: t("dash.alerts"), value: loadingAlerts ? undefined : alertsList.length, icon: AlertTriangle, color: alertsList.length > 0 ? "text-red-600" : "text-muted-foreground", bg: alertsList.length > 0 ? "bg-red-500/10" : "bg-muted/40", loading: loadingAlerts },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("dash.nurse.title")}</p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("dash.nurse.subtitle")}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={() => navigate("/patients")} className="gap-1.5">
+            <Users className="h-4 w-4" /> {t("nav.patients")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/vaccinations")} className="gap-1.5">
+            <Activity className="h-4 w-4" /> {t("nav.vaccinations")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/growth")} className="gap-1.5">
+            <TrendingUp className="h-4 w-4" /> {t("nav.growth")}
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="relative overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? <Skeleton className="h-8 w-16" /> : <p className="text-3xl font-bold tracking-tight">{s.value ?? 0}</p>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Main content row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Today's Appointments */}
+        <Card className="lg:col-span-2 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" /> {t("dash.todayAppts")}
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/appointments")}>{t("dash.viewAll")}</Button>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            {loadingAppts ? (
+              <div className="space-y-0">{[1,2,3,4].map(i => <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0"><Skeleton className="h-9 w-9 rounded-full shrink-0"/><div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4"/><Skeleton className="h-3 w-1/2"/></div></div>)}</div>
+            ) : appts.length > 0 ? (
+              <div className="divide-y">
+                {appts.slice(0, 8).map((appt) => {
+                  const time = new Date(appt.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <div key={appt.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                        {initials(appt.patientName)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{appt.patientName ?? `#${appt.patientId}`}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{time}</span>
+                          <span className="text-muted-foreground/40">·</span>
+                          {apptTypeBadge(appt.type)}
+                        </div>
+                      </div>
+                      {apptStatusBadge(appt.status)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Clock className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">{t("dash.noApptsToday")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Alerts panel */}
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-500" /> {t("dash.alerts")}
+            </CardTitle>
+            {alertsList.length > 0 && <Badge variant="destructive" className="text-xs">{alertsList.length}</Badge>}
+          </CardHeader>
+          <CardContent className="p-4 flex-1">
+            {loadingAlerts ? (
+              <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg"/>)}</div>
+            ) : alertsList.length > 0 ? (
+              <div className="space-y-2.5">
+                {alertsList.slice(0, 6).map((alert) => (
+                  <div key={alert.id} className={`flex items-start gap-2.5 p-3 rounded-lg border text-sm ${alertStyle(alert.severity ?? "info")}`}>
+                    <AlertSeverityIcon severity={alert.severity ?? "info"} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium leading-snug text-sm">{isRtl && alert.messageAr ? alert.messageAr : alert.message}</p>
+                      {alert.patientName && <p className="text-xs text-muted-foreground mt-1">{t("dash.patient")}: {alert.patientName}</p>}
+                      <p className="text-xs text-muted-foreground mt-0.5">{new Date(alert.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{t("dash.noAlerts")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Patients */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> {t("dash.nurse.quickPatients")}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/patients")}>{t("dash.viewAll")}</Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingPatients ? (
+            <div className="space-y-0">{[1,2,3].map(i => <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0"><Skeleton className="h-9 w-9 rounded-full shrink-0"/><div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4"/><Skeleton className="h-3 w-1/2"/></div></div>)}</div>
+          ) : patients.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x">
+              {patients.slice(0, 6).map((patient) => {
+                const name = isRtl && patient.nameAr ? patient.nameAr : patient.nameEn;
+                const age = patient.dateOfBirth ? `${Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / 31557600000)}y` : "";
+                return (
+                  <div key={patient.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer border-b sm:border-b-0" onClick={() => navigate(`/patients/${patient.id}`)}>
+                    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">{initials(patient.nameEn)}</div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{patient.mrn}{age ? ` · ${age}` : ""}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-10 text-center text-muted-foreground text-sm">{t("dash.nurse.noPatients")}</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Pharmacist Dashboard ─────────────────────────────────────────────────────
+
+function PharmacistDashboard() {
+  const { t, isRtl, language } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: drugsResp, isLoading: loadingDrugs } = useListDrugs({});
+  const { data: rxResp, isLoading: loadingRx } = useListPrescriptions({ status: "pending" });
+
+  const drugs: any[] = Array.isArray(drugsResp) ? drugsResp : [];
+  const rxList: any[] = Array.isArray(rxResp) ? rxResp : [];
+  const lowStock = drugs.filter(d => Number(d.stockQuantity) <= Number(d.minimumStock ?? 10));
+  const controlled = drugs.filter(d => d.isControlled);
+
+  const kpiCards = [
+    { label: t("dash.pharma.totalDrugs"), value: loadingDrugs ? undefined : drugs.length, icon: Package, color: "text-blue-600", bg: "bg-blue-500/10", loading: loadingDrugs },
+    { label: t("dash.pharma.lowStock"), value: loadingDrugs ? undefined : lowStock.length, icon: AlertTriangle, color: lowStock.length > 0 ? "text-red-600" : "text-green-600", bg: lowStock.length > 0 ? "bg-red-500/10" : "bg-green-500/10", loading: loadingDrugs },
+    { label: t("dash.pharma.pendingRx"), value: loadingRx ? undefined : rxList.length, icon: ClipboardList, color: "text-amber-600", bg: "bg-amber-500/10", loading: loadingRx },
+    { label: t("dash.pharma.controlled"), value: loadingDrugs ? undefined : controlled.length, icon: ShieldAlert, color: "text-orange-600", bg: "bg-orange-500/10", loading: loadingDrugs },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("dash.pharma.title")}</p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("dash.pharma.subtitle")}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={() => navigate("/pharmacy")} className="gap-1.5">
+            <Package className="h-4 w-4" /> {t("nav.pharmacy")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/prescriptions")} className="gap-1.5">
+            <Pill className="h-4 w-4" /> {t("nav.prescriptions")}
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className={`relative overflow-hidden ${i === 1 && lowStock.length > 0 ? "border-red-300 dark:border-red-800" : ""}`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? <Skeleton className="h-8 w-16" /> : <p className={`text-3xl font-bold tracking-tight ${i === 1 && lowStock.length > 0 ? "text-red-600 dark:text-red-400" : ""}`}>{s.value ?? 0}</p>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Low Stock Alerts */}
+        <Card className="lg:col-span-2 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-500" /> {t("dash.pharma.lowStockList")}
+            </CardTitle>
+            {lowStock.length > 0 && <Badge variant="destructive" className="text-xs">{lowStock.length}</Badge>}
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            {loadingDrugs ? (
+              <div className="space-y-0">{[1,2,3].map(i => <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0"><Skeleton className="h-10 w-10 rounded-lg shrink-0"/><div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4"/><Skeleton className="h-3 w-1/2"/></div></div>)}</div>
+            ) : lowStock.length > 0 ? (
+              <div className="divide-y">
+                {lowStock.slice(0, 8).map((drug) => {
+                  const pct = Math.round((Number(drug.stockQuantity) / Math.max(Number(drug.minimumStock ?? 10), 1)) * 100);
+                  const isCritical = pct < 50;
+                  return (
+                    <div key={drug.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                      <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isCritical ? "bg-red-100 dark:bg-red-900/30" : "bg-amber-100 dark:bg-amber-900/30"}`}>
+                        <Pill className={`h-4 w-4 ${isCritical ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium truncate">{drug.nameEn ?? drug.name}</p>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isCritical ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                            {isCritical ? t("dash.pharma.critical") : t("dash.pharma.warning")}
+                          </span>
+                          {drug.isControlled && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">CS</span>}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${isCritical ? "bg-red-500" : "bg-amber-500"}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                            {drug.stockQuantity} / {drug.minimumStock ?? 10} {t("dash.pharma.units")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{t("dash.pharma.noLowStock")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pending Prescriptions */}
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-amber-500" /> {t("dash.pharma.pendingRxList")}
+            </CardTitle>
+            {rxList.length > 0 && <Badge className="text-xs bg-amber-500 hover:bg-amber-600">{rxList.length}</Badge>}
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            {loadingRx ? (
+              <div className="space-y-0">{[1,2,3].map(i => <div key={i} className="p-4 border-b last:border-0"><Skeleton className="h-3.5 w-3/4 mb-2"/><Skeleton className="h-3 w-1/2"/></div>)}</div>
+            ) : rxList.length > 0 ? (
+              <div className="divide-y">
+                {rxList.slice(0, 6).map((rx: any) => (
+                  <div key={rx.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate("/prescriptions")}>
+                    <Pill className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{rx.patientName ?? `Patient #${rx.patientId}`}</p>
+                      <p className="text-xs text-muted-foreground truncate">{rx.medicationName ?? rx.medication}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{t("dash.pharma.noPendingRx")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Billing Officer Dashboard ────────────────────────────────────────────────
+
+function BillingOfficerDashboard() {
+  const { t, isRtl, language } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: invoicesRaw, isLoading: loadingInvoices } = useListInvoices({});
+  const { data: revenue, isLoading: loadingRevenue } = useGetRevenueStats();
+
+  const invoices: any[] = Array.isArray(invoicesRaw) ? invoicesRaw : [];
+  const pendingCount = invoices.filter(i => i.status === "pending").length;
+  const partialCount = invoices.filter(i => i.status === "partial").length;
+  const totalRevenue = revenue?.totalRevenue ?? invoices.reduce((s: number, i: any) => s + i.totalAmount, 0);
+  const totalPaid = revenue?.paidRevenue ?? invoices.reduce((s: number, i: any) => s + (i.paidAmount ?? 0), 0);
+  const collectionRate = totalRevenue > 0 ? Math.round((totalPaid / totalRevenue) * 100) : 0;
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString(language === "ar" ? "ar-SA" : "en-GB", { day: "2-digit", month: "short" });
+
+  const statusLabel = (status: string) =>
+    status === "paid"    ? t("billing.status.paid") :
+    status === "partial" ? t("billing.status.partial") :
+                           t("billing.status.pending");
+
+  const kpiCards = [
+    { label: t("dash.billing.totalRevenue"), value: `$${formatCurrency(totalRevenue)}`, icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-500/10", loading: loadingRevenue },
+    { label: t("dash.billing.collected"), value: `$${formatCurrency(totalPaid)}`, icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-500/10", loading: loadingRevenue },
+    { label: t("dash.billing.pendingCount"), value: pendingCount, icon: Clock, color: "text-orange-600", bg: "bg-orange-500/10", loading: loadingInvoices },
+    { label: t("dash.billing.partialCount"), value: partialCount, icon: Activity, color: "text-amber-600", bg: "bg-amber-500/10", loading: loadingInvoices },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("dash.billing.title")}</p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("dash.billing.subtitle")}</p>
+        </div>
+        <Button size="sm" onClick={() => navigate("/billing")} className="gap-1.5 self-start sm:self-auto">
+          <DollarSign className="h-4 w-4" /> {t("nav.billing")}
+        </Button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="relative overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? <Skeleton className="h-8 w-20" /> : <p className={`text-2xl font-bold tracking-tight tabular-nums ${s.color}`}>{s.value ?? 0}</p>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Collection rate + Revenue breakdown */}
+      {!loadingRevenue && revenue && (
+        <Card>
+          <CardHeader className="pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-500" /> {t("dash.billing.revenueBreakdown")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Collection rate bar */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{t("dash.billing.collectionRate")}</span>
+                  <span className="text-lg font-bold text-emerald-600">{collectionRate}%</span>
+                </div>
+                <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${collectionRate >= 80 ? "bg-emerald-500" : collectionRate >= 60 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${collectionRate}%` }} />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>{t("dash.billing.collected")}: ${formatCurrency(totalPaid)}</span>
+                  <span>{t("dash.billing.totalRevenue")}: ${formatCurrency(totalRevenue)}</span>
+                </div>
+              </div>
+              {/* Payment method breakdown */}
+              {revenue.byPaymentMethod && (
+                <div className="space-y-2">
+                  {revenue.byPaymentMethod.map((m: { method: string; amount: number }) => {
+                    const pct = totalRevenue > 0 ? Math.round((m.amount / totalRevenue) * 100) : 0;
+                    const colors: Record<string, string> = { cash: "bg-emerald-500", card: "bg-blue-500", insurance: "bg-purple-500" };
+                    const labels: Record<string, string> = { cash: t("billing.cash"), card: t("billing.card"), insurance: t("billing.insurance") };
+                    return (
+                      <div key={m.method}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="font-medium">{labels[m.method] ?? m.method}</span>
+                          <span className="text-muted-foreground">{pct}% · ${formatCurrency(m.amount)}</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full ${colors[m.method] ?? "bg-gray-400"}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent invoices */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> {t("dash.billing.recentTitle")}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/billing")}>{t("dash.viewAll")}</Button>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          {loadingInvoices ? (
+            <div className="space-y-0">{[1,2,3,4,5].map(i => <div key={i} className="flex gap-3 items-center px-6 py-3 border-b last:border-0"><Skeleton className="h-4 w-24"/><div className="flex-1"/><Skeleton className="h-4 w-16"/></div>)}</div>
+          ) : invoices.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-6">{t("billing.invoiceHash")}</TableHead>
+                  <TableHead>{t("billing.patient")}</TableHead>
+                  <TableHead>{t("generic.date")}</TableHead>
+                  <TableHead className="text-right">{t("billing.amount")}</TableHead>
+                  <TableHead className="text-right">{t("billing.balance")}</TableHead>
+                  <TableHead>{t("generic.status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.slice(0, 8).map((inv: any) => {
+                  const balance = inv.totalAmount - (inv.paidAmount ?? 0);
+                  return (
+                    <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/40" onClick={() => navigate("/billing")}>
+                      <TableCell className="pl-6 font-mono text-sm font-medium">
+                        {inv.invoiceNumber ? `#${inv.invoiceNumber}` : `#${String(inv.id).padStart(4, "0")}`}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{inv.patientName ?? `#${inv.patientId}`}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(inv.createdAt)}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">${inv.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className={`text-right tabular-nums font-medium ${balance > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
+                        ${balance.toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={
+                          inv.status === "paid"    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                          inv.status === "partial" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300" :
+                                                     "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300"
+                        }>
+                          {statusLabel(inv.status)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground text-sm">{t("dash.billing.noInvoices")}</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const user = getUser();
-  if (isLabRole(user?.role ?? "")) return <LabDashboard />;
-  if (isUnitRole(user?.role ?? "")) return <UnitDashboard />;
+  const role = user?.role ?? "";
+  if (isLabRole(role))             return <LabDashboard />;
+  if (isUnitRole(role))            return <UnitDashboard />;
+  if (role === "nurse")            return <NurseDashboard />;
+  if (role === "pharmacist")       return <PharmacistDashboard />;
+  if (role === "billing_officer")  return <BillingOfficerDashboard />;
   return <GeneralDashboard />;
 }
