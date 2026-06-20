@@ -6,7 +6,6 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
-import { getUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +40,7 @@ interface LineItem {
 function PatientSearchCombobox({
   value, onChange,
 }: { value: number | null; onChange: (id: number | null, name: string) => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { data: patientsResp } = useListPatients({ search: query || undefined });
@@ -58,16 +58,16 @@ function PatientSearchCombobox({
               <span className="text-muted-foreground font-mono text-xs">({selected.mrn})</span>
             </span>
           ) : (
-            <span className="text-muted-foreground">Search patient…</span>
+            <span className="text-muted-foreground">{t("generic.searchPatient")}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[340px] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search by name or MRN…" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={t("billing.searchPatient")} value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>No patients found.</CommandEmpty>
+            <CommandEmpty>{t("billing.noPatients")}</CommandEmpty>
             <CommandGroup>
               <ScrollArea className="max-h-52">
                 {patients.map(p => (
@@ -106,27 +106,18 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
 
   const updateItem = (id: number, field: keyof LineItem, value: string) =>
     setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
-
   const removeItem = (id: number) => setItems(prev => prev.filter(item => item.id !== id));
-
   const addItem = () => setItems(prev => [...prev, newItem()]);
-
   const lineTotal = (item: LineItem) => (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
   const grandTotal = items.reduce((sum, item) => sum + lineTotal(item), 0);
 
-  const reset = () => {
-    setPatientId(null);
-    setPaymentMethod("cash");
-    setNotes("");
-    setItems([newItem()]);
-  };
+  const reset = () => { setPatientId(null); setPaymentMethod("cash"); setNotes(""); setItems([newItem()]); };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientId) return;
     const validItems = items.filter(i => i.description.trim());
     if (validItems.length === 0) return;
-
     createMutation.mutate(
       {
         data: {
@@ -143,12 +134,12 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
       },
       {
         onSuccess: () => {
-          toast({ title: "Invoice created", description: "New invoice has been saved." });
+          toast({ title: t("billing.invoiceCreated"), description: t("billing.invoiceCreatedDesc") });
           setOpen(false);
           reset();
           onCreated();
         },
-        onError: () => toast({ variant: "destructive", title: "Error", description: "Failed to create invoice." }),
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
     );
   };
@@ -156,33 +147,31 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button><Plus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />New Invoice</Button>
+        <Button><Plus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />{t("billing.newInvoice")}</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5 text-primary" />
-            New Invoice
+            {t("billing.newInvoice")}
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="flex-1 overflow-auto">
           <form id="invoice-form" onSubmit={handleSubmit} className="p-6 space-y-5">
-
-            {/* Patient + Payment Method */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Patient <span className="text-destructive">*</span></Label>
+                <Label>{t("billing.patient")} <span className="text-destructive">*</span></Label>
                 <PatientSearchCombobox value={patientId} onChange={(id) => setPatientId(id)} />
               </div>
               <div className="space-y-2">
-                <Label>Payment Method <span className="text-destructive">*</span></Label>
+                <Label>{t("billing.paymentMethod")} <span className="text-destructive">*</span></Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="insurance">Insurance</SelectItem>
+                    <SelectItem value="cash">{t("billing.cash")}</SelectItem>
+                    <SelectItem value="card">{t("billing.card")}</SelectItem>
+                    <SelectItem value="insurance">{t("billing.insurance")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -190,21 +179,19 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
 
             <Separator />
 
-            {/* Line Items */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">Line Items</Label>
+                <Label className="text-sm font-semibold">{t("billing.lineItems")}</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addItem} className="h-8 gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> Add Item
+                  <Plus className="h-3.5 w-3.5" /> {t("billing.addItem")}
                 </Button>
               </div>
 
-              {/* Header row */}
               <div className="grid grid-cols-[1fr_80px_110px_90px_36px] gap-2 px-1">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description</span>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">Qty</span>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Unit Price</span>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Total</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("billing.itemDescription")}</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("billing.qty")}</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">{t("billing.unitPrice")}</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">{t("billing.total")}</span>
                 <span />
               </div>
 
@@ -212,14 +199,13 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
                 {items.map((item) => (
                   <div key={item.id} className="grid grid-cols-[1fr_80px_110px_90px_36px] gap-2 items-center">
                     <Input
-                      placeholder="e.g. Consultation fee"
+                      placeholder={t("billing.itemDescription")}
                       value={item.description}
                       onChange={e => updateItem(item.id, "description", e.target.value)}
                       className="h-9 text-sm"
                     />
                     <Input
-                      type="number"
-                      min="1"
+                      type="number" min="1"
                       value={item.quantity}
                       onChange={e => updateItem(item.id, "quantity", e.target.value)}
                       className="h-9 text-sm text-center"
@@ -227,24 +213,17 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
                     <div className="relative">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
+                        type="number" min="0" step="0.01" placeholder="0.00"
                         value={item.unitPrice}
                         onChange={e => updateItem(item.id, "unitPrice", e.target.value)}
                         className="h-9 text-sm text-right pl-6"
                       />
                     </div>
                     <div className="h-9 flex items-center justify-end pr-1">
-                      <span className="text-sm font-semibold tabular-nums text-foreground">
-                        ${lineTotal(item).toFixed(2)}
-                      </span>
+                      <span className="text-sm font-semibold tabular-nums">${lineTotal(item).toFixed(2)}</span>
                     </div>
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
+                      type="button" variant="ghost" size="icon"
                       className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
                       onClick={() => removeItem(item.id)}
                       disabled={items.length === 1}
@@ -255,10 +234,9 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
                 ))}
               </div>
 
-              {/* Grand total */}
               <div className="flex justify-end pt-2">
                 <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-2 flex items-center gap-3">
-                  <span className="text-sm font-medium text-muted-foreground">Total Amount</span>
+                  <span className="text-sm font-medium text-muted-foreground">{t("billing.totalAmount")}</span>
                   <span className="text-xl font-bold text-primary tabular-nums">${grandTotal.toFixed(2)}</span>
                 </div>
               </div>
@@ -266,34 +244,31 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
 
             <Separator />
 
-            {/* Notes */}
             <div className="space-y-2">
-              <Label>Notes <span className="text-xs text-muted-foreground">(optional)</span></Label>
+              <Label>{t("generic.notes")} <span className="text-xs text-muted-foreground">{t("billing.optional")}</span></Label>
               <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                placeholder="Any additional notes…"
+                placeholder={t("generic.notes")}
                 className="min-h-[72px] resize-none"
               />
             </div>
           </form>
         </ScrollArea>
 
-        {/* Footer */}
         <div className="px-6 py-4 border-t bg-card flex justify-end gap-2 shrink-0">
           <Button type="button" variant="outline" onClick={() => { setOpen(false); reset(); }}>
-            Cancel
+            {t("generic.cancel")}
           </Button>
           <Button
-            type="submit"
-            form="invoice-form"
+            type="submit" form="invoice-form"
             disabled={createMutation.isPending || !patientId || items.every(i => !i.description.trim())}
           >
             {createMutation.isPending
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               : <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />
             }
-            Save Invoice
+            {t("billing.saveInvoice")}
           </Button>
         </div>
       </DialogContent>
@@ -304,6 +279,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
 // ─── Record Payment Dialog ────────────────────────────────────────────────────
 
 function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const updateMutation = useUpdateInvoice();
@@ -324,11 +300,11 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
-          toast({ title: "Payment recorded", description: `$${paid.toFixed(2)} recorded on ${invoice.invoiceNumber ?? `INV-${invoice.id}`}.` });
+          toast({ title: t("billing.paymentRecorded"), description: `$${paid.toFixed(2)} — ${invoice.invoiceNumber ?? "INV-" + invoice.id}` });
           setOpen(false);
           setAmount("");
         },
-        onError: () => toast({ variant: "destructive", title: "Error", description: "Failed to record payment." }),
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("billing.paymentError") }),
       }
     );
   };
@@ -339,43 +315,39 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 h-8">
-          <DollarSign className="h-3.5 w-3.5" /> Pay
+          <DollarSign className="h-3.5 w-3.5" /> {t("billing.pay")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>{t("billing.recordPayment")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="rounded-lg bg-muted/50 border px-4 py-3 space-y-1 text-sm">
+          <div className="rounded-lg bg-muted/50 border px-4 py-3 space-y-1.5 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Invoice</span>
+              <span className="text-muted-foreground">{t("billing.invoice")}</span>
               <span className="font-mono font-medium">{invoice.invoiceNumber ?? `#${invoice.id}`}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total</span>
+              <span className="text-muted-foreground">{t("billing.totalAmount")}</span>
               <span className="font-semibold">${invoice.totalAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Already paid</span>
-              <span className="text-emerald-600">${(invoice.paidAmount ?? 0).toFixed(2)}</span>
+              <span className="text-muted-foreground">{t("billing.alreadyPaid")}</span>
+              <span className="text-emerald-600 font-medium">${Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between border-t pt-1 mt-1">
-              <span className="font-semibold">Balance due</span>
+            <div className="flex justify-between border-t pt-1.5 mt-0.5">
+              <span className="font-semibold">{t("billing.balanceDue")}</span>
               <span className="font-bold text-primary">${balance.toFixed(2)}</span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Payment Amount <span className="text-destructive">*</span></Label>
+            <Label>{t("billing.paymentAmount")} <span className="text-destructive">*</span></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
               <Input
-                type="number"
-                min="0.01"
-                max={balance}
-                step="0.01"
-                placeholder="0.00"
+                type="number" min="0.01" max={balance} step="0.01" placeholder="0.00"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 className="pl-7"
@@ -383,21 +355,19 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
               />
             </div>
             <Button
-              type="button"
-              variant="ghost"
-              size="sm"
+              type="button" variant="ghost" size="sm"
               className="h-7 text-xs text-muted-foreground"
               onClick={() => setAmount(balance.toFixed(2))}
             >
-              Pay full balance (${balance.toFixed(2)})
+              {t("billing.payFullBalance")} (${balance.toFixed(2)})
             </Button>
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={updateMutation.isPending || !amount || Number(amount) <= 0}>
               {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Record Payment
+              {t("billing.recordPayment")}
             </Button>
           </div>
         </form>
@@ -409,7 +379,7 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
 // ─── Main Billing Page ────────────────────────────────────────────────────────
 
 export default function Billing() {
-  const { t, isRtl } = useTranslation();
+  const { t, isRtl, language } = useTranslation();
   const queryClient = useQueryClient();
 
   const [filterPatientId, setFilterPatientId] = useState<number | null>(null);
@@ -432,6 +402,20 @@ export default function Billing() {
   const totalPending = allInvoices.filter(i => i.status === "pending").length;
   const totalPartial = allInvoices.filter(i => i.status === "partial").length;
 
+  const statusLabel = (status: string) =>
+    status === "paid"    ? t("billing.status.paid") :
+    status === "partial" ? t("billing.status.partial") :
+                           t("billing.status.pending");
+
+  const paymentLabel = (method: string) =>
+    method === "cash"      ? t("billing.cash") :
+    method === "card"      ? t("billing.card") :
+    method === "insurance" ? t("billing.insurance") :
+    method;
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString(language === "ar" ? "ar-SA" : "en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -443,10 +427,10 @@ export default function Billing() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Revenue", value: `$${totalRevenue.toFixed(2)}`, color: "text-primary" },
-          { label: "Collected",     value: `$${totalPaid.toFixed(2)}`,    color: "text-emerald-600 dark:text-emerald-400" },
-          { label: "Pending",       value: totalPending,                   color: "text-orange-600 dark:text-orange-400" },
-          { label: "Partial",       value: totalPartial,                   color: "text-amber-600 dark:text-amber-400" },
+          { label: t("billing.totalRevenue"), value: `$${totalRevenue.toFixed(2)}`, color: "text-primary" },
+          { label: t("billing.collected"),    value: `$${totalPaid.toFixed(2)}`,    color: "text-emerald-600 dark:text-emerald-400" },
+          { label: t("billing.pendingCount"), value: totalPending,                  color: "text-orange-600 dark:text-orange-400" },
+          { label: t("billing.partialCount"), value: totalPartial,                  color: "text-amber-600 dark:text-amber-400" },
         ].map(s => (
           <Card key={s.label} className="p-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">{s.label}</p>
@@ -461,10 +445,9 @@ export default function Billing() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 shrink-0">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">Filter:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("billing.filterBy")}</span>
             </div>
 
-            {/* Patient filter */}
             <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="flex-1 max-w-xs justify-between font-normal h-9 text-sm">
@@ -474,16 +457,16 @@ export default function Billing() {
                       {filterPatientName}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">All patients</span>
+                    <span className="text-muted-foreground">{t("billing.allPatients")}</span>
                   )}
                   <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="start">
                 <Command shouldFilter={false}>
-                  <CommandInput placeholder="Search patient…" value={filterQuery} onValueChange={setFilterQuery} />
+                  <CommandInput placeholder={t("billing.searchPatient")} value={filterQuery} onValueChange={setFilterQuery} />
                   <CommandList>
-                    <CommandEmpty>No patients found.</CommandEmpty>
+                    <CommandEmpty>{t("billing.noPatients")}</CommandEmpty>
                     <CommandGroup>
                       <ScrollArea className="max-h-52">
                         {filterPatients.map(p => (
@@ -504,20 +487,19 @@ export default function Billing() {
 
             {filterPatientId && (
               <Button variant="ghost" size="sm" className="h-9 px-2 text-muted-foreground" onClick={() => { setFilterPatientId(null); setFilterPatientName(""); }}>
-                <X className="h-4 w-4" /><span className="ml-1 text-xs">Clear</span>
+                <X className="h-4 w-4" /><span className="ml-1 text-xs">{t("generic.cancel")}</span>
               </Button>
             )}
 
-            {/* Status filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36 h-9 text-sm">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className="w-40 h-9 text-sm">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="all">{t("billing.allStatuses")}</SelectItem>
+                <SelectItem value="pending">{t("billing.status.pending")}</SelectItem>
+                <SelectItem value="partial">{t("billing.status.partial")}</SelectItem>
+                <SelectItem value="paid">{t("billing.status.paid")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -529,7 +511,7 @@ export default function Billing() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Receipt className="h-5 w-5 text-primary" />
-            Invoices
+            {t("billing.invoices")}
             {displayInvoices.length > 0 && (
               <Badge variant="secondary" className="ml-1">{displayInvoices.length}</Badge>
             )}
@@ -539,15 +521,15 @@ export default function Billing() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-6">Invoice #</TableHead>
+                <TableHead className="pl-6">{t("billing.invoiceHash")}</TableHead>
                 <TableHead>{t("generic.date")}</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
+                <TableHead>{t("billing.patient")}</TableHead>
+                <TableHead>{t("billing.method")}</TableHead>
+                <TableHead className="text-right">{t("billing.amount")}</TableHead>
+                <TableHead className="text-right">{t("billing.paid")}</TableHead>
+                <TableHead className="text-right">{t("billing.balance")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
-                <TableHead className={`pr-6 ${isRtl ? "text-left" : "text-right"}`}>Actions</TableHead>
+                <TableHead className={`pr-6 ${isRtl ? "text-left" : "text-right"}`}>{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -565,14 +547,12 @@ export default function Billing() {
                       <TableCell className="pl-6 font-mono text-sm font-medium">
                         {inv.invoiceNumber ? `#${inv.invoiceNumber}` : `#${String(inv.id).padStart(4, "0")}`}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(inv.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                      </TableCell>
-                      <TableCell className="font-medium">{inv.patientName ?? `Patient #${inv.patientId}`}</TableCell>
-                      <TableCell className="capitalize text-sm">{inv.paymentMethod}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(inv.createdAt)}</TableCell>
+                      <TableCell className="font-medium">{inv.patientName ?? `${t("billing.patient")} #${inv.patientId}`}</TableCell>
+                      <TableCell className="text-sm">{paymentLabel(inv.paymentMethod)}</TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">${inv.totalAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                        ${(inv.paidAmount ?? 0).toFixed(2)}
+                        ${Number(inv.paidAmount ?? 0).toFixed(2)}
                       </TableCell>
                       <TableCell className={`text-right tabular-nums font-medium ${balance > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
                         ${balance.toFixed(2)}
@@ -586,7 +566,7 @@ export default function Billing() {
                                                        "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800"
                           }
                         >
-                          {inv.status}
+                          {statusLabel(inv.status)}
                         </Badge>
                       </TableCell>
                       <TableCell className={`pr-6 ${isRtl ? "text-left" : "text-right"}`}>
@@ -601,7 +581,7 @@ export default function Billing() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                    {filterPatientId ? `No invoices found for ${filterPatientName}.` : "No invoices found."}
+                    {filterPatientId ? `${t("billing.noInvoicesFound")} (${filterPatientName})` : t("billing.noInvoices")}
                   </TableCell>
                 </TableRow>
               )}
