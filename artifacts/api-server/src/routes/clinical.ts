@@ -12,12 +12,48 @@ import {
 
 const router = Router();
 
+async function getCallerUnitId(authHeader: string | undefined): Promise<number | null> {
+  if (!authHeader) return null;
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const [userId] = Buffer.from(token, "base64").toString("utf-8").split(":");
+    const { data } = await supabase.from("users").select("unit_id").eq("id", parseInt(userId, 10)).limit(1);
+    return (data?.[0]?.unit_id as number | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function unitPatientIds(unitId: number): Promise<number[]> {
+  const { data } = await supabase.from("patients").select("id").eq("unit_id", unitId);
+  return (data ?? []).map((r: any) => r.id as number);
+}
+
 router.get("/clinical-notes", async (req, res): Promise<void> => {
   const params = ListClinicalNotesQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
+    const callerUnitId = await getCallerUnitId(req.headers.authorization);
+
+    let allowedPatientIds: number[] | null = null;
+    if (callerUnitId !== null) {
+      allowedPatientIds = await unitPatientIds(callerUnitId);
+      if (allowedPatientIds.length === 0) { res.json([]); return; }
+    }
+
     let q = supabase.from("clinical_notes").select("*");
-    if (params.data.patientId) q = q.eq("patient_id", params.data.patientId);
+
+    if (params.data.patientId) {
+      const pid = params.data.patientId;
+      if (allowedPatientIds !== null && !allowedPatientIds.includes(pid)) {
+        res.json([]);
+        return;
+      }
+      q = q.eq("patient_id", pid);
+    } else if (allowedPatientIds !== null) {
+      q = q.in("patient_id", allowedPatientIds);
+    }
+
     const { data, error } = await q;
     if (dbError(error, res)) return;
     const notes = mapRows(data ?? []);
@@ -53,7 +89,16 @@ router.get("/clinical-notes/:id", async (req, res): Promise<void> => {
     const { data, error } = await supabase.from("clinical_notes").select("*").eq("id", params.data.id).limit(1);
     if (dbError(error, res)) return;
     if (!data?.[0]) { res.status(404).json({ error: "Note not found" }); return; }
-    res.json({ ...mapRow(data[0]), authorName: null });
+    const note = mapRow<any>(data[0]);
+
+    const callerUnitId = await getCallerUnitId(req.headers.authorization);
+    if (callerUnitId !== null && note.patientId) {
+      const { data: pd } = await supabase.from("patients").select("unit_id").eq("id", note.patientId).limit(1);
+      const patientUnitId = (pd?.[0]?.unit_id as number | null) ?? null;
+      if (patientUnitId !== callerUnitId) { res.status(403).json({ error: "Access denied" }); return; }
+    }
+
+    res.json({ ...note, authorName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
