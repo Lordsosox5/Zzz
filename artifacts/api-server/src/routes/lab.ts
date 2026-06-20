@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, dbError, toSnake } from "../lib/supabase";
+import { db, labOrdersTable, radiologyOrdersTable, patientsTable, usersTable } from "../lib/db";
+import { eq, inArray } from "drizzle-orm";
 import {
   ListLabOrdersQueryParams,
   CreateLabOrderBody,
@@ -14,7 +15,6 @@ import {
 
 const router = Router();
 
-/** Decode the base64 auth token and return the numeric user id, or null. */
 function userIdFromReq(req: import("express").Request): number | null {
   try {
     const header = req.headers.authorization ?? "";
@@ -26,82 +26,62 @@ function userIdFromReq(req: import("express").Request): number | null {
   } catch { return null; }
 }
 
-/** Look up names for a set of user ids from the users table. */
 async function fetchUserNames(ids: number[]): Promise<Record<number, string>> {
   if (ids.length === 0) return {};
-  const { data } = await supabase.from("users").select("id,name_en").in("id", ids);
+  const users = await db.select({ id: usersTable.id, nameEn: usersTable.nameEn }).from(usersTable).where(inArray(usersTable.id, ids));
   const map: Record<number, string> = {};
-  if (data) for (const u of data as Array<{ id: number; name_en: string }>) map[u.id] = u.name_en;
+  for (const u of users) map[u.id] = u.nameEn;
   return map;
 }
 
-function formatLabOrder(row: Record<string, unknown>, userMap: Record<number, string> = {}, patientMap: Record<number, string> = {}) {
-  const mapped = mapRow(row);
-  return {
-    ...mapped,
-    patientName:   patientMap[(row.patient_id as number)]    ?? null,
-    orderedByName: userMap[(row.ordered_by_id as number)]    ?? null,
-  };
-}
-
-function formatRadOrder(row: Record<string, unknown>, userMap: Record<number, string> = {}, patientMap: Record<number, string> = {}) {
-  const mapped = mapRow(row);
-  return {
-    ...mapped,
-    patientName:   patientMap[(row.patient_id as number)]    ?? null,
-    orderedByName: userMap[(row.ordered_by_id as number)]    ?? null,
-  };
+async function fetchPatientNames(ids: number[]): Promise<Record<number, string>> {
+  if (ids.length === 0) return {};
+  const patients = await db.select({ id: patientsTable.id, nameEn: patientsTable.nameEn }).from(patientsTable).where(inArray(patientsTable.id, ids));
+  const map: Record<number, string> = {};
+  for (const p of patients) map[p.id] = p.nameEn;
+  return map;
 }
 
 router.get("/lab-orders", async (req, res): Promise<void> => {
   const params = ListLabOrdersQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  let query = supabase.from("lab_orders").select().order("created_at");
-  if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
-  if (params.data.status) query = query.eq("status", params.data.status);
-  const { data, error } = await query;
-  if (dbError(error, res)) return;
-  const orders = data ?? [];
-  const patientIds = [...new Set(orders.map((o: Record<string, unknown>) => o.patient_id).filter(Boolean))] as number[];
-  const userIds    = [...new Set(orders.map((o: Record<string, unknown>) => o.ordered_by_id).filter(Boolean))] as number[];
-  const [patientMap, userMap] = await Promise.all([
-    (async () => {
-      if (patientIds.length === 0) return {} as Record<number, string>;
-      const { data: patients } = await supabase.from("patients").select("id,name_en").in("id", patientIds);
-      const m: Record<number, string> = {};
-      if (patients) for (const p of patients as Array<{ id: number; name_en: string }>) m[p.id] = p.name_en;
-      return m;
-    })(),
-    fetchUserNames(userIds),
-  ]);
-  res.json(orders.map((row: Record<string, unknown>) => formatLabOrder(row, userMap, patientMap)));
+  try {
+    let query = db.select().from(labOrdersTable).$dynamic();
+    if (params.data.patientId) query = query.where(eq(labOrdersTable.patientId, params.data.patientId));
+    if (params.data.status) query = query.where(eq(labOrdersTable.status, params.data.status));
+    const orders = await query;
+    const patientIds = [...new Set(orders.map(o => o.patientId))];
+    const userIds = [...new Set(orders.map(o => o.orderedById))];
+    const [patientMap, userMap] = await Promise.all([fetchPatientNames(patientIds), fetchUserNames(userIds)]);
+    res.json(orders.map(o => ({ ...o, patientName: patientMap[o.patientId] ?? null, orderedByName: userMap[o.orderedById] ?? null })));
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.post("/lab-orders", async (req, res): Promise<void> => {
   const parsed = CreateLabOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const orderedById = userIdFromReq(req) ?? 1;
-  const { data, error } = await supabase
-    .from("lab_orders")
-    .insert({ ...toSnake(parsed.data as Record<string, unknown>), ordered_by_id: orderedById })
-    .select()
-    .single();
-  if (dbError(error, res)) return;
-  const userMap = await fetchUserNames([orderedById]);
-  res.status(201).json(formatLabOrder(data, userMap));
+  try {
+    const orderedById = userIdFromReq(req) ?? 1;
+    const [data] = await db.insert(labOrdersTable).values({ ...parsed.data, orderedById }).returning();
+    const userMap = await fetchUserNames([orderedById]);
+    res.status(201).json({ ...data, patientName: null, orderedByName: userMap[orderedById] ?? null });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.get("/lab-orders/:id", async (req, res): Promise<void> => {
   const params = GetLabOrderParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const { data, error } = await supabase
-    .from("lab_orders")
-    .select()
-    .eq("id", params.data.id)
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Lab order not found" }); return; }
-  res.json(formatLabOrder(data));
+  try {
+    const [data] = await db.select().from(labOrdersTable).where(eq(labOrdersTable.id, params.data.id)).limit(1);
+    if (!data) { res.status(404).json({ error: "Lab order not found" }); return; }
+    res.json({ ...data, patientName: null, orderedByName: null });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.patch("/lab-orders/:id", async (req, res): Promise<void> => {
@@ -109,53 +89,46 @@ router.patch("/lab-orders/:id", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateLabOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { data, error } = await supabase
-    .from("lab_orders")
-    .update(toSnake(parsed.data as Record<string, unknown>))
-    .eq("id", params.data.id)
-    .select()
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Lab order not found" }); return; }
-  res.json(formatLabOrder(data, userMap));
+  try {
+    const updates: Record<string, unknown> = { ...parsed.data };
+    if (parsed.data.collectedAt) updates.collectedAt = new Date(parsed.data.collectedAt);
+    if (parsed.data.resultedAt) updates.resultedAt = new Date(parsed.data.resultedAt);
+    const [data] = await db.update(labOrdersTable).set(updates).where(eq(labOrdersTable.id, params.data.id)).returning();
+    if (!data) { res.status(404).json({ error: "Lab order not found" }); return; }
+    res.json({ ...data, patientName: null, orderedByName: null });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.get("/radiology-orders", async (req, res): Promise<void> => {
   const params = ListRadiologyOrdersQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  let query = supabase.from("radiology_orders").select().order("created_at");
-  if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
-  if (params.data.status) query = query.eq("status", params.data.status);
-  const { data, error } = await query;
-  if (dbError(error, res)) return;
-  const orders = data ?? [];
-  const patientIds = [...new Set(orders.map((o: Record<string, unknown>) => o.patient_id).filter(Boolean))] as number[];
-  const userIds    = [...new Set(orders.map((o: Record<string, unknown>) => o.ordered_by_id).filter(Boolean))] as number[];
-  const [patientMap, userMap] = await Promise.all([
-    (async () => {
-      if (patientIds.length === 0) return {} as Record<number, string>;
-      const { data: patients } = await supabase.from("patients").select("id,name_en").in("id", patientIds);
-      const m: Record<number, string> = {};
-      if (patients) for (const p of patients as Array<{ id: number; name_en: string }>) m[p.id] = p.name_en;
-      return m;
-    })(),
-    fetchUserNames(userIds),
-  ]);
-  res.json(orders.map((row: Record<string, unknown>) => formatRadOrder(row, userMap, patientMap)));
+  try {
+    let query = db.select().from(radiologyOrdersTable).$dynamic();
+    if (params.data.patientId) query = query.where(eq(radiologyOrdersTable.patientId, params.data.patientId));
+    if (params.data.status) query = query.where(eq(radiologyOrdersTable.status, params.data.status));
+    const orders = await query;
+    const patientIds = [...new Set(orders.map(o => o.patientId))];
+    const userIds = [...new Set(orders.map(o => o.orderedById))];
+    const [patientMap, userMap] = await Promise.all([fetchPatientNames(patientIds), fetchUserNames(userIds)]);
+    res.json(orders.map(o => ({ ...o, patientName: patientMap[o.patientId] ?? null, orderedByName: userMap[o.orderedById] ?? null })));
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.post("/radiology-orders", async (req, res): Promise<void> => {
   const parsed = CreateRadiologyOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const orderedById = userIdFromReq(req) ?? 1;
-  const { data, error } = await supabase
-    .from("radiology_orders")
-    .insert({ ...toSnake(parsed.data as Record<string, unknown>), ordered_by_id: orderedById })
-    .select()
-    .single();
-  if (dbError(error, res)) return;
-  const userMap = await fetchUserNames([orderedById]);
-  res.status(201).json(formatRadOrder(data, userMap));
+  try {
+    const orderedById = userIdFromReq(req) ?? 1;
+    const [data] = await db.insert(radiologyOrdersTable).values({ ...parsed.data, orderedById }).returning();
+    const userMap = await fetchUserNames([orderedById]);
+    res.status(201).json({ ...data, patientName: null, orderedByName: userMap[orderedById] ?? null });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.patch("/radiology-orders/:id", async (req, res): Promise<void> => {
@@ -163,15 +136,16 @@ router.patch("/radiology-orders/:id", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateRadiologyOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { data, error } = await supabase
-    .from("radiology_orders")
-    .update(toSnake(parsed.data as Record<string, unknown>))
-    .eq("id", params.data.id)
-    .select()
-    .maybeSingle();
-  if (error) { res.status(500).json({ error: error.message }); return; }
-  if (!data) { res.status(404).json({ error: "Radiology order not found" }); return; }
-  res.json(formatRadOrder(data));
+  try {
+    const updates: Record<string, unknown> = { ...parsed.data };
+    if (parsed.data.scheduledAt) updates.scheduledAt = new Date(parsed.data.scheduledAt);
+    if (parsed.data.completedAt) updates.completedAt = new Date(parsed.data.completedAt);
+    const [data] = await db.update(radiologyOrdersTable).set(updates).where(eq(radiologyOrdersTable.id, params.data.id)).returning();
+    if (!data) { res.status(404).json({ error: "Radiology order not found" }); return; }
+    res.json({ ...data, patientName: null, orderedByName: null });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 export default router;

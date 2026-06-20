@@ -15,6 +15,8 @@ export {
   activityLogTable,
   alertsTable,
   admissionAssessmentsTable,
+  dischargeSummariesTable,
+  unitsTable,
 } from "@workspace/db";
 
 export function dbError(

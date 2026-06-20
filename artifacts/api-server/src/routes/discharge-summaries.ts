@@ -1,67 +1,57 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, dbError } from "../lib/supabase";
+import { db, dischargeSummariesTable } from "../lib/db";
+import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
 router.get("/discharge-summaries", async (req, res): Promise<void> => {
-  const patientId = req.query.patientId ? parseInt(req.query.patientId as string, 10) : null;
-  let query = supabase
-    .from("discharge_summaries")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (patientId) query = query.eq("patient_id", patientId);
-  const { data, error } = await query;
-  if (dbError(error, res)) return;
-  res.json(mapRows(data ?? []));
+  try {
+    const patientId = req.query.patientId ? parseInt(req.query.patientId as string, 10) : null;
+    let query = db.select().from(dischargeSummariesTable).orderBy(desc(dischargeSummariesTable.createdAt)).$dynamic();
+    if (patientId) query = query.where(eq(dischargeSummariesTable.patientId, patientId));
+    res.json(await query);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.get("/discharge-summaries/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const { data, error } = await supabase
-    .from("discharge_summaries")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (dbError(error, res)) return;
-  if (!data) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(mapRow(data));
+  try {
+    const [data] = await db.select().from(dischargeSummariesTable).where(eq(dischargeSummariesTable.id, id)).limit(1);
+    if (!data) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 router.post("/discharge-summaries", async (req, res): Promise<void> => {
-  const {
-    patientId, createdBy, createdByName,
-    admissionDate, dischargeDate, primaryDiagnosis, secondaryDiagnoses,
-    hospitalCourse, conditionAtDischarge, dischargeMedications,
-    followUpInstructions, dietInstructions, activityRestrictions,
-  } = req.body;
-
+  const { patientId, createdBy, createdByName, admissionDate, dischargeDate, primaryDiagnosis, secondaryDiagnoses, hospitalCourse, conditionAtDischarge, dischargeMedications, followUpInstructions, dietInstructions, activityRestrictions } = req.body;
   if (!patientId || !primaryDiagnosis || !dischargeDate || !hospitalCourse) {
     res.status(400).json({ error: "patientId, primaryDiagnosis, dischargeDate, hospitalCourse are required" });
     return;
   }
-
-  const { data, error } = await supabase
-    .from("discharge_summaries")
-    .insert({
-      patient_id:           Number(patientId),
-      created_by:           createdBy         ?? null,
-      created_by_name:      createdByName      ?? null,
-      admission_date:       admissionDate      ?? null,
-      discharge_date:       dischargeDate,
-      primary_diagnosis:    primaryDiagnosis,
-      secondary_diagnoses:  secondaryDiagnoses ?? null,
-      hospital_course:      hospitalCourse,
-      condition_at_discharge: conditionAtDischarge ?? "good",
-      discharge_medications:  dischargeMedications  ?? null,
-      follow_up_instructions: followUpInstructions  ?? null,
-      diet_instructions:      dietInstructions       ?? null,
-      activity_restrictions:  activityRestrictions   ?? null,
-    })
-    .select()
-    .single();
-
-  if (dbError(error, res, 400)) return;
-  res.status(201).json(mapRow(data));
+  try {
+    const [data] = await db.insert(dischargeSummariesTable).values({
+      patientId: Number(patientId),
+      createdBy: createdBy ?? null,
+      createdByName: createdByName ?? null,
+      admissionDate: admissionDate ?? null,
+      dischargeDate,
+      primaryDiagnosis,
+      secondaryDiagnoses: secondaryDiagnoses ?? null,
+      hospitalCourse,
+      conditionAtDischarge: conditionAtDischarge ?? "good",
+      dischargeMedications: dischargeMedications ?? null,
+      followUpInstructions: followUpInstructions ?? null,
+      dietInstructions: dietInstructions ?? null,
+      activityRestrictions: activityRestrictions ?? null,
+    }).returning();
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
 });
 
 export default router;

@@ -10,3 +10,4 @@ export * from "./vaccinations";
 export * from "./activity";
 export * from "./admissions";
 export * from "./units";
+export * from "./discharge_summaries";
