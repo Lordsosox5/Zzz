@@ -1,68 +1,33 @@
 import { Router } from "express";
-import fs from "fs";
-import path from "path";
+import { supabase, mapRow, mapRows, dbError } from "../lib/supabase";
 
 const router = Router();
 
-const STORE_DIR  = path.join(process.cwd(), "data");
-const STORE_PATH = path.join(STORE_DIR, "discharge_summaries.json");
-try { fs.mkdirSync(STORE_DIR, { recursive: true }); } catch { }
-
-interface DischargeSummary {
-  id: number;
-  patientId: number;
-  createdBy: number | null;
-  createdByName: string | null;
-  admissionDate: string | null;
-  dischargeDate: string;
-  primaryDiagnosis: string;
-  secondaryDiagnoses: string | null;
-  hospitalCourse: string;
-  conditionAtDischarge: string;
-  dischargeMedications: string | null;
-  followUpInstructions: string | null;
-  dietInstructions: string | null;
-  activityRestrictions: string | null;
-  createdAt: string;
-}
-
-function load(): { summaries: DischargeSummary[]; nextId: number } {
-  try {
-    if (fs.existsSync(STORE_PATH)) {
-      const raw = fs.readFileSync(STORE_PATH, "utf8");
-      return JSON.parse(raw);
-    }
-  } catch { }
-  return { summaries: [], nextId: 1 };
-}
-
-function save(summaries: DischargeSummary[], nextId: number) {
-  try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify({ summaries, nextId }, null, 2), "utf8");
-  } catch (e) {
-    console.error("Failed to persist discharge summaries:", e);
-  }
-}
-
-let { summaries, nextId } = load();
-save(summaries, nextId);
-
-router.get("/discharge-summaries", (_req, res): void => {
-  const patientId = _req.query.patientId ? parseInt(_req.query.patientId as string, 10) : null;
-  let result = [...summaries];
-  if (patientId) result = result.filter(s => s.patientId === patientId);
-  result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  res.json(result);
+router.get("/discharge-summaries", async (req, res): Promise<void> => {
+  const patientId = req.query.patientId ? parseInt(req.query.patientId as string, 10) : null;
+  let query = supabase
+    .from("discharge_summaries")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (patientId) query = query.eq("patient_id", patientId);
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json(mapRows(data ?? []));
 });
 
-router.get("/discharge-summaries/:id", (req, res): void => {
+router.get("/discharge-summaries/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const s = summaries.find(x => x.id === id);
-  if (!s) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(s);
+  const { data, error } = await supabase
+    .from("discharge_summaries")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (dbError(error, res)) return;
+  if (!data) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(mapRow(data));
 });
 
-router.post("/discharge-summaries", (req, res): void => {
+router.post("/discharge-summaries", async (req, res): Promise<void> => {
   const {
     patientId, createdBy, createdByName,
     admissionDate, dischargeDate, primaryDiagnosis, secondaryDiagnoses,
@@ -75,27 +40,28 @@ router.post("/discharge-summaries", (req, res): void => {
     return;
   }
 
-  const entry: DischargeSummary = {
-    id: nextId++,
-    patientId: Number(patientId),
-    createdBy: createdBy ?? null,
-    createdByName: createdByName ?? null,
-    admissionDate: admissionDate ?? null,
-    dischargeDate,
-    primaryDiagnosis,
-    secondaryDiagnoses: secondaryDiagnoses ?? null,
-    hospitalCourse,
-    conditionAtDischarge: conditionAtDischarge ?? "good",
-    dischargeMedications: dischargeMedications ?? null,
-    followUpInstructions: followUpInstructions ?? null,
-    dietInstructions: dietInstructions ?? null,
-    activityRestrictions: activityRestrictions ?? null,
-    createdAt: new Date().toISOString(),
-  };
+  const { data, error } = await supabase
+    .from("discharge_summaries")
+    .insert({
+      patient_id:           Number(patientId),
+      created_by:           createdBy         ?? null,
+      created_by_name:      createdByName      ?? null,
+      admission_date:       admissionDate      ?? null,
+      discharge_date:       dischargeDate,
+      primary_diagnosis:    primaryDiagnosis,
+      secondary_diagnoses:  secondaryDiagnoses ?? null,
+      hospital_course:      hospitalCourse,
+      condition_at_discharge: conditionAtDischarge ?? "good",
+      discharge_medications:  dischargeMedications  ?? null,
+      follow_up_instructions: followUpInstructions  ?? null,
+      diet_instructions:      dietInstructions       ?? null,
+      activity_restrictions:  activityRestrictions   ?? null,
+    })
+    .select()
+    .single();
 
-  summaries.push(entry);
-  save(summaries, nextId);
-  res.status(201).json(entry);
+  if (dbError(error, res, 400)) return;
+  res.status(201).json(mapRow(data));
 });
 
 export default router;

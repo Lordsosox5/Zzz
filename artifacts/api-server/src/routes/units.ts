@@ -1,18 +1,7 @@
 import { Router } from "express";
-import fs from "fs";
-import path from "path";
+import { supabase, mapRow, mapRows, dbError } from "../lib/supabase";
 
 const router = Router();
-
-// ─── Persistent JSON store ───────────────────────────────────────────────────
-// Saved to /tmp/units.json so units survive server restarts in the Replit env.
-// For production, migrate this to a real DB table in Supabase.
-
-// Use a workspace-relative path so data survives container restarts/sleep.
-// /tmp is wiped on every restart; process.cwd() is artifacts/api-server when running.
-const STORE_DIR  = path.join(process.cwd(), "data");
-const STORE_PATH = path.join(STORE_DIR, "units.json");
-try { fs.mkdirSync(STORE_DIR, { recursive: true }); } catch { }
 
 interface Unit {
   id: number;
@@ -28,95 +17,75 @@ interface Unit {
   createdAt: string;
 }
 
-const SEED: Unit[] = [
-  { id: 1, nameEn: "General Pediatrics",  nameAr: "طب الأطفال العام",                    type: "ward",       description: null, floor: "2", capacity: 40, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
-  { id: 2, nameEn: "PICU",                nameAr: "وحدة العناية المركزة للأطفال",          type: "icu",        description: null, floor: "3", capacity: 15, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
-  { id: 3, nameEn: "NICU",                nameAr: "وحدة العناية المركزة لحديثي الولادة", type: "nicu",       description: null, floor: "3", capacity: 20, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
-  { id: 4, nameEn: "Emergency",           nameAr: "الطوارئ",                             type: "emergency",  description: null, floor: "1", capacity: 25, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
-  { id: 5, nameEn: "Surgical Ward",       nameAr: "جناح الجراحة",                        type: "surgical",   description: null, floor: "4", capacity: 20, headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
-  { id: 6, nameEn: "Outpatient Clinic",   nameAr: "العيادات الخارجية",                   type: "outpatient", description: null, floor: "1", capacity: 0,  headDoctorId: null, headDoctorName: null, status: "active",   createdAt: new Date().toISOString() },
-];
+// In-memory cache — populated from Supabase at startup, refreshed after writes.
+// Used by patients.ts for unit name lookups without an extra DB call per request.
+export let units: Unit[] = [];
 
-function load(): { units: Unit[]; nextId: number } {
-  try {
-    if (fs.existsSync(STORE_PATH)) {
-      const raw = fs.readFileSync(STORE_PATH, "utf8");
-      return JSON.parse(raw);
-    }
-  } catch {
-    // file corrupt — fall through to seed
-  }
-  return { units: [...SEED], nextId: SEED.length + 1 };
+export async function refreshUnitsCache(): Promise<void> {
+  const { data, error } = await supabase.from("units").select("*").order("id");
+  if (!error && data) units = mapRows<Unit>(data);
 }
 
-function save(units: Unit[], nextId: number) {
-  try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify({ units, nextId }, null, 2), "utf8");
-  } catch (e) {
-    console.error("Failed to persist units:", e);
-  }
-}
-
-let { units, nextId } = load();
-// Flush to disk on startup so the file always exists in the persistent location
-save(units, nextId);
-
-// Export so other routes (e.g. patients) can read unit names
-export { units };
+// Warm the cache on module load
+refreshUnitsCache().catch(console.error);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
-router.get("/units", (_req, res): void => {
-  const { status } = _req.query;
-  let result = [...units];
-  if (status) result = result.filter(u => u.status === status);
-  res.json(result);
+router.get("/units", async (req, res): Promise<void> => {
+  const { status } = req.query;
+  let query = supabase.from("units").select("*").order("id");
+  if (status) query = query.eq("status", status as string);
+  const { data, error } = await query;
+  if (dbError(error, res)) return;
+  res.json(mapRows(data ?? []));
 });
 
-router.post("/units", (req, res): void => {
+router.post("/units", async (req, res): Promise<void> => {
   const { nameEn, nameAr, type, description, floor, capacity, headDoctorId, status } = req.body;
   if (!nameEn) { res.status(400).json({ error: "nameEn is required" }); return; }
-  const unit: Unit = {
-    id: nextId++,
-    nameEn,
-    nameAr: nameAr ?? null,
-    type: type ?? "ward",
-    description: description ?? null,
-    floor: floor ?? null,
-    capacity: Number(capacity ?? 0),
-    headDoctorId: headDoctorId ?? null,
-    headDoctorName: null,
-    status: status ?? "active",
-    createdAt: new Date().toISOString(),
-  };
-  units.push(unit);
-  save(units, nextId);
-  res.status(201).json(unit);
+  const { data, error } = await supabase
+    .from("units")
+    .insert({
+      name_en: nameEn,
+      name_ar: nameAr ?? null,
+      type: type ?? "ward",
+      description: description ?? null,
+      floor: floor ?? null,
+      capacity: Number(capacity ?? 0),
+      head_doctor_id: headDoctorId ?? null,
+      status: status ?? "active",
+    })
+    .select()
+    .single();
+  if (dbError(error, res, 400)) return;
+  await refreshUnitsCache();
+  res.status(201).json(mapRow<Unit>(data));
 });
 
-router.get("/units/:id", (req, res): void => {
+router.get("/units/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const unit = units.find(u => u.id === id);
-  if (!unit) { res.status(404).json({ error: "Unit not found" }); return; }
-  res.json(unit);
+  const { data, error } = await supabase.from("units").select("*").eq("id", id).maybeSingle();
+  if (dbError(error, res)) return;
+  if (!data) { res.status(404).json({ error: "Unit not found" }); return; }
+  res.json(mapRow<Unit>(data));
 });
 
-router.patch("/units/:id", (req, res): void => {
+router.patch("/units/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  const idx = units.findIndex(u => u.id === id);
-  if (idx === -1) { res.status(404).json({ error: "Unit not found" }); return; }
   const { nameEn, nameAr, type, description, floor, capacity, headDoctorId, status } = req.body;
-  const u = units[idx];
-  if (nameEn !== undefined)      u.nameEn = nameEn;
-  if (nameAr !== undefined)      u.nameAr = nameAr ?? null;
-  if (type !== undefined)        u.type = type;
-  if (description !== undefined) u.description = description ?? null;
-  if (floor !== undefined)       u.floor = floor ?? null;
-  if (capacity !== undefined)    u.capacity = Number(capacity);
-  if (headDoctorId !== undefined) u.headDoctorId = headDoctorId ?? null;
-  if (status !== undefined)      u.status = status;
-  save(units, nextId);
-  res.json(u);
+  const updates: Record<string, unknown> = {};
+  if (nameEn      !== undefined) updates.name_en       = nameEn;
+  if (nameAr      !== undefined) updates.name_ar       = nameAr ?? null;
+  if (type        !== undefined) updates.type          = type;
+  if (description !== undefined) updates.description   = description ?? null;
+  if (floor       !== undefined) updates.floor         = floor ?? null;
+  if (capacity    !== undefined) updates.capacity      = Number(capacity);
+  if (headDoctorId !== undefined) updates.head_doctor_id = headDoctorId ?? null;
+  if (status      !== undefined) updates.status        = status;
+  const { data, error } = await supabase.from("units").update(updates).eq("id", id).select().single();
+  if (dbError(error, res)) return;
+  await refreshUnitsCache();
+  res.json(mapRow<Unit>(data));
 });
 
 export default router;
