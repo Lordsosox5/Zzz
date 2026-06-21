@@ -37,9 +37,9 @@ function getGreeting(hour: number): "dash.goodMorning" | "dash.goodAfternoon" | 
 }
 
 function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toLocaleString()}`;
+  if (n >= 1_000_000) return `SDG ${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `SDG ${(n / 1_000).toFixed(1)}K`;
+  return `SDG ${n.toLocaleString()}`;
 }
 
 function Trend({ current, previous, invert = false }: { current: number; previous: number; invert?: boolean }) {
@@ -1332,8 +1332,8 @@ function BillingOfficerDashboard() {
                            t("billing.status.pending");
 
   const kpiCards = [
-    { label: t("dash.billing.totalRevenue"), value: `$${formatCurrency(totalRevenue)}`, icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-500/10", loading: loadingRevenue },
-    { label: t("dash.billing.collected"), value: `$${formatCurrency(totalPaid)}`, icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-500/10", loading: loadingRevenue },
+    { label: t("dash.billing.totalRevenue"), value: formatCurrency(totalRevenue), icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-500/10", loading: loadingRevenue },
+    { label: t("dash.billing.collected"), value: formatCurrency(totalPaid), icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-500/10", loading: loadingRevenue },
     { label: t("dash.billing.pendingCount"), value: pendingCount, icon: Clock, color: "text-orange-600", bg: "bg-orange-500/10", loading: loadingInvoices },
     { label: t("dash.billing.partialCount"), value: partialCount, icon: Activity, color: "text-amber-600", bg: "bg-amber-500/10", loading: loadingInvoices },
   ];
@@ -1456,9 +1456,9 @@ function BillingOfficerDashboard() {
                       </TableCell>
                       <TableCell className="font-medium text-sm">{inv.patientName ?? `#${inv.patientId}`}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(inv.createdAt)}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">${inv.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">SDG {inv.totalAmount.toFixed(2)}</TableCell>
                       <TableCell className={`text-right tabular-nums font-medium ${balance > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
-                        ${balance.toFixed(2)}
+                        SDG {balance.toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={

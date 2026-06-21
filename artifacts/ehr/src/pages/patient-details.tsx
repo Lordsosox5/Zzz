@@ -557,6 +557,9 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { data: patientInvoicesRaw } = useListInvoices({ patientId });
+  const patientInvoices = Array.isArray(patientInvoicesRaw) ? patientInvoicesRaw : [];
+  const hasUnresolvedInvoices = patientInvoices.some((inv: any) => inv.status === "pending" || inv.status === "partial");
   const [form, setForm] = useState({
     admissionDate: "",
     dischargeDate: new Date().toISOString().slice(0, 10),
@@ -606,6 +609,15 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
       setSaving(false);
     }
   };
+
+  if (hasUnresolvedInvoices) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-2.5 text-sm text-amber-700 dark:text-amber-300">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <span>{t("discharge.blockedByInvoices")}</span>
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -1255,9 +1267,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                             {new Date(inv.createdAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="capitalize">{inv.paymentMethod}</TableCell>
-                          <TableCell className="font-semibold tabular-nums">${inv.totalAmount.toFixed(2)}</TableCell>
+                          <TableCell className="font-semibold tabular-nums">SDG {inv.totalAmount.toFixed(2)}</TableCell>
                           <TableCell className="tabular-nums text-emerald-600 dark:text-emerald-400">
-                            ${(inv.paidAmount ?? 0).toFixed(2)}
+                            SDG {(inv.paidAmount ?? 0).toFixed(2)}
                           </TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${

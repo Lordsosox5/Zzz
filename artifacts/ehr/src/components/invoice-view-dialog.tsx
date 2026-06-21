@@ -129,8 +129,8 @@ export function InvoiceViewDialog({ invoice }: { invoice: Invoice }) {
         <tr>
           <td>${item.description}</td>
           <td class="num">${item.quantity}</td>
-          <td class="money">$${Number(item.unitPrice).toFixed(2)}</td>
-          <td class="money total-cell">$${Number(item.total).toFixed(2)}</td>
+          <td class="money">SDG ${Number(item.unitPrice).toFixed(2)}</td>
+          <td class="money total-cell">SDG ${Number(item.total).toFixed(2)}</td>
         </tr>`).join("")
         : `<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:20px">${t("billing.noItems")}</td></tr>`}
     </tbody>
@@ -139,25 +139,25 @@ export function InvoiceViewDialog({ invoice }: { invoice: Invoice }) {
   <div class="totals">
     <div class="total-row">
       <span class="label">${t("billing.subtotal")}</span>
-      <span class="value">$${invoice.totalAmount.toFixed(2)}</span>
+      <span class="value">SDG ${invoice.totalAmount.toFixed(2)}</span>
     </div>
     ${(invoice.discount ?? 0) > 0 ? `
     <div class="total-row">
       <span class="label">${t("billing.discount")}</span>
-      <span class="value" style="color:#15803d">−$${Number(invoice.discount ?? 0).toFixed(2)}</span>
+      <span class="value" style="color:#15803d">−SDG ${Number(invoice.discount ?? 0).toFixed(2)}</span>
     </div>` : ""}
     <div class="total-row grand">
       <span class="label">${t("billing.total")}</span>
-      <span class="value">$${invoice.totalAmount.toFixed(2)}</span>
+      <span class="value">SDG ${invoice.totalAmount.toFixed(2)}</span>
     </div>
     <div class="total-row paid-row">
       <span class="label">${t("billing.paid")}</span>
-      <span class="value">$${Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
+      <span class="value">SDG ${Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
     </div>
     ${balance > 0.001 ? `
     <div class="total-row balance-row">
       <span class="label">${t("billing.balanceDue")}</span>
-      <span class="value">$${balance.toFixed(2)}</span>
+      <span class="value">SDG ${balance.toFixed(2)}</span>
     </div>` : ""}
   </div>
 
@@ -252,8 +252,8 @@ export function InvoiceViewDialog({ invoice }: { invoice: Invoice }) {
                         <TableRow key={i}>
                           <TableCell className="font-medium text-sm">{item.description}</TableCell>
                           <TableCell className="text-center text-sm tabular-nums">{item.quantity}</TableCell>
-                          <TableCell className="text-end text-sm tabular-nums">${Number(item.unitPrice).toFixed(2)}</TableCell>
-                          <TableCell className="text-end font-semibold text-sm tabular-nums">${Number(item.total).toFixed(2)}</TableCell>
+                          <TableCell className="text-end text-sm tabular-nums">SDG {Number(item.unitPrice).toFixed(2)}</TableCell>
+                          <TableCell className="text-end font-semibold text-sm tabular-nums">SDG {Number(item.total).toFixed(2)}</TableCell>
                         </TableRow>
                       ))
                     ) : (
@@ -272,27 +272,27 @@ export function InvoiceViewDialog({ invoice }: { invoice: Invoice }) {
             <div className="flex flex-col items-end gap-1.5 text-sm">
               <div className="flex items-center gap-16">
                 <span className="text-muted-foreground">{t("billing.subtotal")}</span>
-                <span className="font-medium tabular-nums w-24 text-end">${invoice.totalAmount.toFixed(2)}</span>
+                <span className="font-medium tabular-nums w-28 text-end">SDG {invoice.totalAmount.toFixed(2)}</span>
               </div>
               {(invoice.discount ?? 0) > 0 && (
                 <div className="flex items-center gap-16 text-emerald-600">
                   <span>{t("billing.discount")}</span>
-                  <span className="font-medium tabular-nums w-24 text-end">−${Number(invoice.discount ?? 0).toFixed(2)}</span>
+                  <span className="font-medium tabular-nums w-28 text-end">−SDG {Number(invoice.discount ?? 0).toFixed(2)}</span>
                 </div>
               )}
               <Separator className="w-60 my-1" />
               <div className="flex items-center gap-16 text-base font-bold">
                 <span>{t("billing.total")}</span>
-                <span className="tabular-nums w-24 text-end">${invoice.totalAmount.toFixed(2)}</span>
+                <span className="tabular-nums w-28 text-end">SDG {invoice.totalAmount.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-16 text-emerald-600">
                 <span className="text-sm font-medium">{t("billing.paid")}</span>
-                <span className="font-semibold tabular-nums w-24 text-end">${Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
+                <span className="font-semibold tabular-nums w-28 text-end">SDG {Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
               </div>
               {balance > 0.001 && (
                 <div className="flex items-center gap-16 text-orange-600">
                   <span className="text-sm font-medium">{t("billing.balanceDue")}</span>
-                  <span className="font-bold tabular-nums w-24 text-end">${balance.toFixed(2)}</span>
+                  <span className="font-bold tabular-nums w-28 text-end">SDG {balance.toFixed(2)}</span>
                 </div>
               )}
             </div>

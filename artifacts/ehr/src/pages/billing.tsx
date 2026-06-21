@@ -211,16 +211,16 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
                       className="h-9 text-sm text-center"
                     />
                     <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-medium">SDG</span>
                       <Input
                         type="number" min="0" step="0.01" placeholder="0.00"
                         value={item.unitPrice}
                         onChange={e => updateItem(item.id, "unitPrice", e.target.value)}
-                        className="h-9 text-sm text-right pl-6"
+                        className="h-9 text-sm text-right pl-12"
                       />
                     </div>
                     <div className="h-9 flex items-center justify-end pr-1">
-                      <span className="text-sm font-semibold tabular-nums">${lineTotal(item).toFixed(2)}</span>
+                      <span className="text-sm font-semibold tabular-nums">SDG {lineTotal(item).toFixed(2)}</span>
                     </div>
                     <Button
                       type="button" variant="ghost" size="icon"
@@ -237,7 +237,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
               <div className="flex justify-end pt-2">
                 <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-2 flex items-center gap-3">
                   <span className="text-sm font-medium text-muted-foreground">{t("billing.totalAmount")}</span>
-                  <span className="text-xl font-bold text-primary tabular-nums">${grandTotal.toFixed(2)}</span>
+                  <span className="text-xl font-bold text-primary tabular-nums">SDG {grandTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -300,7 +300,7 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
-          toast({ title: t("billing.paymentRecorded"), description: `$${paid.toFixed(2)} — ${invoice.invoiceNumber ?? "INV-" + invoice.id}` });
+          toast({ title: t("billing.paymentRecorded"), description: `SDG ${paid.toFixed(2)} — ${invoice.invoiceNumber ?? "INV-" + invoice.id}` });
           setOpen(false);
           setAmount("");
         },
@@ -330,27 +330,27 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("billing.totalAmount")}</span>
-              <span className="font-semibold">${invoice.totalAmount.toFixed(2)}</span>
+              <span className="font-semibold">SDG {invoice.totalAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("billing.alreadyPaid")}</span>
-              <span className="text-emerald-600 font-medium">${Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
+              <span className="text-emerald-600 font-medium">SDG {Number(invoice.paidAmount ?? 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between border-t pt-1.5 mt-0.5">
               <span className="font-semibold">{t("billing.balanceDue")}</span>
-              <span className="font-bold text-primary">${balance.toFixed(2)}</span>
+              <span className="font-bold text-primary">SDG {balance.toFixed(2)}</span>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>{t("billing.paymentAmount")} <span className="text-destructive">*</span></Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-medium">SDG</span>
               <Input
                 type="number" min="0.01" max={balance} step="0.01" placeholder="0.00"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="pl-7"
+                className="pl-12"
                 autoFocus
               />
             </div>
@@ -359,7 +359,7 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
               className="h-7 text-xs text-muted-foreground"
               onClick={() => setAmount(balance.toFixed(2))}
             >
-              {t("billing.payFullBalance")} (${balance.toFixed(2)})
+              {t("billing.payFullBalance")} (SDG {balance.toFixed(2)})
             </Button>
           </div>
 
@@ -427,8 +427,8 @@ export default function Billing() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: t("billing.totalRevenue"), value: `$${totalRevenue.toFixed(2)}`, color: "text-primary" },
-          { label: t("billing.collected"),    value: `$${totalPaid.toFixed(2)}`,    color: "text-emerald-600 dark:text-emerald-400" },
+          { label: t("billing.totalRevenue"), value: `SDG ${totalRevenue.toFixed(2)}`, color: "text-primary" },
+          { label: t("billing.collected"),    value: `SDG ${totalPaid.toFixed(2)}`,    color: "text-emerald-600 dark:text-emerald-400" },
           { label: t("billing.pendingCount"), value: totalPending,                  color: "text-orange-600 dark:text-orange-400" },
           { label: t("billing.partialCount"), value: totalPartial,                  color: "text-amber-600 dark:text-amber-400" },
         ].map(s => (
@@ -550,12 +550,12 @@ export default function Billing() {
                       <TableCell className="text-sm text-muted-foreground">{formatDate(inv.createdAt)}</TableCell>
                       <TableCell className="font-medium">{inv.patientName ?? `${t("billing.patient")} #${inv.patientId}`}</TableCell>
                       <TableCell className="text-sm">{paymentLabel(inv.paymentMethod)}</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">${inv.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums">SDG {inv.totalAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                        ${Number(inv.paidAmount ?? 0).toFixed(2)}
+                        SDG {Number(inv.paidAmount ?? 0).toFixed(2)}
                       </TableCell>
                       <TableCell className={`text-right tabular-nums font-medium ${balance > 0 ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
-                        ${balance.toFixed(2)}
+                        SDG {balance.toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Badge

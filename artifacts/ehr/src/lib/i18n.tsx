@@ -619,6 +619,7 @@ const translations: Translations = {
   "discharge.condition.improved": { en: "Improved",                 ar: "تحسنت" },
   "discharge.condition.fair":     { en: "Fair",                     ar: "مقبولة" },
   "discharge.condition.poor":     { en: "Poor",                     ar: "ضعيفة" },
+  "discharge.blockedByInvoices":  { en: "Cannot discharge: patient has unpaid invoices. Settle all invoices first.", ar: "لا يمكن الخروج: يوجد فواتير غير مسددة. يرجى تسوية جميع الفواتير أولاً." },
 };
 
 interface I18nContextType {
