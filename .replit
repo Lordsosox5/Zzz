@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash", "postgresql-16"]
+modules = ["nodejs-20", "web", "bash"]
 
 [deployment]
 router = "application"
@@ -62,9 +62,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-SUPABASE_URL = "https://vhiekleynomremcampnd.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaWVrbGV5bm9tcmVtY2FtcG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjkyOTksImV4cCI6MjA5NzIwNTI5OX0.CRhKVPuG6-3SFTq4TyiiwgdvBptEZJTSbvhHLyO4yiI"
 BASE_PATH = "/"
-SUPABASE_DATABASE_URL = "postgresql://postgres:Lordforreal22@db.vhiekleynomremcampnd.supabase.co:5432/postgres?sslmode=require"
-VITE_SUPABASE_URL = "https://vhiekleynomremcampnd.supabase.co"
-VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoaWVrbGV5bm9tcmVtY2FtcG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MjkyOTksImV4cCI6MjA5NzIwNTI5OX0.CRhKVPuG6-3SFTq4TyiiwgdvBptEZJTSbvhHLyO4yiI"
