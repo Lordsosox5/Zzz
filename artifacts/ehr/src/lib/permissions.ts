@@ -160,17 +160,17 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
   },
 };
 
-export type PatientTab = "overview" | "notes" | "prescriptions" | "labs" | "discharge" | "billing";
+export type PatientTab = "overview" | "notes" | "prescriptions" | "labs" | "discharge" | "billing" | "vitals";
 
 const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
-  super_admin:          ["overview", "notes", "prescriptions", "labs", "discharge", "billing"],
-  pediatric_consultant: ["overview", "notes", "prescriptions", "labs", "discharge"],
-  pediatric_specialist: ["overview", "notes", "prescriptions", "labs", "discharge"],
-  emergency_physician:  ["overview", "notes", "prescriptions", "labs", "discharge"],
-  house_officer:        ["overview", "notes", "prescriptions", "labs", "discharge"],
-  medical_officer:      ["overview", "notes", "prescriptions", "labs", "discharge"],
-  registrar:            ["overview", "notes", "prescriptions", "labs", "discharge"],
-  nurse:                ["overview"],
+  super_admin:          ["overview", "vitals", "notes", "prescriptions", "labs", "discharge", "billing"],
+  pediatric_consultant: ["overview", "vitals", "notes", "prescriptions", "labs", "discharge"],
+  pediatric_specialist: ["overview", "vitals", "notes", "prescriptions", "labs", "discharge"],
+  emergency_physician:  ["overview", "vitals", "notes", "prescriptions", "labs", "discharge"],
+  house_officer:        ["overview", "vitals", "notes", "prescriptions", "labs", "discharge"],
+  medical_officer:      ["overview", "vitals", "notes", "prescriptions", "labs", "discharge"],
+  registrar:            ["overview", "vitals", "notes", "prescriptions", "labs", "discharge"],
+  nurse:                ["overview", "vitals"],
   pharmacist:           ["overview", "prescriptions"],
   lab_technician:       ["labs"],
   billing_officer:      ["overview", "billing"],

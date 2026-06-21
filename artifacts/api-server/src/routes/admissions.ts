@@ -16,6 +16,18 @@ router.get("/patients/:id/assessment", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/patients/:id/assessments", async (req, res): Promise<void> => {
+  const patientId = parseInt(req.params.id, 10);
+  if (isNaN(patientId)) { res.status(400).json({ error: "Invalid patient id" }); return; }
+  try {
+    const { data, error } = await supabase.from("admission_assessments").select("*").eq("patient_id", patientId).order("created_at", { ascending: false });
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json((data ?? []).map(r => mapRow(r)));
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.post("/admission-assessments", async (req, res): Promise<void> => {
   const { patientId, ...rest } = req.body;
   if (!patientId) { res.status(400).json({ error: "patientId is required" }); return; }

@@ -525,8 +525,15 @@ const translations: Translations = {
   "nurse.vitalsRecorded": { en: "Vitals recorded successfully", ar: "تم تسجيل العلامات الحيوية بنجاح" },
   "nurse.vitalsTitle": { en: "Record Vital Signs", ar: "تسجيل العلامات الحيوية" },
   "patient.vitals": { en: "Vital Signs", ar: "العلامات الحيوية" },
+  "patient.vitalsTab": { en: "Vitals", ar: "العلامات الحيوية" },
+  "patient.vitalsHistory": { en: "Vital Signs History", ar: "سجل العلامات الحيوية" },
+  "patient.noVitals": { en: "No vital signs recorded yet", ar: "لا توجد علامات حيوية مسجلة بعد" },
   "patient.temperature": { en: "Temperature (°C)", ar: "درجة الحرارة (°م)" },
   "patient.spo2": { en: "SpO₂ (%)", ar: "تشبع الأكسجين (%)" },
+  "vitals.morningFollowUp": { en: "Morning Follow-up", ar: "متابعة الصباح" },
+  "vitals.eveningFollowUp": { en: "Evening Follow-up", ar: "متابعة المساء" },
+  "vitals.daytimeRecord": { en: "Daytime Record", ar: "تسجيل نهاري" },
+  "vitals.recordedAt": { en: "Recorded at", ar: "سُجِّل في" },
 
   // Admission form sections
   "admit.newPatientTitle": { en: "New Patient Admission", ar: "قبول مريض جديد" },

@@ -7,6 +7,7 @@ import {
   useListClinicalNotes, useCreateClinicalNote, getListClinicalNotesQueryKey,
   useListInvoices,
   useCreateAdmissionAssessment,
+  useListPatientAssessments, getListPatientAssessmentsQueryKey,
   useListUnits,
   useUpdatePatient,
   getGetPatientSummaryQueryKey as _getPatientSummaryKey,
@@ -156,7 +157,7 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
     };
 
     createAssessment.mutate(
-      { data: assessmentData },
+      { data: assessmentData as any },
       {
         onSuccess: () => {
           if (hasPatientUpdate) {
@@ -773,6 +774,10 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   const { data: invoicesList, isLoading: loadingInvoices } = useListInvoices(
     { patientId }, { query: { enabled: !!patientId && allowedTabs.includes("billing") } } as any
   );
+  const { data: vitalsList = [], isLoading: loadingVitals } = useListPatientAssessments(
+    patientId,
+    { query: { enabled: !!patientId && allowedTabs.includes("vitals"), queryKey: getListPatientAssessmentsQueryKey(patientId) } }
+  );
 
   /* ── Discharge summaries query ── */
   const dischargeSummaryQueryKey = ["discharge-summaries", patientId];
@@ -876,7 +881,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 onSuccess={() => queryClient.invalidateQueries({ queryKey: getGetPatientSummaryQueryKey(patientId) })}
               />
             )}
-            {canVitals && <RecordVitalsDialog patientId={patientId} onSuccess={() => {}} />}
+            {canVitals && <RecordVitalsDialog patientId={patientId} onSuccess={() => queryClient.invalidateQueries({ queryKey: getListPatientAssessmentsQueryKey(patientId) })} />}
             {canWrite && <AddNoteDialog patientId={patientId} onSuccess={handleNoteSuccess} />}
             {canRx && <AddPrescriptionDialog patientId={patientId} onSuccess={handleRxSuccess} />}
             <Button asChild variant="secondary"><Link href="/appointments"><Calendar className="mr-2 h-4 w-4" />{t("patient.newAppointment")}</Link></Button>
@@ -898,6 +903,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
           {allowedTabs.map(tab => (
             <TabsTrigger key={tab} value={tab} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent">
               {tab === "overview"      ? t("patient.overview") :
+               tab === "vitals"        ? t("patient.vitalsTab") :
                tab === "notes"         ? t("patient.clinicalNotes") :
                tab === "prescriptions" ? t("nav.prescriptions") :
                tab === "discharge"     ? t("discharge.tab") :
@@ -962,6 +968,88 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+        )}
+
+        {/* ── Vitals tab ── */}
+        {allowedTabs.includes("vitals") && (
+          <TabsContent value="vitals" className="mt-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />{t("patient.vitalsHistory")}
+              </h2>
+              {canVitals && <RecordVitalsDialog patientId={patientId} onSuccess={() => queryClient.invalidateQueries({ queryKey: getListPatientAssessmentsQueryKey(patientId) })} />}
+            </div>
+            <Card>
+              <CardContent className="px-4 pb-4">
+                {loadingVitals ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : vitalsList.filter(a => a.vitalBp || a.vitalPr || a.vitalRr || a.vitalGcs || a.vitalRbg).length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">{t("patient.noVitals")}</p>
+                ) : (
+                  <div className="space-y-4 pt-2">
+                    {vitalsList
+                      .filter(a => a.vitalBp || a.vitalPr || a.vitalRr || a.vitalGcs || a.vitalRbg)
+                      .map(entry => {
+                        const date = new Date(entry.createdAt);
+                        const hour = date.getHours();
+                        const sessionLabel =
+                          hour < 10  ? t("vitals.morningFollowUp") :
+                          hour >= 16 ? t("vitals.eveningFollowUp") :
+                                       t("vitals.daytimeRecord");
+                        const sessionColor =
+                          hour < 10  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                          hour >= 16 ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" :
+                                       "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+                        return (
+                          <div key={entry.id} className="rounded-lg border p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${sessionColor}`}>
+                                {sessionLabel}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {t("vitals.recordedAt")} {date.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                              {entry.vitalBp && (
+                                <div className="rounded-md bg-muted/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("admit.bp")}</p>
+                                  <p className="font-semibold">{entry.vitalBp}</p>
+                                </div>
+                              )}
+                              {entry.vitalPr && (
+                                <div className="rounded-md bg-muted/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("admit.pr")}</p>
+                                  <p className="font-semibold">{entry.vitalPr}</p>
+                                </div>
+                              )}
+                              {entry.vitalRr && (
+                                <div className="rounded-md bg-muted/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("admit.rr")}</p>
+                                  <p className="font-semibold">{entry.vitalRr}</p>
+                                </div>
+                              )}
+                              {entry.vitalGcs && (
+                                <div className="rounded-md bg-muted/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("admit.gcs")}</p>
+                                  <p className="font-semibold">{entry.vitalGcs}</p>
+                                </div>
+                              )}
+                              {entry.vitalRbg && (
+                                <div className="rounded-md bg-muted/50 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("admit.rbg")}</p>
+                                  <p className="font-semibold">{entry.vitalRbg}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         )}
 

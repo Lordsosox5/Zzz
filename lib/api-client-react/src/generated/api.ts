@@ -1077,6 +1077,83 @@ export function useGetPatientAssessment<TData = Awaited<ReturnType<typeof getPat
 
 
 
+export const getListPatientAssessmentsUrl = (id: number,) => {
+
+
+
+
+  return `/api/patients/${id}/assessments`
+}
+
+/**
+ * @summary List all admission assessments for a patient
+ */
+export const listPatientAssessments = async (id: number, options?: RequestInit): Promise<AdmissionAssessment[]> => {
+
+  return customFetch<AdmissionAssessment[]>(getListPatientAssessmentsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPatientAssessmentsQueryKey = (id: number,) => {
+    return [
+    `/api/patients/${id}/assessments`
+    ] as const;
+    }
+
+
+export const getListPatientAssessmentsQueryOptions = <TData = Awaited<ReturnType<typeof listPatientAssessments>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPatientAssessments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPatientAssessmentsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPatientAssessments>>> = ({ signal }) => listPatientAssessments(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPatientAssessments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPatientAssessmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listPatientAssessments>>>
+export type ListPatientAssessmentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all admission assessments for a patient
+ */
+
+export function useListPatientAssessments<TData = Awaited<ReturnType<typeof listPatientAssessments>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPatientAssessments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPatientAssessmentsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getCreateAdmissionAssessmentUrl = () => {
 
 

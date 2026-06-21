@@ -349,6 +349,53 @@ export const GetPatientAssessmentResponse = zod.object({
 
 
 /**
+ * @summary List all admission assessments for a patient
+ */
+export const ListPatientAssessmentsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListPatientAssessmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "patientId": zod.number(),
+  "authorId": zod.number(),
+  "mainComplaint": zod.string().nullish(),
+  "analysisSite": zod.string().nullish(),
+  "analysisOnset": zod.string().nullish(),
+  "analysisCharacter": zod.string().nullish(),
+  "analysisRadiation": zod.string().nullish(),
+  "analysisAggravation": zod.string().nullish(),
+  "analysisRelieving": zod.string().nullish(),
+  "analysisAssociations": zod.string().nullish(),
+  "systemicReview": zod.string().nullish(),
+  "pastMedicalHistory": zod.string().nullish(),
+  "familyHistory": zod.string().nullish(),
+  "drugHistory": zod.string().nullish(),
+  "socialHistory": zod.string().nullish(),
+  "developmentalHistory": zod.string().nullish(),
+  "historySummary": zod.string().nullish(),
+  "provisionalDiagnosis": zod.string().nullish(),
+  "examinationSummary": zod.string().nullish(),
+  "chestExam": zod.string().nullish(),
+  "cnsExam": zod.string().nullish(),
+  "abdomenExam": zod.string().nullish(),
+  "vitalBp": zod.string().nullish(),
+  "vitalPr": zod.string().nullish(),
+  "vitalRr": zod.string().nullish(),
+  "vitalGcs": zod.string().nullish(),
+  "vitalRbg": zod.string().nullish(),
+  "investigationsOrdered": zod.string().nullish(),
+  "managementPlan": zod.string().nullish(),
+  "morningFollowUp": zod.string().nullish(),
+  "eveningFollowUp": zod.string().nullish(),
+  "dischargeLetter": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string().optional()
+})
+export const ListPatientAssessmentsResponse = zod.array(ListPatientAssessmentsResponseItem)
+
+
+/**
  * @summary Create admission assessment
  */
 export const CreateAdmissionAssessmentBody = zod.object({
