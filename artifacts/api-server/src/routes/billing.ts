@@ -36,11 +36,11 @@ function normalizeItem(item: Record<string, unknown>) {
   };
 }
 
-function formatInvoice(row: Record<string, unknown>) {
+function formatInvoice(row: Record<string, unknown>, patientName?: string | null) {
   const rawItems = Array.isArray(row.items) ? row.items : [];
   return {
     ...row,
-    patientName: null,
+    patientName: patientName !== undefined ? patientName : ((row.patientName as string | null) ?? null),
     totalAmount: Number(row.totalAmount ?? 0),
     paidAmount: Number(row.paidAmount ?? 0),
     discount: Number(row.discount ?? 0),
@@ -57,7 +57,14 @@ router.get("/invoices", async (req, res): Promise<void> => {
     if (params.data.status) query = query.eq("status", params.data.status);
     const { data, error } = await query;
     if (error) { res.status(500).json({ error: error.message }); return; }
-    res.json(mapRows(data ?? []).map(formatInvoice));
+    const rows = mapRows(data ?? []);
+    const missingNameIds = [...new Set(rows.filter(r => !r.patientName && r.patientId).map(r => r.patientId as number))];
+    let patientNameMap: Record<number, string> = {};
+    if (missingNameIds.length > 0) {
+      const { data: pts } = await supabase.from("patients").select("id, name_en").in("id", missingNameIds);
+      for (const p of pts ?? []) patientNameMap[p.id] = p.name_en;
+    }
+    res.json(rows.map(row => formatInvoice(row, (row.patientName as string | null) ?? patientNameMap[row.patientId as number] ?? null)));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -70,10 +77,12 @@ router.post("/invoices", async (req, res): Promise<void> => {
     const items = parsed.data.items ?? [];
     const totalAmount = items.reduce((sum: number, item: { total: number }) => sum + item.total, 0).toFixed(2);
     const invoiceNumber = generateInvoiceNumber();
+    const { data: patientRow } = await supabase.from("patients").select("name_en").eq("id", parsed.data.patientId).single();
+    const patientName: string | null = patientRow?.name_en ?? null;
     const insertData = { ...toSnake(parsed.data as Record<string, unknown>), invoice_number: invoiceNumber, total_amount: totalAmount };
     const { data, error } = await supabase.from("invoices").insert(insertData).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
-    res.status(201).json(formatInvoice(mapRow(data)));
+    res.status(201).json(formatInvoice(mapRow(data), patientName));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -86,7 +95,13 @@ router.get("/invoices/:id", async (req, res): Promise<void> => {
     const { data, error } = await supabase.from("invoices").select("*").eq("id", params.data.id).limit(1);
     if (error) { res.status(500).json({ error: error.message }); return; }
     if (!data?.[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
-    res.json(formatInvoice(mapRow(data[0])));
+    const row = mapRow(data[0]);
+    let patientName = (row.patientName as string | null) ?? null;
+    if (!patientName && row.patientId) {
+      const { data: pt } = await supabase.from("patients").select("name_en").eq("id", row.patientId).single();
+      patientName = pt?.name_en ?? null;
+    }
+    res.json(formatInvoice(row, patientName));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -105,7 +120,13 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
     const { data, error } = await supabase.from("invoices").update(updates).eq("id", params.data.id).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
     if (!data) { res.status(404).json({ error: "Invoice not found" }); return; }
-    res.json(formatInvoice(mapRow(data)));
+    const row = mapRow(data);
+    let patientName: string | null = null;
+    if (row.patientId) {
+      const { data: pt } = await supabase.from("patients").select("name_en").eq("id", row.patientId).single();
+      patientName = pt?.name_en ?? null;
+    }
+    res.json(formatInvoice(row, patientName));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
