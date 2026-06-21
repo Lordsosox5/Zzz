@@ -130,22 +130,44 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const createAssessment = useCreateAdmissionAssessment();
+  const updatePatient = useUpdatePatient();
   const [form, setForm] = useState({ vitalBp: "", vitalPr: "", vitalRr: "", vitalGcs: "", vitalRbg: "", weight: "", height: "" });
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data: any = { patientId };
-    if (form.vitalBp) data.vitalBp = form.vitalBp;
-    if (form.vitalPr) data.vitalPr = form.vitalPr;
-    if (form.vitalRr) data.vitalRr = form.vitalRr;
-    if (form.vitalGcs) data.vitalGcs = form.vitalGcs;
-    if (form.vitalRbg) data.vitalRbg = form.vitalRbg;
-    if (form.weight) data.weight = form.weight;
-    if (form.height) data.height = form.height;
+
+    const assessmentData: Record<string, unknown> = { patientId };
+    if (form.vitalBp) assessmentData.vitalBp = form.vitalBp;
+    if (form.vitalPr) assessmentData.vitalPr = form.vitalPr;
+    if (form.vitalRr) assessmentData.vitalRr = form.vitalRr;
+    if (form.vitalGcs) assessmentData.vitalGcs = form.vitalGcs;
+    if (form.vitalRbg) assessmentData.vitalRbg = form.vitalRbg;
+
+    const patientData: Record<string, unknown> = {};
+    if (form.weight) patientData.weight = form.weight;
+    if (form.height) patientData.height = form.height;
+
+    const hasPatientUpdate = Object.keys(patientData).length > 0;
+
+    const finish = () => {
+      toast({ title: t("generic.success"), description: t("nurse.vitalsRecorded") });
+      setOpen(false);
+      onSuccess();
+    };
+
     createAssessment.mutate(
-      { data },
+      { data: assessmentData },
       {
-        onSuccess: () => { toast({ title: t("generic.success"), description: t("nurse.vitalsRecorded") }); setOpen(false); onSuccess(); },
+        onSuccess: () => {
+          if (hasPatientUpdate) {
+            updatePatient.mutate(
+              { id: patientId, data: patientData },
+              { onSuccess: finish, onError: finish }
+            );
+          } else {
+            finish();
+          }
+        },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
     );

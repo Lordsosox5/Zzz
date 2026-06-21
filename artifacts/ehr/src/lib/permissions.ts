@@ -209,7 +209,7 @@ export function canManagePharmacyInventory(role: string): boolean {
 }
 
 export function canRecordVitals(role: string): boolean {
-  return ["super_admin", "nurse", "pediatric_consultant", "pediatric_specialist", "emergency_physician", "house_officer", "medical_officer"].includes(role);
+  return ["super_admin", "nurse", "pediatric_consultant", "pediatric_specialist", "emergency_physician", "house_officer", "medical_officer", "registrar"].includes(role);
 }
 
 export function canAdmitNewPatient(role: string): boolean {
