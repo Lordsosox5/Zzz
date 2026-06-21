@@ -4,19 +4,30 @@ A full-stack enterprise pediatric Electronic Health Record (EHR) / Hospital Info
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+
+## ⚠️ First-time setup (after importing this project)
+
+The only manual step required is adding two Replit Secrets. Everything else is already configured in the code.
+
+Go to **Secrets** in the left panel and add:
+
+| Secret key | Value |
+|---|---|
+| `SUPABASE_URL` | `https://vhiekleynomremcampnd.supabase.co` |
+| `SUPABASE_ANON_KEY` | _(your Supabase anon key)_ |
+
+Then click **Run**. The app will start automatically.
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
+- pnpm workspaces, Node.js 20, TypeScript 5.9
 - API: Express 5 (port 8080, proxied at `/api`)
-- Frontend: React + Vite (port 19866, proxied at `/`)
-- DB: PostgreSQL + Drizzle ORM
+- Frontend: React + Vite (port 5000, proxied at `/`)
+- Database: **Supabase** (PostgreSQL via REST API using `@supabase/supabase-js`)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
@@ -25,15 +36,18 @@ A full-stack enterprise pediatric Electronic Health Record (EHR) / Hospital Info
 ## Where things live
 
 - `lib/api-spec/openapi.yaml` — OpenAPI contract (source of truth for all endpoints)
-- `lib/db/src/schema/index.ts` — all Drizzle ORM schemas
+- `lib/db/src/schema/index.ts` — Drizzle ORM schemas (used for type definitions only)
 - `lib/api-client-react/src/` — generated hooks + Zod schemas
-- `artifacts/api-server/src/routes/` — all Express route handlers
+- `artifacts/api-server/src/routes/` — all Express route handlers (use Supabase client)
+- `artifacts/api-server/src/lib/supabase.ts` — Supabase client + helpers (mapRow, mapRows, toSnake)
 - `artifacts/ehr/src/pages/` — all frontend pages
 - `artifacts/ehr/src/lib/auth.ts` — token storage + `setAuthTokenGetter` initialization
+- `artifacts/ehr/src/lib/supabase.ts` — Supabase client for the frontend
 - `artifacts/ehr/src/lib/i18n.tsx` — bilingual translation context
 
 ## Architecture decisions
 
+- **Database: Supabase via REST API** — all backend routes use `@supabase/supabase-js` client with `SUPABASE_URL` + `SUPABASE_ANON_KEY`. Direct PostgreSQL connections are not used. Data returned in snake_case is converted to camelCase via `mapRow()`/`mapRows()`. Inserts/updates are converted from camelCase to snake_case via `toSnake()`.
 - **Token auth (not cookie auth)**: token stored in localStorage, injected via `setAuthTokenGetter` in `lib/api-client-react/src/custom-fetch.ts`. Auth is decoded server-side from base64 (MVP; upgrade to JWT for production).
 - **Password storage in plaintext** (MVP only — seed users have simple passwords for demo). Upgrade to bcrypt for production.
 - **In-memory MRN/invoice counters**: counters reset on server restart. Acceptable for demo; use a DB sequence for production.
@@ -76,11 +90,13 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- Always run `pnpm --filter @workspace/db run push` after modifying any schema file in `lib/db/src/schema/`
+- All API routes use the Supabase client — do NOT revert to Drizzle ORM for data access
+- `SUPABASE_URL` and `SUPABASE_ANON_KEY` must be set as Replit Secrets (not env vars)
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set as shared env vars (auto-available)
 - Always run `pnpm --filter @workspace/api-spec run codegen` after modifying `lib/api-spec/openapi.yaml`
 - Do not add new artifacts to root `tsconfig.json` — it's for libs only
-- The API server validates inputs against Zod schemas from `@workspace/api-zod`; if openapi.yaml changes, re-run codegen and push
 - `pnpm install` must be run after adding new packages to any workspace package
+- The `lib/db` schema is kept for type inference only — Drizzle push is no longer needed
 
 ## Pointers
 
