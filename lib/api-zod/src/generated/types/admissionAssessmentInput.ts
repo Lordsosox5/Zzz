@@ -33,6 +33,8 @@ export interface AdmissionAssessmentInput {
   vitalRr?: string;
   vitalGcs?: string;
   vitalRbg?: string;
+  vitalTemp?: string;
+  vitalSpo2?: string;
   investigationsOrdered?: string;
   managementPlan?: string;
   morningFollowUp?: string;

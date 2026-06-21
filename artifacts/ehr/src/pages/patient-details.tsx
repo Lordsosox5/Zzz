@@ -136,17 +136,19 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
   const [open, setOpen] = useState(false);
   const createAssessment = useCreateAdmissionAssessment();
   const updatePatient = useUpdatePatient();
-  const [form, setForm] = useState({ vitalBp: "", vitalPr: "", vitalRr: "", vitalGcs: "", vitalRbg: "", weight: "", height: "" });
+  const [form, setForm] = useState({ vitalBp: "", vitalPr: "", vitalRr: "", vitalGcs: "", vitalRbg: "", vitalTemp: "", vitalSpo2: "", weight: "", height: "" });
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const assessmentData: Record<string, unknown> = { patientId };
-    if (form.vitalBp) assessmentData.vitalBp = form.vitalBp;
-    if (form.vitalPr) assessmentData.vitalPr = form.vitalPr;
-    if (form.vitalRr) assessmentData.vitalRr = form.vitalRr;
-    if (form.vitalGcs) assessmentData.vitalGcs = form.vitalGcs;
-    if (form.vitalRbg) assessmentData.vitalRbg = form.vitalRbg;
+    if (form.vitalBp)   assessmentData.vitalBp   = form.vitalBp;
+    if (form.vitalPr)   assessmentData.vitalPr   = form.vitalPr;
+    if (form.vitalRr)   assessmentData.vitalRr   = form.vitalRr;
+    if (form.vitalGcs)  assessmentData.vitalGcs  = form.vitalGcs;
+    if (form.vitalRbg)  assessmentData.vitalRbg  = form.vitalRbg;
+    if (form.vitalTemp) assessmentData.vitalTemp = form.vitalTemp;
+    if (form.vitalSpo2) assessmentData.vitalSpo2 = form.vitalSpo2;
 
     const patientData: Record<string, unknown> = {};
     if (form.weight) patientData.weight = form.weight;
@@ -191,6 +193,8 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
             <div className="space-y-3"><Label>{t("admit.rr")}</Label><Input name="vitalRr" value={form.vitalRr} onChange={handleChange} placeholder="e.g. 20/min" /></div>
             <div className="space-y-3"><Label>{t("admit.gcs")}</Label><Input name="vitalGcs" value={form.vitalGcs} onChange={handleChange} placeholder="e.g. 15/15" /></div>
             <div className="space-y-3"><Label>{t("admit.rbg")}</Label><Input name="vitalRbg" value={form.vitalRbg} onChange={handleChange} placeholder="e.g. 5.2 mmol/L" /></div>
+            <div className="space-y-3"><Label>{t("vitals.temperature")}</Label><Input name="vitalTemp" value={form.vitalTemp} onChange={handleChange} placeholder="e.g. 37.2" /></div>
+            <div className="space-y-3"><Label>{t("vitals.spo2")}</Label><Input name="vitalSpo2" value={form.vitalSpo2} onChange={handleChange} placeholder="e.g. 98" /></div>
             <div className="space-y-3"><Label>{t("patient.weight")}</Label><Input name="weight" value={form.weight} onChange={handleChange} placeholder="e.g. 12.5 kg" /></div>
           </div>
           <div className="space-y-3"><Label>{t("patient.height")}</Label><Input name="height" value={form.height} onChange={handleChange} placeholder="e.g. 95 cm" /></div>
@@ -987,18 +991,23 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             {/* ── Trends chart ── */}
             {(() => {
               const chartData = [...vitalsList]
-                .filter(a => a.vitalBp || a.vitalPr)
+                .filter(a => a.vitalBp || a.vitalPr || (a as any).vitalTemp || (a as any).vitalSpo2)
                 .reverse()
                 .map(entry => {
+                  const e = entry as any;
                   const date = new Date(entry.createdAt);
                   const label = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
                   const bpParts = entry.vitalBp?.match(/(\d+)[\/\s](\d+)/);
                   const prNum = entry.vitalPr?.match(/(\d+)/);
+                  const tempNum = e.vitalTemp?.match(/(\d+\.?\d*)/);
+                  const spo2Num = e.vitalSpo2?.match(/(\d+\.?\d*)/);
                   return {
                     label,
                     systolic:  bpParts  ? Number(bpParts[1])  : undefined,
                     diastolic: bpParts  ? Number(bpParts[2])  : undefined,
                     pulse:     prNum    ? Number(prNum[1])     : undefined,
+                    temp:      tempNum  ? Number(tempNum[1])   : undefined,
+                    spo2:      spo2Num  ? Number(spo2Num[1])   : undefined,
                   };
                 });
               if (loadingVitals) return null;
@@ -1050,6 +1059,20 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           dot={{ r: 4 }} activeDot={{ r: 6 }}
                           connectNulls
                         />
+                        <Line
+                          type="monotone" dataKey="temp"
+                          name={t("vitals.temperature")}
+                          stroke="#f59e0b" strokeWidth={2}
+                          dot={{ r: 4 }} activeDot={{ r: 6 }}
+                          connectNulls
+                        />
+                        <Line
+                          type="monotone" dataKey="spo2"
+                          name={t("vitals.spo2")}
+                          stroke="#06b6d4" strokeWidth={2}
+                          dot={{ r: 4 }} activeDot={{ r: 6 }}
+                          connectNulls
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -1061,12 +1084,12 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <CardContent className="px-4 pb-4">
                 {loadingVitals ? (
                   <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-                ) : vitalsList.filter(a => a.vitalBp || a.vitalPr || a.vitalRr || a.vitalGcs || a.vitalRbg).length === 0 ? (
+                ) : vitalsList.filter(a => a.vitalBp || a.vitalPr || a.vitalRr || a.vitalGcs || a.vitalRbg || (a as any).vitalTemp || (a as any).vitalSpo2).length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">{t("patient.noVitals")}</p>
                 ) : (
                   <div className="space-y-4 pt-2">
                     {vitalsList
-                      .filter(a => a.vitalBp || a.vitalPr || a.vitalRr || a.vitalGcs || a.vitalRbg)
+                      .filter(a => a.vitalBp || a.vitalPr || a.vitalRr || a.vitalGcs || a.vitalRbg || (a as any).vitalTemp || (a as any).vitalSpo2)
                       .map(entry => {
                         const date = new Date(entry.createdAt);
                         const hour = date.getHours();
@@ -1117,6 +1140,18 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                                 <div className="rounded-md bg-muted/50 px-3 py-2">
                                   <p className="text-xs text-muted-foreground mb-0.5">{t("admit.rbg")}</p>
                                   <p className="font-semibold">{entry.vitalRbg}</p>
+                                </div>
+                              )}
+                              {(entry as any).vitalTemp && (
+                                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("vitals.temperature")}</p>
+                                  <p className="font-semibold">{(entry as any).vitalTemp} °C</p>
+                                </div>
+                              )}
+                              {(entry as any).vitalSpo2 && (
+                                <div className="rounded-md bg-sky-50 dark:bg-sky-900/20 px-3 py-2">
+                                  <p className="text-xs text-muted-foreground mb-0.5">{t("vitals.spo2")}</p>
+                                  <p className="font-semibold">{(entry as any).vitalSpo2}%</p>
                                 </div>
                               )}
                             </div>

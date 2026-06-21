@@ -1296,6 +1296,8 @@ components:
         vitalRr: { type: ["string", "null"] }
         vitalGcs: { type: ["string", "null"] }
         vitalRbg: { type: ["string", "null"] }
+        vitalTemp: { type: ["string", "null"] }
+        vitalSpo2: { type: ["string", "null"] }
         investigationsOrdered: { type: ["string", "null"] }
         managementPlan: { type: ["string", "null"] }
         morningFollowUp: { type: ["string", "null"] }
@@ -1334,6 +1336,8 @@ components:
         vitalRr: { type: string }
         vitalGcs: { type: string }
         vitalRbg: { type: string }
+        vitalTemp: { type: string }
+        vitalSpo2: { type: string }
         investigationsOrdered: { type: string }
         managementPlan: { type: string }
         morningFollowUp: { type: string }
@@ -1368,6 +1372,8 @@ components:
         vitalRr: { type: string }
         vitalGcs: { type: string }
         vitalRbg: { type: string }
+        vitalTemp: { type: string }
+        vitalSpo2: { type: string }
         investigationsOrdered: { type: string }
         managementPlan: { type: string }
         morningFollowUp: { type: string }

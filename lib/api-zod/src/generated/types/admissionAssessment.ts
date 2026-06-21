@@ -61,6 +61,10 @@ export interface AdmissionAssessment {
   /** @nullable */
   vitalRbg?: string | null;
   /** @nullable */
+  vitalTemp?: string | null;
+  /** @nullable */
+  vitalSpo2?: string | null;
+  /** @nullable */
   investigationsOrdered?: string | null;
   /** @nullable */
   managementPlan?: string | null;

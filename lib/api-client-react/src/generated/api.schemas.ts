@@ -173,6 +173,10 @@ export interface AdmissionAssessment {
   /** @nullable */
   vitalRbg?: string | null;
   /** @nullable */
+  vitalTemp?: string | null;
+  /** @nullable */
+  vitalSpo2?: string | null;
+  /** @nullable */
   investigationsOrdered?: string | null;
   /** @nullable */
   managementPlan?: string | null;
@@ -213,6 +217,8 @@ export interface AdmissionAssessmentInput {
   vitalRr?: string;
   vitalGcs?: string;
   vitalRbg?: string;
+  vitalTemp?: string;
+  vitalSpo2?: string;
   investigationsOrdered?: string;
   managementPlan?: string;
   morningFollowUp?: string;
@@ -246,6 +252,8 @@ export interface AdmissionAssessmentUpdate {
   vitalRr?: string;
   vitalGcs?: string;
   vitalRbg?: string;
+  vitalTemp?: string;
+  vitalSpo2?: string;
   investigationsOrdered?: string;
   managementPlan?: string;
   morningFollowUp?: string;

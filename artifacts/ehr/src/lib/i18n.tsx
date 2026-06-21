@@ -539,6 +539,8 @@ const translations: Translations = {
   "vitals.diastolic": { en: "Diastolic (mmHg)", ar: "الانبساطي (mmHg)" },
   "vitals.pulseRate": { en: "Pulse Rate (bpm)", ar: "معدل النبض (نبضة/د)" },
   "vitals.needsMoreData": { en: "Record at least 2 readings to see trends", ar: "سجّل قراءتين على الأقل لعرض الاتجاهات" },
+  "vitals.temperature": { en: "Temperature (°C)", ar: "الحرارة (°م)" },
+  "vitals.spo2": { en: "SpO₂ (%)", ar: "تشبع O₂ (%)" },
 
   // Admission form sections
   "admit.newPatientTitle": { en: "New Patient Admission", ar: "قبول مريض جديد" },
