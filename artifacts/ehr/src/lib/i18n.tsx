@@ -534,6 +534,11 @@ const translations: Translations = {
   "vitals.eveningFollowUp": { en: "Evening Follow-up", ar: "متابعة المساء" },
   "vitals.daytimeRecord": { en: "Daytime Record", ar: "تسجيل نهاري" },
   "vitals.recordedAt": { en: "Recorded at", ar: "سُجِّل في" },
+  "vitals.trendsChart": { en: "Trends Over Time", ar: "الاتجاهات عبر الزمن" },
+  "vitals.systolic": { en: "Systolic (mmHg)", ar: "الانقباضي (mmHg)" },
+  "vitals.diastolic": { en: "Diastolic (mmHg)", ar: "الانبساطي (mmHg)" },
+  "vitals.pulseRate": { en: "Pulse Rate (bpm)", ar: "معدل النبض (نبضة/د)" },
+  "vitals.needsMoreData": { en: "Record at least 2 readings to see trends", ar: "سجّل قراءتين على الأقل لعرض الاتجاهات" },
 
   // Admission form sections
   "admit.newPatientTitle": { en: "New Patient Admission", ar: "قبول مريض جديد" },

@@ -44,6 +44,10 @@ import { InvoiceViewDialog } from "@/components/invoice-view-dialog";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend,
+} from "recharts";
 
 /* ── Helpers ── */
 function StatusBadge({ status }: { status: string }) {
@@ -980,6 +984,79 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               </h2>
               {canVitals && <RecordVitalsDialog patientId={patientId} onSuccess={() => queryClient.invalidateQueries({ queryKey: getListPatientAssessmentsQueryKey(patientId) })} />}
             </div>
+            {/* ── Trends chart ── */}
+            {(() => {
+              const chartData = [...vitalsList]
+                .filter(a => a.vitalBp || a.vitalPr)
+                .reverse()
+                .map(entry => {
+                  const date = new Date(entry.createdAt);
+                  const label = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
+                  const bpParts = entry.vitalBp?.match(/(\d+)[\/\s](\d+)/);
+                  const prNum = entry.vitalPr?.match(/(\d+)/);
+                  return {
+                    label,
+                    systolic:  bpParts  ? Number(bpParts[1])  : undefined,
+                    diastolic: bpParts  ? Number(bpParts[2])  : undefined,
+                    pulse:     prNum    ? Number(prNum[1])     : undefined,
+                  };
+                });
+              if (loadingVitals) return null;
+              if (chartData.length < 2) return (
+                chartData.length > 0 ? (
+                  <Card>
+                    <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                      {t("vitals.needsMoreData")}
+                    </CardContent>
+                  </Card>
+                ) : null
+              );
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-primary" />{t("vitals.trendsChart")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <LineChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                          formatter={(val: number, name: string) => [val, name]}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line
+                          type="monotone" dataKey="systolic"
+                          name={t("vitals.systolic")}
+                          stroke="#ef4444" strokeWidth={2}
+                          dot={{ r: 4 }} activeDot={{ r: 6 }}
+                          connectNulls
+                        />
+                        <Line
+                          type="monotone" dataKey="diastolic"
+                          name={t("vitals.diastolic")}
+                          stroke="#f97316" strokeWidth={2}
+                          dot={{ r: 4 }} activeDot={{ r: 6 }}
+                          connectNulls
+                        />
+                        <Line
+                          type="monotone" dataKey="pulse"
+                          name={t("vitals.pulseRate")}
+                          stroke="#3b82f6" strokeWidth={2}
+                          dot={{ r: 4 }} activeDot={{ r: 6 }}
+                          connectNulls
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             <Card>
               <CardContent className="px-4 pb-4">
                 {loadingVitals ? (
