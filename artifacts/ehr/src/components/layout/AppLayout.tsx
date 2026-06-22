@@ -303,7 +303,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0" sideOffset={6}>
+              <DropdownMenuContent align="end" dir={isRtl ? "rtl" : "ltr"} className="w-80 p-0" sideOffset={6}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b">
                   <DropdownMenuLabel className="p-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -358,7 +358,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <span className="text-xs font-medium max-w-28 truncate">{displayName}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" dir={isRtl ? "rtl" : "ltr"} className="w-56">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col gap-1">
                     <p className="text-sm font-semibold">{displayName}</p>
@@ -372,7 +372,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem asChild>
                   <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
                     <Settings className="h-4 w-4" />
-                    <span>Settings</span>
+                    <span>{t("nav.settings")}</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
