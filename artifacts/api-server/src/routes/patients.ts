@@ -8,7 +8,6 @@ import {
   UpdatePatientBody,
   GetPatientSummaryParams,
 } from "@workspace/api-zod";
-import { units } from "./units";
 
 const router = Router();
 
@@ -138,8 +137,8 @@ router.get("/patients/:id/unit", async (req, res): Promise<void> => {
     const { data } = await supabase.from("patients").select("unit_id").eq("id", id).limit(1);
     const unitId = data?.[0]?.unit_id ?? null;
     if (!unitId) { res.json({ unitId: null, unitNameEn: null, unitNameAr: null }); return; }
-    const unit = units.find(u => u.id === unitId);
-    res.json({ unitId, unitNameEn: unit?.nameEn ?? null, unitNameAr: unit?.nameAr ?? null });
+    const { data: unitData } = await supabase.from("units").select("id, name_en, name_ar").eq("id", unitId).single();
+    res.json({ unitId, unitNameEn: unitData?.name_en ?? null, unitNameAr: unitData?.name_ar ?? null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -155,10 +154,10 @@ router.patch("/patients/:id/unit", async (req, res): Promise<void> => {
       res.json({ unitId: null, unitNameEn: null, unitNameAr: null });
       return;
     }
-    const unit = units.find(u => u.id === unitId);
-    if (!unit) { res.status(404).json({ error: "Unit not found" }); return; }
+    const { data: unitData, error: unitError } = await supabase.from("units").select("id, name_en, name_ar").eq("id", unitId).single();
+    if (unitError || !unitData) { res.status(404).json({ error: "Unit not found" }); return; }
     await supabase.from("patients").update({ unit_id: unitId }).eq("id", id);
-    res.json({ unitId, unitNameEn: unit.nameEn, unitNameAr: unit.nameAr ?? null });
+    res.json({ unitId, unitNameEn: unitData.name_en ?? null, unitNameAr: unitData.name_ar ?? null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
