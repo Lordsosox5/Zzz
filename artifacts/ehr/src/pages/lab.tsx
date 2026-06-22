@@ -113,6 +113,7 @@ function TestCatalogCombobox({
   value: LabTest | null;
   onChange: (test: LabTest) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -149,17 +150,17 @@ function TestCatalogCombobox({
               <span className="text-xs text-muted-foreground font-mono shrink-0">{value.code}</span>
             </span>
           ) : (
-            <span className="text-muted-foreground">Search test name or code...</span>
+            <span className="text-muted-foreground">{t("lab.searchTestPlaceholder")}</span>
           )}
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[480px] p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search by name, code, or category..." value={search} onValueChange={setSearch} />
+          <CommandInput placeholder={t("lab.searchByCategoryPlaceholder")} value={search} onValueChange={setSearch} />
           <CommandList className="max-h-[360px]">
             {byCategory.size === 0 ? (
-              <CommandEmpty>No test found.</CommandEmpty>
+              <CommandEmpty>{t("lab.noTestFound")}</CommandEmpty>
             ) : (
               Array.from(byCategory.entries()).map(([catId, tests]) => {
                 const cat = LAB_CATEGORIES.find((c) => c.id === catId);
@@ -177,7 +178,9 @@ function TestCatalogCombobox({
                           <span className="text-sm truncate">{test.name}</span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-xs text-muted-foreground">{test.fields.length} field{test.fields.length !== 1 ? "s" : ""}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {test.fields.length} {test.fields.length !== 1 ? t("lab.fieldPlural") : t("lab.fieldSingular")}
+                          </span>
                           {value?.id === test.id && <Check className="h-3.5 w-3.5 text-primary" />}
                         </div>
                       </CommandItem>
@@ -196,10 +199,11 @@ function TestCatalogCombobox({
 // ─── Field Status Indicator ──────────────────────────────────────────────────
 
 function FieldStatusBadge({ status }: { status: "normal" | "abnormal" | "critical" | null }) {
+  const { t } = useTranslation();
   if (!status || status === "normal") return null;
   return (
     <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${status === "critical" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
-      {status === "critical" ? "⚠ Critical" : "↑↓ Abnormal"}
+      {status === "critical" ? t("lab.statusCritical") : t("lab.statusAbnormal")}
     </span>
   );
 }
@@ -215,6 +219,7 @@ function DynamicField({
   value: string;
   onChange: (val: string) => void;
 }) {
+  const { t } = useTranslation();
   const status = fieldStatus(field, value);
   const borderColor =
     status === "critical" ? "border-red-400 focus:ring-red-300" :
@@ -234,7 +239,7 @@ function DynamicField({
       {field.type === "select" ? (
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger className="h-9">
-            <SelectValue placeholder="Select..." />
+            <SelectValue placeholder={t("lab.selectPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {field.options?.map((opt) => (
@@ -255,13 +260,13 @@ function DynamicField({
           step="any"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={field.refRange ?? "Enter value"}
+          placeholder={field.refRange ?? t("lab.enterValue")}
           className={`h-9 ${borderColor}`}
         />
       )}
 
       {field.refRange && (
-        <p className="text-xs text-muted-foreground">Ref: {field.refRange}</p>
+        <p className="text-xs text-muted-foreground">{t("lab.refLabel")} {field.refRange}</p>
       )}
     </div>
   );
@@ -385,10 +390,12 @@ function EnterResultDialog({
           {testDef && (
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs font-mono bg-muted text-muted-foreground px-2 py-0.5 rounded">{testDef.code}</span>
-              <span className="text-xs text-muted-foreground">{testDef.categoryAr} · {testDef.fields.length} fields</span>
+              <span className="text-xs text-muted-foreground">
+                {testDef.categoryAr} · {testDef.fields.length} {testDef.fields.length !== 1 ? t("lab.fieldPlural") : t("lab.fieldSingular")}
+              </span>
               {autoResult && autoResult !== "normal" && (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded ${autoResult === "critical" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-                  Auto-detected: {autoResult}
+                  {t("lab.autoDetectedLabel")} {autoResult}
                 </span>
               )}
             </div>
@@ -484,7 +491,7 @@ function EnterResultDialog({
                     <AlertCircle className="h-4 w-4 text-destructive" />
                     {t("lab.isCritical")}
                     {autoResult === "critical" && (
-                      <span className="text-xs text-red-500">(auto-detected from values)</span>
+                      <span className="text-xs text-red-500">{t("lab.autoDetected")}</span>
                     )}
                   </label>
                 </div>
@@ -557,7 +564,7 @@ function ResultDisplay({ order }: { order: { result?: string | null; resultValue
               );
             })}
             {Object.keys(parsed).length > 3 && (
-              <span className="text-xs text-muted-foreground">+{Object.keys(parsed).length - 3} more</span>
+              <span className="text-xs text-muted-foreground">+{Object.keys(parsed).length - 3} {t("lab.moreFields")}</span>
             )}
           </div>
         </div>
@@ -684,7 +691,9 @@ export default function Lab() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{form.selectedTest.code}</span>
                         <ChevronRight className="h-3 w-3" />
-                        <span>{form.selectedTest.fields.length} result field{form.selectedTest.fields.length !== 1 ? "s" : ""} when entering results</span>
+                        <span>
+                          {form.selectedTest.fields.length} {t("lab.resultFieldsHint")}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -791,9 +800,8 @@ export default function Lab() {
                     <TableCell>
                       <Badge
                         variant={order.priority === "stat" ? "destructive" : order.priority === "urgent" ? "default" : "secondary"}
-                        className="capitalize"
                       >
-                        {order.priority}
+                        {order.priority === "stat" ? t("generic.stat") : order.priority === "urgent" ? t("generic.urgent") : t("generic.routine")}
                       </Badge>
                     </TableCell>
                     <TableCell>

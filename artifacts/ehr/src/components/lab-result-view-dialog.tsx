@@ -11,6 +11,7 @@ import {
   findTest, fieldStatus,
   type LabTest,
 } from "@/lib/lab-tests";
+import { useTranslation } from "@/lib/i18n";
 
 export type OrderForReport = {
   id: number;
@@ -70,14 +71,16 @@ function parseFieldRows(order: OrderForReport, testDef: LabTest | undefined): Fi
 }
 
 function FieldFlag({ status }: { status: "normal" | "abnormal" | "critical" | null }) {
+  const { t } = useTranslation();
   if (!status || status === "normal")
-    return <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-xs"><Minus className="h-3 w-3" />Normal</span>;
+    return <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-xs"><Minus className="h-3 w-3" />{t("lab.flagNormal")}</span>;
   if (status === "critical")
-    return <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs"><ShieldAlert className="h-3 w-3" />Critical</span>;
-  return <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium text-xs"><TrendingUp className="h-3 w-3" />Abnormal</span>;
+    return <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-bold text-xs"><ShieldAlert className="h-3 w-3" />{t("lab.flagCritical")}</span>;
+  return <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium text-xs"><TrendingUp className="h-3 w-3" />{t("lab.flagAbnormal")}</span>;
 }
 
 export function LabResultViewDialog({ order }: { order: OrderForReport }) {
+  const { t, isRtl, language } = useTranslation();
   const [open, setOpen] = useState(false);
   const testDef = useMemo(() => findTest(order.testName), [order.testName]);
   const fieldRows = useMemo(() => parseFieldRows(order, testDef), [order, testDef]);
@@ -88,21 +91,30 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
     "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800";
 
   const resultText =
-    order.result === "critical" ? { label: "CRITICAL", cls: "text-red-600 dark:text-red-400" } :
-    order.result === "abnormal" ? { label: "ABNORMAL", cls: "text-amber-600 dark:text-amber-400" } :
-    { label: "NORMAL", cls: "text-emerald-600 dark:text-emerald-400" };
+    order.result === "critical" ? { label: t("lab.resultLabelCritical"), cls: "text-red-600 dark:text-red-400" } :
+    order.result === "abnormal" ? { label: t("lab.resultLabelAbnormal"), cls: "text-amber-600 dark:text-amber-400" } :
+    { label: t("lab.resultLabelNormal"), cls: "text-emerald-600 dark:text-emerald-400" };
+
+  const priorityLabel =
+    order.priority === "stat" ? t("generic.stat") :
+    order.priority === "urgent" ? t("generic.urgent") :
+    t("lab.routineLabel");
 
   const handlePrint = () => {
     const el = document.getElementById(`lab-report-${order.id}`);
     if (!el) return;
     const win = window.open("", "_blank");
     if (!win) return;
+    const dir = language === "ar" ? "rtl" : "ltr";
+    const fontFamily = language === "ar" ? "'Tajawal', 'Segoe UI', Arial, sans-serif" : "'Segoe UI', Arial, sans-serif";
     win.document.write(`
-      <html><head>
-        <title>Lab Report – ${order.testName}</title>
+      <html dir="${dir}"><head>
+        <title>${t("lab.report")} – ${order.testName}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
         <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-          body { background: #fff; color: #111; padding: 32px; font-size: 13px; }
+          * { box-sizing: border-box; margin: 0; padding: 0; font-family: ${fontFamily}; }
+          body { background: #fff; color: #111; padding: 32px; font-size: 13px; direction: ${dir}; }
           .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
           .info-item { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; }
           .info-item label { font-size: 10px; color: #9ca3af; display: block; margin-bottom: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -115,7 +127,7 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
           .status-label-abnormal { font-size: 26px; font-weight: 900; color: #b45309; }
           .status-label-critical { font-size: 26px; font-weight: 900; color: #b91c1c; }
           table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-          th { background: #f8fafc; font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; padding: 8px 12px; text-align: left; border-bottom: 2px solid #e5e7eb; }
+          th { background: #f8fafc; font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; padding: 8px 12px; text-align: start; border-bottom: 2px solid #e5e7eb; }
           td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
           .flag-critical { color: #b91c1c; font-weight: 700; }
           .flag-abnormal { color: #b45309; font-weight: 700; }
@@ -132,15 +144,24 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
   };
 
   const resultedDate = order.resultedAt
-    ? new Date(order.resultedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    ? new Date(order.resultedAt).toLocaleString(language === "ar" ? "ar-SA" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
     : "—";
-  const orderedDate = new Date(order.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const orderedDate = new Date(order.createdAt).toLocaleString(language === "ar" ? "ar-SA" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const infoItems = [
+    { label: t("lab.infoPatient"),     value: order.patientName ?? `${t("lab.patientHash")}${order.patientId}` },
+    { label: t("lab.infoOrderedBy"),   value: order.orderedByName ?? "—" },
+    { label: t("lab.infoPriority"),    value: priorityLabel },
+    { label: t("lab.infoOrderDate"),   value: orderedDate },
+    { label: t("lab.infoResultDate"),  value: resultedDate },
+    { label: t("lab.infoOrderId"),     value: `LAB-${String(order.id).padStart(4, "0")}` },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1.5 whitespace-nowrap border-primary/30 text-primary hover:bg-primary/5">
-          <Eye className="h-3.5 w-3.5" /> View Report
+          <Eye className="h-3.5 w-3.5" /> {t("lab.viewReport")}
         </Button>
       </DialogTrigger>
 
@@ -154,38 +175,31 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
               <DialogTitle className="text-base font-bold">{order.testName}</DialogTitle>
               {order.testCode && (
                 <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                  {order.testCode} · {testDef?.category ?? "Laboratory"}
+                  {order.testCode} · {testDef?.category ?? t("lab.laboratoryCategory")}
                 </p>
               )}
             </div>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
-            <Printer className="h-3.5 w-3.5" /> Print
+            <Printer className="h-3.5 w-3.5" /> {t("lab.print")}
           </Button>
         </div>
 
         <ScrollArea className="flex-1">
-          <div id={`lab-report-${order.id}`} className="p-6 space-y-5">
+          <div id={`lab-report-${order.id}`} className="p-6 space-y-5" dir={isRtl ? "rtl" : "ltr"}>
 
             {order.isCritical && (
-              <div className="flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/40 dark:border-red-700 px-4 py-3">
-                <ShieldAlert className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+              <div className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/40 dark:border-red-700 px-4 py-3">
+                <ShieldAlert className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-red-700 dark:text-red-400">⚠ Critical Result — Immediate Physician Notification Required</p>
-                  <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">This result falls outside critical limits. Please contact the ordering physician immediately.</p>
+                  <p className="text-sm font-bold text-red-700 dark:text-red-400">{t("lab.criticalResultTitle")}</p>
+                  <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">{t("lab.criticalResultDesc")}</p>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Patient",     value: order.patientName ?? `Patient #${order.patientId}` },
-                { label: "Ordered By",  value: order.orderedByName ?? "—" },
-                { label: "Priority",    value: order.priority ? order.priority.charAt(0).toUpperCase() + order.priority.slice(1) : "Routine" },
-                { label: "Order Date",  value: orderedDate },
-                { label: "Result Date", value: resultedDate },
-                { label: "Order ID",    value: `LAB-${String(order.id).padStart(4, "0")}` },
-              ].map((item) => (
+              {infoItems.map((item) => (
                 <div key={item.label} className="rounded-lg bg-muted/40 border px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{item.label}</p>
                   <p className="text-sm font-semibold truncate">{item.value}</p>
@@ -196,7 +210,7 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
             {order.result && (
               <div className={`flex items-center justify-between rounded-xl border-2 px-5 py-4 ${resultColor}`}>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Overall Result</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{t("lab.overallResult")}</p>
                   <p className={`text-3xl font-black tracking-wide ${resultText.cls}`}>{resultText.label}</p>
                 </div>
                 <div className={`h-16 w-16 rounded-full border-4 flex items-center justify-center ${
@@ -214,17 +228,17 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
             <Separator />
 
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Test Results</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">{t("lab.testResultsSection")}</p>
               {fieldRows.length > 0 ? (
                 <div className="rounded-xl border overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="font-bold text-xs uppercase tracking-wide w-[35%]">Analyte</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">Value</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">Unit</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">Reference Range</TableHead>
-                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">Flag</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wide w-[35%]">{t("lab.colAnalyte")}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">{t("lab.colValue")}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">{t("lab.colUnit")}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">{t("lab.colReferenceRange")}</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wide text-center">{t("lab.colFlag")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -260,12 +274,12 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
                   </p>
                   {order.referenceRange && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      Reference range: <span className="font-mono font-medium">{order.referenceRange}</span>
+                      {t("lab.referenceRangeLabel")} <span className="font-mono font-medium">{order.referenceRange}</span>
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">No result values recorded.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">{t("lab.noResultValues")}</p>
               )}
             </div>
 
@@ -273,7 +287,7 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
               <>
                 <Separator />
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Clinical Notes</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("lab.clinicalNotesSection")}</p>
                   <p className="text-sm text-foreground bg-muted/30 rounded-lg px-4 py-3 border">{order.notes}</p>
                 </div>
               </>
@@ -283,10 +297,12 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <HeartPulse className="h-3.5 w-3.5" />
-                <span className="font-semibold">Almuzini Children Hospital</span>
-                <span>· Pediatric Laboratory</span>
+                <span className="font-semibold">{t("app.title")}</span>
+                <span>· {t("lab.pediatricLaboratory")}</span>
               </div>
-              <span>Generated {new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              <span>
+                {t("lab.reportGenerated")} {new Date().toLocaleString(language === "ar" ? "ar-SA" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
             </div>
 
           </div>
