@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListDrugs, useCreateDrug, getListDrugsQueryKey } from "@workspace/api-client-react";
+import { useListDrugs, useCreateDrug, useUpdateDrug, getListDrugsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,19 +9,38 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, Save } from "lucide-react";
+import { Plus, Loader2, Save, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+type Drug = {
+  id: number;
+  name: string;
+  genericName?: string | null;
+  category: string;
+  unit: string;
+  stockQuantity: number;
+  minStockLevel?: number | null;
+  unitPrice?: number | null;
+  isControlled?: boolean | null;
+};
+
+const emptyForm = { name: "", genericName: "", category: "", stockQuantity: "", minStockLevel: "", unit: "", unitPrice: "" };
 
 export default function Pharmacy() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editDrug, setEditDrug] = useState<Drug | null>(null);
+  const [editForm, setEditForm] = useState(emptyForm);
+
   const { data: drugs, isLoading } = useListDrugs();
   const createMutation = useCreateDrug();
+  const updateMutation = useUpdateDrug();
 
-  const [form, setForm] = useState({ name: "", genericName: "", category: "", stockQuantity: "", minStockLevel: "", unit: "", unitPrice: "" });
+  const [form, setForm] = useState(emptyForm);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => setEditForm(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,8 +50,48 @@ export default function Pharmacy() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListDrugsQueryKey() });
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
-          setIsOpen(false);
-          setForm({ name: "", genericName: "", category: "", stockQuantity: "", minStockLevel: "", unit: "", unitPrice: "" });
+          setIsCreateOpen(false);
+          setForm(emptyForm);
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
+      }
+    );
+  };
+
+  const openEdit = (drug: Drug) => {
+    setEditDrug(drug);
+    setEditForm({
+      name: drug.name,
+      genericName: drug.genericName ?? "",
+      category: drug.category,
+      unit: drug.unit,
+      stockQuantity: String(drug.stockQuantity),
+      minStockLevel: drug.minStockLevel != null ? String(drug.minStockLevel) : "",
+      unitPrice: drug.unitPrice != null ? String(drug.unitPrice) : "",
+    });
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editDrug) return;
+    updateMutation.mutate(
+      {
+        id: editDrug.id,
+        data: {
+          name: editForm.name,
+          genericName: editForm.genericName || undefined,
+          category: editForm.category,
+          unit: editForm.unit,
+          stockQuantity: Number(editForm.stockQuantity),
+          minStockLevel: editForm.minStockLevel ? Number(editForm.minStockLevel) : undefined,
+          unitPrice: editForm.unitPrice ? Number(editForm.unitPrice) : undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListDrugsQueryKey() });
+          toast({ title: t("generic.success"), description: t("generic.updateSuccess") ?? "Updated successfully" });
+          setEditDrug(null);
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
@@ -43,7 +102,7 @@ export default function Pharmacy() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.pharmacy")}</h1>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />{t("pharmacy.newDrug")}</Button>
           </DialogTrigger>
@@ -85,7 +144,7 @@ export default function Pharmacy() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>{t("generic.cancel")}</Button>
+                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>{t("generic.cancel")}</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
                   {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />}
                   {t("generic.save")}
@@ -95,6 +154,56 @@ export default function Pharmacy() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Drug Dialog */}
+      <Dialog open={!!editDrug} onOpenChange={(open) => { if (!open) setEditDrug(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{t("generic.edit")} — {editDrug?.name}</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <Label>{t("pharmacy.drugName")} *</Label>
+                <Input name="name" required value={editForm.name} onChange={handleEditChange} />
+              </div>
+              <div className="space-y-3">
+                <Label>{t("pharmacy.genericName")}</Label>
+                <Input name="genericName" value={editForm.genericName} onChange={handleEditChange} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <Label>{t("generic.category")} *</Label>
+                <Input name="category" required value={editForm.category} onChange={handleEditChange} />
+              </div>
+              <div className="space-y-3">
+                <Label>{t("pharmacy.unit")} *</Label>
+                <Input name="unit" required value={editForm.unit} onChange={handleEditChange} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-3">
+                <Label>{t("pharmacy.stockQty")} *</Label>
+                <Input name="stockQuantity" type="number" required value={editForm.stockQuantity} onChange={handleEditChange} />
+              </div>
+              <div className="space-y-3">
+                <Label>{t("pharmacy.minStock")}</Label>
+                <Input name="minStockLevel" type="number" value={editForm.minStockLevel} onChange={handleEditChange} />
+              </div>
+              <div className="space-y-3">
+                <Label>{t("pharmacy.unitPrice")}</Label>
+                <Input name="unitPrice" type="number" step="0.01" value={editForm.unitPrice} onChange={handleEditChange} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditDrug(null)}>{t("generic.cancel")}</Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className={`${isRtl ? 'ml-2' : 'mr-2'} h-4 w-4`} />}
+                {t("generic.save")}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader><CardTitle>{t("pharmacy.inventory")}</CardTitle></CardHeader>
@@ -131,7 +240,11 @@ export default function Pharmacy() {
                       </div>
                     </TableCell>
                     <TableCell>{drug.unitPrice ? `$${drug.unitPrice.toFixed(2)}` : '-'}</TableCell>
-                    <TableCell className={isRtl ? "text-left" : "text-right"}><Button variant="ghost" size="sm">{t("generic.edit")}</Button></TableCell>
+                    <TableCell className={isRtl ? "text-left" : "text-right"}>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(drug as Drug)}>
+                        <Pencil className="h-3 w-3 mr-1" />{t("generic.edit")}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
