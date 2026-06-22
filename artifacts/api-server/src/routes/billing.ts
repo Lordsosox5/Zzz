@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { db, invoicesTable, patientsTable } from "../lib/db";
-import { eq, inArray } from "drizzle-orm";
+import { supabase, mapRow, mapRows, toSnake } from "../lib/supabase";
 import {
   ListInvoicesQueryParams,
   CreateInvoiceBody,
@@ -15,8 +14,8 @@ let invoiceCounter = 100;
 
 export async function initInvoiceCounter(): Promise<void> {
   try {
-    const rows = await db.select({ invoiceNumber: invoicesTable.invoiceNumber }).from(invoicesTable).orderBy(invoicesTable.id).limit(1);
-    const raw = rows[0]?.invoiceNumber;
+    const { data } = await supabase.from("invoices").select("invoice_number").order("id", { ascending: false }).limit(1);
+    const raw = data?.[0]?.invoice_number;
     if (raw) {
       const num = parseInt(String(raw).replace(/\D/g, "").slice(-5), 10);
       if (!isNaN(num) && num > invoiceCounter) invoiceCounter = num;
@@ -37,11 +36,11 @@ function normalizeItem(item: Record<string, unknown>) {
   };
 }
 
-function formatInvoice(row: typeof invoicesTable.$inferSelect, patientName?: string | null) {
+function formatInvoice(row: Record<string, unknown>, patientName?: string | null) {
   const rawItems = Array.isArray(row.items) ? row.items : [];
   return {
     ...row,
-    patientName: patientName !== undefined ? patientName : null,
+    patientName: patientName !== undefined ? patientName : ((row.patientName as string | null) ?? null),
     totalAmount: Number(row.totalAmount ?? 0),
     paidAmount: Number(row.paidAmount ?? 0),
     discount: Number(row.discount ?? 0),
@@ -53,20 +52,19 @@ router.get("/invoices", async (req, res): Promise<void> => {
   const params = ListInvoicesQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const conditions: ReturnType<typeof eq>[] = [];
-    if (params.data.patientId) conditions.push(eq(invoicesTable.patientId, params.data.patientId));
-    if (params.data.status) conditions.push(eq(invoicesTable.status, params.data.status));
-    const rows = conditions.length > 0
-      ? await db.select().from(invoicesTable).where(conditions.reduce((a, b) => a && b as any))
-      : await db.select().from(invoicesTable);
-
-    const patientIds = [...new Set(rows.map(r => r.patientId).filter(Boolean))];
+    let query = supabase.from("invoices").select("*");
+    if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
+    if (params.data.status) query = query.eq("status", params.data.status);
+    const { data, error } = await query;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    const rows = mapRows(data ?? []);
+    const missingNameIds = [...new Set(rows.filter(r => !r.patientName && r.patientId).map(r => r.patientId as number))];
     let patientNameMap: Record<number, string> = {};
-    if (patientIds.length > 0) {
-      const pts = await db.select({ id: patientsTable.id, nameEn: patientsTable.nameEn }).from(patientsTable).where(inArray(patientsTable.id, patientIds));
-      for (const p of pts) patientNameMap[p.id] = p.nameEn;
+    if (missingNameIds.length > 0) {
+      const { data: pts } = await supabase.from("patients").select("id, name_en").in("id", missingNameIds);
+      for (const p of pts ?? []) patientNameMap[p.id] = p.name_en;
     }
-    res.json(rows.map(row => formatInvoice(row, patientNameMap[row.patientId] ?? null)));
+    res.json(rows.map(row => formatInvoice(row, (row.patientName as string | null) ?? patientNameMap[row.patientId as number] ?? null)));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -79,15 +77,12 @@ router.post("/invoices", async (req, res): Promise<void> => {
     const items = parsed.data.items ?? [];
     const totalAmount = items.reduce((sum: number, item: { total: number }) => sum + item.total, 0).toFixed(2);
     const invoiceNumber = generateInvoiceNumber();
-    const ptRows = await db.select({ nameEn: patientsTable.nameEn }).from(patientsTable).where(eq(patientsTable.id, parsed.data.patientId)).limit(1);
-    const patientName: string | null = ptRows[0]?.nameEn ?? null;
-    const rows = await db.insert(invoicesTable).values({
-      ...parsed.data,
-      invoiceNumber,
-      totalAmount,
-      items: parsed.data.items as any,
-    }).returning();
-    res.status(201).json(formatInvoice(rows[0], patientName));
+    const { data: patientRow } = await supabase.from("patients").select("name_en").eq("id", parsed.data.patientId).single();
+    const patientName: string | null = patientRow?.name_en ?? null;
+    const insertData = { ...toSnake(parsed.data as Record<string, unknown>), invoice_number: invoiceNumber, total_amount: totalAmount };
+    const { data, error } = await supabase.from("invoices").insert(insertData).select().single();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(201).json(formatInvoice(mapRow(data), patientName));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -97,11 +92,15 @@ router.get("/invoices/:id", async (req, res): Promise<void> => {
   const params = GetInvoiceParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const rows = await db.select().from(invoicesTable).where(eq(invoicesTable.id, params.data.id)).limit(1);
-    if (!rows[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
-    const row = rows[0];
-    const ptRows = await db.select({ nameEn: patientsTable.nameEn }).from(patientsTable).where(eq(patientsTable.id, row.patientId)).limit(1);
-    const patientName = ptRows[0]?.nameEn ?? null;
+    const { data, error } = await supabase.from("invoices").select("*").eq("id", params.data.id).limit(1);
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data?.[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
+    const row = mapRow(data[0]);
+    let patientName = (row.patientName as string | null) ?? null;
+    if (!patientName && row.patientId) {
+      const { data: pt } = await supabase.from("patients").select("name_en").eq("id", row.patientId).single();
+      patientName = pt?.name_en ?? null;
+    }
     res.json(formatInvoice(row, patientName));
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -116,13 +115,17 @@ router.patch("/invoices/:id", async (req, res): Promise<void> => {
   try {
     const updates: Record<string, unknown> = {};
     if (parsed.data.status) updates.status = parsed.data.status;
-    if (parsed.data.paidAmount !== undefined) updates.paidAmount = parsed.data.paidAmount.toFixed(2);
+    if (parsed.data.paidAmount !== undefined) updates.paid_amount = parsed.data.paidAmount.toFixed(2);
     if (parsed.data.notes) updates.notes = parsed.data.notes;
-    const rows = await db.update(invoicesTable).set(updates as any).where(eq(invoicesTable.id, params.data.id)).returning();
-    if (!rows[0]) { res.status(404).json({ error: "Invoice not found" }); return; }
-    const row = rows[0];
-    const ptRows = await db.select({ nameEn: patientsTable.nameEn }).from(patientsTable).where(eq(patientsTable.id, row.patientId)).limit(1);
-    const patientName = ptRows[0]?.nameEn ?? null;
+    const { data, error } = await supabase.from("invoices").update(updates).eq("id", params.data.id).select().single();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data) { res.status(404).json({ error: "Invoice not found" }); return; }
+    const row = mapRow(data);
+    let patientName: string | null = null;
+    if (row.patientId) {
+      const { data: pt } = await supabase.from("patients").select("name_en").eq("id", row.patientId).single();
+      patientName = pt?.name_en ?? null;
+    }
     res.json(formatInvoice(row, patientName));
   } catch (err) {
     res.status(500).json({ error: String(err) });
