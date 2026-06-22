@@ -6,6 +6,7 @@ import {
   getListAppointmentsQueryKey,
   useListUnits,
   useListPatients,
+  useListStaff,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -117,10 +118,19 @@ export default function Appointments() {
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
   const { data: units } = useListUnits();
   const { data: patientsData } = useListPatients({ limit: 500 });
+  const { data: staffList } = useListStaff();
   const allPatients = patientsData?.patients ?? [];
   const unitPatients = selectedUnitId
     ? allPatients.filter((p) => p.unitId === Number(selectedUnitId))
     : [];
+  const DOCTOR_ROLES = [
+    "pediatric_consultant",
+    "pediatric_specialist",
+    "emergency_physician",
+    "house_officer",
+    "medical_officer",
+  ];
+  const doctors = (staffList ?? []).filter((s) => DOCTOR_ROLES.includes(s.role));
 
   const handleQuickStatus = (appt: Appointment) => {
     const next = STATUS_CYCLE[appt.status];
@@ -187,6 +197,10 @@ export default function Appointments() {
     e.preventDefault();
     if (!form.patientId) {
       toast({ variant: "destructive", title: t("generic.error"), description: t("appt.selectPatient") });
+      return;
+    }
+    if (!form.doctorId) {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("appt.selectDoctor") });
       return;
     }
     createMutation.mutate(
@@ -286,6 +300,16 @@ export default function Appointments() {
               <DialogTitle>{t("appt.newAppointment")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
+              {/* Ordered by banner */}
+              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">{t("appt.orderedBy")}:</span>
+                <span className="font-medium">
+                  {isRtl && user?.nameAr ? user.nameAr : user?.nameEn ?? user?.username ?? "—"}
+                </span>
+                <span className="ml-auto text-xs text-muted-foreground capitalize">
+                  {user?.role?.replace(/_/g, " ")}
+                </span>
+              </div>
               <div className="space-y-3">
                 <Label>{t("appt.filterByUnit")} *</Label>
                 <Select
@@ -342,14 +366,31 @@ export default function Appointments() {
                 </Select>
               </div>
               <div className="space-y-3">
-                <Label>{t("appt.doctorId")} *</Label>
-                <Input
-                  name="doctorId"
-                  type="number"
-                  required
+                <Label>{t("appt.doctor")} *</Label>
+                <Select
                   value={form.doctorId}
-                  onChange={handleChange}
-                />
+                  onValueChange={(v) => setForm((p) => ({ ...p, doctorId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("appt.selectDoctor")} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {doctors.length === 0 ? (
+                      <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                        {t("appt.noDoctors")}
+                      </div>
+                    ) : (
+                      doctors.map((d) => (
+                        <SelectItem key={d.id} value={String(d.id)}>
+                          <span className="capitalize text-xs text-muted-foreground mr-2">
+                            {d.role.replace(/_/g, " ")}
+                          </span>
+                          {isRtl && d.nameAr ? d.nameAr : d.nameEn}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
