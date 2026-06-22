@@ -56,7 +56,14 @@ router.get("/growth-records", async (req, res): Promise<void> => {
     if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
     const { data, error } = await query;
     if (error) { res.status(500).json({ error: error.message }); return; }
-    res.json(mapRows(data ?? []).map(formatGrowth));
+    const rows = mapRows(data ?? []).map(formatGrowth);
+    const patientIds = [...new Set(rows.map((r: Record<string, unknown>) => r.patientId as number).filter(Boolean))];
+    let patientMap: Record<number, string> = {};
+    if (patientIds.length > 0) {
+      const { data: pd } = await supabase.from("patients").select("id, name_en").in("id", patientIds);
+      for (const p of (pd ?? [])) patientMap[p.id] = p.name_en;
+    }
+    res.json(rows.map((r: Record<string, unknown>) => ({ ...r, patientName: patientMap[r.patientId as number] ?? null })));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
