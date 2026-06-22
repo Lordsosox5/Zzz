@@ -149,19 +149,16 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
       <DialogTrigger asChild>
         <Button><Plus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />{t("billing.newInvoice")}</Button>
       </DialogTrigger>
-      <DialogContent
-        dir={isRtl ? "rtl" : "ltr"}
-        className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden"
-      >
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className={`px-6 py-4 border-b shrink-0 ${isRtl ? "text-right" : "text-left"}`}>
+          <DialogTitle className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
             <Receipt className="h-5 w-5 text-primary" />
             {t("billing.newInvoice")}
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="flex-1 overflow-auto">
-          <form id="invoice-form" onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form id="invoice-form" onSubmit={handleSubmit} className={`p-6 space-y-5 ${isRtl ? "text-right" : "text-left"}`} dir={isRtl ? "rtl" : "ltr"}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("billing.patient")} <span className="text-destructive">*</span></Label>
@@ -171,7 +168,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
                 <Label>{t("billing.paymentMethod")} <span className="text-destructive">*</span></Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent dir={isRtl ? "rtl" : "ltr"}>
+                  <SelectContent>
                     <SelectItem value="cash">{t("billing.cash")}</SelectItem>
                     <SelectItem value="card">{t("billing.card")}</SelectItem>
                     <SelectItem value="insurance">{t("billing.insurance")}</SelectItem>
@@ -183,115 +180,62 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
             <Separator />
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center justify-between ${isRtl ? "flex-row-reverse" : ""}`}>
                 <Label className="text-sm font-semibold">{t("billing.lineItems")}</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addItem} className="h-8 gap-1.5">
                   <Plus className="h-3.5 w-3.5" /> {t("billing.addItem")}
                 </Button>
               </div>
 
-              <div className={`grid gap-2 px-1 ${isRtl ? "grid-cols-[36px_90px_110px_80px_1fr]" : "grid-cols-[1fr_80px_110px_90px_36px]"}`}>
-                {isRtl ? (
-                  <>
-                    <span />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">{t("billing.total")}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">{t("billing.unitPrice")}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("billing.qty")}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("billing.itemDescription")}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("billing.itemDescription")}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("billing.qty")}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">{t("billing.unitPrice")}</span>
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">{t("billing.total")}</span>
-                    <span />
-                  </>
-                )}
+              {/* Column headers — same order always; dir="rtl" on the form flips grid columns automatically */}
+              <div className="grid grid-cols-[1fr_80px_110px_90px_36px] gap-2 px-1">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("billing.itemDescription")}</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">{t("billing.qty")}</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-end">{t("billing.unitPrice")}</span>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-end">{t("billing.total")}</span>
+                <span />
               </div>
 
               <div className="space-y-2">
                 {items.map((item) => (
-                  <div key={item.id} className={`grid gap-2 items-center ${isRtl ? "grid-cols-[36px_90px_110px_80px_1fr]" : "grid-cols-[1fr_80px_110px_90px_36px]"}`}>
-                    {isRtl && (
-                      <Button
-                        type="button" variant="ghost" size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => removeItem(item.id)}
-                        disabled={items.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {isRtl && (
-                      <div className="h-9 flex items-center justify-start pl-1">
-                        <span className="text-sm font-semibold tabular-nums">SDG {lineTotal(item).toFixed(2)}</span>
-                      </div>
-                    )}
-                    {isRtl && (
-                      <div className="relative">
-                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-medium">SDG</span>
-                        <Input
-                          type="number" min="0" step="0.01" placeholder="0.00"
-                          value={item.unitPrice}
-                          onChange={e => updateItem(item.id, "unitPrice", e.target.value)}
-                          className="h-9 text-sm text-left pr-12"
-                        />
-                      </div>
-                    )}
-                    {isRtl && (
-                      <Input
-                        type="number" min="1"
-                        value={item.quantity}
-                        onChange={e => updateItem(item.id, "quantity", e.target.value)}
-                        className="h-9 text-sm text-center"
-                      />
-                    )}
+                  <div key={item.id} className="grid grid-cols-[1fr_80px_110px_90px_36px] gap-2 items-center">
                     <Input
                       placeholder={t("billing.itemDescription")}
                       value={item.description}
                       onChange={e => updateItem(item.id, "description", e.target.value)}
                       className="h-9 text-sm"
                     />
-                    {!isRtl && (
+                    <Input
+                      type="number" min="1"
+                      value={item.quantity}
+                      onChange={e => updateItem(item.id, "quantity", e.target.value)}
+                      className="h-9 text-sm text-center"
+                    />
+                    <div className="relative">
+                      <span className={`absolute ${isRtl ? "right-2.5" : "left-2.5"} top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-medium pointer-events-none`}>SDG</span>
                       <Input
-                        type="number" min="1"
-                        value={item.quantity}
-                        onChange={e => updateItem(item.id, "quantity", e.target.value)}
-                        className="h-9 text-sm text-center"
+                        type="number" min="0" step="0.01" placeholder="0.00"
+                        value={item.unitPrice}
+                        onChange={e => updateItem(item.id, "unitPrice", e.target.value)}
+                        className={`h-9 text-sm ${isRtl ? "pr-12 text-left" : "pl-12 text-right"}`}
                       />
-                    )}
-                    {!isRtl && (
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-medium">SDG</span>
-                        <Input
-                          type="number" min="0" step="0.01" placeholder="0.00"
-                          value={item.unitPrice}
-                          onChange={e => updateItem(item.id, "unitPrice", e.target.value)}
-                          className="h-9 text-sm text-right pl-12"
-                        />
-                      </div>
-                    )}
-                    {!isRtl && (
-                      <div className="h-9 flex items-center justify-end pr-1">
-                        <span className="text-sm font-semibold tabular-nums">SDG {lineTotal(item).toFixed(2)}</span>
-                      </div>
-                    )}
-                    {!isRtl && (
-                      <Button
-                        type="button" variant="ghost" size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => removeItem(item.id)}
-                        disabled={items.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    </div>
+                    <div className="h-9 flex items-center justify-end">
+                      <span className="text-sm font-semibold tabular-nums">SDG {lineTotal(item).toFixed(2)}</span>
+                    </div>
+                    <Button
+                      type="button" variant="ghost" size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => removeItem(item.id)}
+                      disabled={items.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className={`flex pt-2 ${isRtl ? "justify-start" : "justify-end"}`}>
                 <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-2 flex items-center gap-3">
                   <span className="text-sm font-medium text-muted-foreground">{t("billing.totalAmount")}</span>
                   <span className="text-xl font-bold text-primary tabular-nums">SDG {grandTotal.toFixed(2)}</span>
@@ -313,7 +257,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
           </form>
         </ScrollArea>
 
-        <div className="px-6 py-4 border-t bg-card flex justify-end gap-2 shrink-0">
+        <div className={`px-6 py-4 border-t bg-card flex gap-2 shrink-0 ${isRtl ? "justify-start flex-row-reverse" : "justify-end"}`}>
           <Button type="button" variant="outline" onClick={() => { setOpen(false); reset(); }}>
             {t("generic.cancel")}
           </Button>
