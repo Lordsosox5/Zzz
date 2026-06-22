@@ -4,6 +4,8 @@ import {
   useCreateAppointment,
   useUpdateAppointment,
   getListAppointmentsQueryKey,
+  useListUnits,
+  useListPatients,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -112,6 +114,14 @@ export default function Appointments() {
   const createMutation = useCreateAppointment();
   const updateMutation = useUpdateAppointment();
 
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
+  const { data: units } = useListUnits();
+  const { data: patientsData } = useListPatients({ limit: 500 });
+  const allPatients = patientsData?.patients ?? [];
+  const unitPatients = selectedUnitId
+    ? allPatients.filter((p) => p.unitId === Number(selectedUnitId))
+    : [];
+
   const handleQuickStatus = (appt: Appointment) => {
     const next = STATUS_CYCLE[appt.status];
     if (!next || cyclingId !== null) return;
@@ -175,6 +185,10 @@ export default function Appointments() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.patientId) {
+      toast({ variant: "destructive", title: t("generic.error"), description: t("appt.selectPatient") });
+      return;
+    }
     createMutation.mutate(
       {
         data: {
@@ -197,6 +211,7 @@ export default function Appointments() {
             description: t("generic.addSuccess"),
           });
           setIsNewOpen(false);
+          setSelectedUnitId("");
           setForm({
             patientId: "",
             doctorId: String(user?.id ?? "1"),
@@ -259,7 +274,7 @@ export default function Appointments() {
           {t("nav.appointments")}
         </h1>
 
-        <Dialog open={isNewOpen} onOpenChange={setIsNewOpen}>
+        <Dialog open={isNewOpen} onOpenChange={(open) => { setIsNewOpen(open); if (!open) { setSelectedUnitId(""); setForm({ patientId: "", doctorId: String(user?.id ?? "1"), scheduledAt: "", type: "consultation", chiefComplaint: "", notes: "", duration: "30" }); } }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />
@@ -271,28 +286,70 @@ export default function Appointments() {
               <DialogTitle>{t("appt.newAppointment")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label>{t("generic.patientId")} *</Label>
-                  <Input
-                    name="patientId"
-                    type="number"
-                    required
-                    value={form.patientId}
-                    onChange={handleChange}
-                    placeholder="e.g. 1"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label>{t("appt.doctorId")} *</Label>
-                  <Input
-                    name="doctorId"
-                    type="number"
-                    required
-                    value={form.doctorId}
-                    onChange={handleChange}
-                  />
-                </div>
+              <div className="space-y-3">
+                <Label>{t("appt.filterByUnit")} *</Label>
+                <Select
+                  value={selectedUnitId}
+                  onValueChange={(v) => {
+                    setSelectedUnitId(v);
+                    setForm((p) => ({ ...p, patientId: "" }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("appt.selectUnit")} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-52 overflow-y-auto">
+                    {(units ?? []).map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {isRtl && u.nameAr ? u.nameAr : u.nameEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3">
+                <Label>{t("generic.patient")} *</Label>
+                <Select
+                  value={form.patientId}
+                  onValueChange={(v) => setForm((p) => ({ ...p, patientId: v }))}
+                  disabled={!selectedUnitId}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        selectedUnitId
+                          ? t("appt.selectPatient")
+                          : t("appt.selectUnit")
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {unitPatients.length === 0 ? (
+                      <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                        {t("appt.noPatients")}
+                      </div>
+                    ) : (
+                      unitPatients.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          <span className="font-mono text-xs text-muted-foreground mr-2">
+                            {p.mrn}
+                          </span>
+                          {isRtl && p.nameAr ? p.nameAr : p.nameEn}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3">
+                <Label>{t("appt.doctorId")} *</Label>
+                <Input
+                  name="doctorId"
+                  type="number"
+                  required
+                  value={form.doctorId}
+                  onChange={handleChange}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">

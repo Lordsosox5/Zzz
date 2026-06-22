@@ -1217,6 +1217,7 @@ components:
         guardianRelation: { type: ["string", "null"] }
         guardianPhone: { type: ["string", "null"] }
         allergies: { type: ["string", "null"] }
+        unitId: { type: ["integer", "null"] }
         status: { type: string }
         createdAt: { type: string }
 

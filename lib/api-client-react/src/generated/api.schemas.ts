@@ -73,6 +73,8 @@ export interface Patient {
   guardianPhone?: string | null;
   /** @nullable */
   allergies?: string | null;
+  /** @nullable */
+  unitId?: number | null;
   status?: string;
   createdAt: string;
 }
