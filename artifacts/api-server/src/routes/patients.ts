@@ -114,6 +114,23 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
   }
 });
 
+router.delete("/patients/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid patient id" }); return; }
+  try {
+    const caller = await getCallerInfo(req.headers.authorization);
+    if (!caller || caller.role !== "super_admin") {
+      res.status(403).json({ error: "Forbidden: super_admin only" });
+      return;
+    }
+    const { error } = await supabase.from("patients").delete().eq("id", id);
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.get("/patients/:id/unit", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid patient id" }); return; }

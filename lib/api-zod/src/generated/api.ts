@@ -306,6 +306,14 @@ export const UpdatePatientResponse = zod.object({
 
 
 /**
+ * @summary Delete patient permanently (super_admin only)
+ */
+export const DeletePatientParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Get admission assessment for a patient
  */
 export const GetPatientAssessmentParams = zod.object({

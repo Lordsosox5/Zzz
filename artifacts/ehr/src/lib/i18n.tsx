@@ -208,6 +208,11 @@ const translations: Translations = {
   "patient.viewProfile": { en: "View Profile", ar: "عرض الملف" },
   "patient.notFound": { en: "No patients found.", ar: "لم يتم العثور على مرضى." },
   "patient.newPatient": { en: "New Patient", ar: "مريض جديد" },
+  "patient.deletePatient": { en: "Delete Patient", ar: "حذف المريض" },
+  "patient.deleteConfirmTitle": { en: "Delete Patient Permanently?", ar: "حذف المريض نهائياً؟" },
+  "patient.deleteConfirmDesc": { en: "This will permanently delete the patient and all associated records. This action cannot be undone.", ar: "سيتم حذف المريض وجميع سجلاته نهائياً. لا يمكن التراجع عن هذا الإجراء." },
+  "patient.deleteSuccess": { en: "Patient deleted successfully", ar: "تم حذف المريض بنجاح" },
+  "patient.deleteError": { en: "Failed to delete patient", ar: "فشل حذف المريض" },
 
   // New patient form
   "patient.registerNew": { en: "Register New Patient", ar: "تسجيل مريض جديد" },
