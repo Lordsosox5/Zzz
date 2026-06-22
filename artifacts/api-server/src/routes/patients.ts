@@ -1,5 +1,7 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, toSnake } from "../lib/supabase";
+import { db, patientsTable, usersTable, clinicalNotesTable, prescriptionsTable, labOrdersTable, appointmentsTable, vaccinationsTable, growthRecordsTable } from "../lib/db";
+import { eq, ilike, or, asc, desc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   ListPatientsQueryParams,
   CreatePatientBody,
@@ -21,8 +23,8 @@ function generateMRN(): string {
 
 export async function initMrnCounter(): Promise<void> {
   try {
-    const { data } = await supabase.from("patients").select("mrn").order("id", { ascending: false }).limit(1);
-    const mrn = data?.[0]?.mrn;
+    const rows = await db.select({ mrn: patientsTable.mrn }).from(patientsTable).orderBy(desc(patientsTable.id)).limit(1);
+    const mrn = rows[0]?.mrn;
     if (mrn) {
       const num = parseInt(String(mrn).replace(/\D/g, ""), 10);
       if (!isNaN(num) && num > mrnCounter) mrnCounter = num;
@@ -35,10 +37,10 @@ async function getCallerInfo(authHeader: string | undefined): Promise<{ id: numb
   try {
     const token = authHeader.replace("Bearer ", "");
     const [userId] = Buffer.from(token, "base64").toString("utf-8").split(":");
-    const { data } = await supabase.from("users").select("id, role, unit_id").eq("id", parseInt(userId, 10)).limit(1);
-    const raw = data?.[0];
+    const rows = await db.select({ id: usersTable.id, role: usersTable.role, unitId: usersTable.unitId }).from(usersTable).where(eq(usersTable.id, parseInt(userId, 10))).limit(1);
+    const raw = rows[0];
     if (!raw) return null;
-    return { id: raw.id, role: raw.role, unitId: raw.unit_id ?? null };
+    return { id: raw.id, role: raw.role, unitId: raw.unitId ?? null };
   } catch {
     return null;
   }
@@ -58,14 +60,32 @@ router.get("/patients", async (req, res): Promise<void> => {
       return;
     }
 
-    let query = supabase.from("patients").select("*", { count: "exact" });
-    if (isUnitRestricted && caller.unitId !== null) query = query.eq("unit_id", caller.unitId);
-    if (search) query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%`);
-    query = query.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
+    let conditions: ReturnType<typeof eq>[] = [];
+    if (isUnitRestricted && caller.unitId !== null) {
+      conditions.push(eq(patientsTable.unitId, caller.unitId));
+    }
 
-    const { data, count: total, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    res.json({ patients: mapRows(data ?? []), total: total ?? 0, page, limit });
+    const countResult = await db.select({ count: sql<number>`count(*)` }).from(patientsTable)
+      .where(
+        conditions.length > 0 || search
+          ? sql`${conditions.length > 0 ? sql`unit_id = ${caller!.unitId}` : sql`1=1`} ${search ? sql`AND (name_en ILIKE ${'%' + search + '%'} OR mrn ILIKE ${'%' + search + '%'})` : sql``}`
+          : undefined
+      );
+
+    let query = db.select().from(patientsTable);
+    if (isUnitRestricted && caller.unitId !== null) {
+      if (search) {
+        query = query.where(sql`unit_id = ${caller.unitId} AND (name_en ILIKE ${'%' + search + '%'} OR mrn ILIKE ${'%' + search + '%'})`) as typeof query;
+      } else {
+        query = query.where(eq(patientsTable.unitId, caller.unitId)) as typeof query;
+      }
+    } else if (search) {
+      query = query.where(or(ilike(patientsTable.nameEn, `%${search}%`), ilike(patientsTable.mrn, `%${search}%`))) as typeof query;
+    }
+
+    const rows = await query.orderBy(asc(patientsTable.createdAt)).limit(limit).offset(offset);
+    const total = Number(countResult[0]?.count ?? 0);
+    res.json({ patients: rows, total, page, limit });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -77,10 +97,8 @@ router.post("/patients", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
     const mrn = generateMRN();
-    const insertData = { ...toSnake(parsed.data as Record<string, unknown>), mrn, unit_id: unitId ?? null };
-    const { data, error } = await supabase.from("patients").insert(insertData).select().single();
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    res.status(201).json(mapRow(data));
+    const rows = await db.insert(patientsTable).values({ ...parsed.data, mrn, unitId: unitId ?? null }).returning();
+    res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -90,10 +108,9 @@ router.get("/patients/:id", async (req, res): Promise<void> => {
   const params = GetPatientParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("patients").select("*").eq("id", params.data.id).limit(1);
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    if (!data?.[0]) { res.status(404).json({ error: "Patient not found" }); return; }
-    res.json(mapRow(data[0]));
+    const rows = await db.select().from(patientsTable).where(eq(patientsTable.id, params.data.id)).limit(1);
+    if (!rows[0]) { res.status(404).json({ error: "Patient not found" }); return; }
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -105,10 +122,9 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
   const parsed = UpdatePatientBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("patients").update(toSnake(parsed.data as Record<string, unknown>)).eq("id", params.data.id).select().single();
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    if (!data) { res.status(404).json({ error: "Patient not found" }); return; }
-    res.json(mapRow(data));
+    const rows = await db.update(patientsTable).set(parsed.data).where(eq(patientsTable.id, params.data.id)).returning();
+    if (!rows[0]) { res.status(404).json({ error: "Patient not found" }); return; }
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -123,8 +139,7 @@ router.delete("/patients/:id", async (req, res): Promise<void> => {
       res.status(403).json({ error: "Forbidden: super_admin only" });
       return;
     }
-    const { error } = await supabase.from("patients").delete().eq("id", id);
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    await db.delete(patientsTable).where(eq(patientsTable.id, id));
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -135,8 +150,8 @@ router.get("/patients/:id/unit", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid patient id" }); return; }
   try {
-    const { data } = await supabase.from("patients").select("unit_id").eq("id", id).limit(1);
-    const unitId = data?.[0]?.unit_id ?? null;
+    const rows = await db.select({ unitId: patientsTable.unitId }).from(patientsTable).where(eq(patientsTable.id, id)).limit(1);
+    const unitId = rows[0]?.unitId ?? null;
     if (!unitId) { res.json({ unitId: null, unitNameEn: null, unitNameAr: null }); return; }
     const unit = units.find(u => u.id === unitId);
     res.json({ unitId, unitNameEn: unit?.nameEn ?? null, unitNameAr: unit?.nameAr ?? null });
@@ -151,13 +166,13 @@ router.patch("/patients/:id/unit", async (req, res): Promise<void> => {
   const { unitId } = req.body as { unitId: number | null };
   try {
     if (unitId === null || unitId === undefined) {
-      await supabase.from("patients").update({ unit_id: null }).eq("id", id);
+      await db.update(patientsTable).set({ unitId: null }).where(eq(patientsTable.id, id));
       res.json({ unitId: null, unitNameEn: null, unitNameAr: null });
       return;
     }
     const unit = units.find(u => u.id === unitId);
     if (!unit) { res.status(404).json({ error: "Unit not found" }); return; }
-    await supabase.from("patients").update({ unit_id: unitId }).eq("id", id);
+    await db.update(patientsTable).set({ unitId }).where(eq(patientsTable.id, id));
     res.json({ unitId, unitNameEn: unit.nameEn, unitNameAr: unit.nameAr ?? null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -169,26 +184,26 @@ router.get("/patients/:id/summary", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const id = params.data.id;
   try {
-    const { data: patientData, error: pe } = await supabase.from("patients").select("*").eq("id", id).limit(1);
-    if (pe || !patientData?.[0]) { res.status(404).json({ error: "Patient not found" }); return; }
+    const patientRows = await db.select().from(patientsTable).where(eq(patientsTable.id, id)).limit(1);
+    if (!patientRows[0]) { res.status(404).json({ error: "Patient not found" }); return; }
 
     const [notes, rxs, labs, appts, vaccs, growth] = await Promise.all([
-      supabase.from("clinical_notes").select("*").eq("patient_id", id).order("created_at", { ascending: false }).limit(5),
-      supabase.from("prescriptions").select("*").eq("patient_id", id).limit(5),
-      supabase.from("lab_orders").select("*").eq("patient_id", id).limit(5),
-      supabase.from("appointments").select("*").eq("patient_id", id).order("scheduled_at", { ascending: true }).limit(3),
-      supabase.from("vaccinations").select("*").eq("patient_id", id).limit(10),
-      supabase.from("growth_records").select("*").eq("patient_id", id).order("created_at", { ascending: false }).limit(1),
+      db.select().from(clinicalNotesTable).where(eq(clinicalNotesTable.patientId, id)).orderBy(desc(clinicalNotesTable.createdAt)).limit(5),
+      db.select().from(prescriptionsTable).where(eq(prescriptionsTable.patientId, id)).limit(5),
+      db.select().from(labOrdersTable).where(eq(labOrdersTable.patientId, id)).limit(5),
+      db.select().from(appointmentsTable).where(eq(appointmentsTable.patientId, id)).orderBy(asc(appointmentsTable.scheduledAt)).limit(3),
+      db.select().from(vaccinationsTable).where(eq(vaccinationsTable.patientId, id)).limit(10),
+      db.select().from(growthRecordsTable).where(eq(growthRecordsTable.patientId, id)).orderBy(desc(growthRecordsTable.createdAt)).limit(1),
     ]);
 
     res.json({
-      patient: mapRow(patientData[0]),
-      recentNotes: mapRows(notes.data ?? []).map(n => ({ ...n, authorName: null })),
-      activePrescriptions: mapRows(rxs.data ?? []).map(p => ({ ...p, patientName: null, prescriberName: null })),
-      pendingLabOrders: mapRows(labs.data ?? []).map(l => ({ ...l, patientName: null, orderedByName: null })),
-      upcomingAppointments: mapRows(appts.data ?? []).map(a => ({ ...a, patientName: null, doctorName: null })),
-      latestGrowth: growth.data?.[0] ? mapRow(growth.data[0]) : null,
-      vaccinations: mapRows(vaccs.data ?? []),
+      patient: patientRows[0],
+      recentNotes: notes.map(n => ({ ...n, authorName: null })),
+      activePrescriptions: rxs.map(p => ({ ...p, patientName: null, prescriberName: null })),
+      pendingLabOrders: labs.map(l => ({ ...l, patientName: null, orderedByName: null })),
+      upcomingAppointments: appts.map(a => ({ ...a, patientName: null, doctorName: null })),
+      latestGrowth: growth[0] ?? null,
+      vaccinations: vaccs,
     });
   } catch (err) {
     res.status(500).json({ error: String(err) });

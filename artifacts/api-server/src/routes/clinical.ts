@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { supabase, mapRow, mapRows, toSnake } from "../lib/supabase";
+import { db, clinicalNotesTable, diagnosesTable, patientsTable, usersTable } from "../lib/db";
+import { eq, inArray } from "drizzle-orm";
 import {
   ListClinicalNotesQueryParams,
   CreateClinicalNoteBody,
@@ -17,16 +18,16 @@ async function getCallerUnitId(authHeader: string | undefined): Promise<number |
   try {
     const token = authHeader.replace("Bearer ", "");
     const [userId] = Buffer.from(token, "base64").toString("utf-8").split(":");
-    const { data } = await supabase.from("users").select("unit_id").eq("id", parseInt(userId, 10)).limit(1);
-    return data?.[0]?.unit_id ?? null;
+    const rows = await db.select({ unitId: usersTable.unitId }).from(usersTable).where(eq(usersTable.id, parseInt(userId, 10))).limit(1);
+    return rows[0]?.unitId ?? null;
   } catch {
     return null;
   }
 }
 
 async function unitPatientIds(unitId: number): Promise<number[]> {
-  const { data } = await supabase.from("patients").select("id").eq("unit_id", unitId);
-  return (data ?? []).map(r => r.id);
+  const rows = await db.select({ id: patientsTable.id }).from(patientsTable).where(eq(patientsTable.unitId, unitId));
+  return rows.map(r => r.id);
 }
 
 router.get("/clinical-notes", async (req, res): Promise<void> => {
@@ -40,26 +41,24 @@ router.get("/clinical-notes", async (req, res): Promise<void> => {
       if (allowedPatientIds.length === 0) { res.json([]); return; }
     }
 
-    let query = supabase.from("clinical_notes").select("*");
+    let rows: typeof clinicalNotesTable.$inferSelect[];
     if (params.data.patientId) {
       const pid = params.data.patientId;
       if (allowedPatientIds !== null && !allowedPatientIds.includes(pid)) { res.json([]); return; }
-      query = query.eq("patient_id", pid);
+      rows = await db.select().from(clinicalNotesTable).where(eq(clinicalNotesTable.patientId, pid));
     } else if (allowedPatientIds !== null) {
-      query = query.in("patient_id", allowedPatientIds);
+      rows = await db.select().from(clinicalNotesTable).where(inArray(clinicalNotesTable.patientId, allowedPatientIds));
+    } else {
+      rows = await db.select().from(clinicalNotesTable);
     }
 
-    const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    const notes = mapRows(data ?? []);
-
-    const patientIds = [...new Set(notes.map((n: Record<string, unknown>) => n.patientId as number).filter(Boolean))];
+    const patientIds = [...new Set(rows.map(n => n.patientId).filter(Boolean))];
     let patientMap: Record<number, string> = {};
     if (patientIds.length > 0) {
-      const { data: pd } = await supabase.from("patients").select("id, name_en").in("id", patientIds);
-      for (const p of (pd ?? [])) patientMap[p.id] = p.name_en;
+      const pts = await db.select({ id: patientsTable.id, nameEn: patientsTable.nameEn }).from(patientsTable).where(inArray(patientsTable.id, patientIds));
+      for (const p of pts) patientMap[p.id] = p.nameEn;
     }
-    res.json(notes.map((n: Record<string, unknown>) => ({ ...n, patientName: patientMap[n.patientId as number] ?? null, authorName: null })));
+    res.json(rows.map(n => ({ ...n, patientName: patientMap[n.patientId] ?? null, authorName: null })));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -69,10 +68,8 @@ router.post("/clinical-notes", async (req, res): Promise<void> => {
   const parsed = CreateClinicalNoteBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const insertData = { ...toSnake(parsed.data as Record<string, unknown>), author_id: 1 };
-    const { data, error } = await supabase.from("clinical_notes").insert(insertData).select().single();
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    res.status(201).json({ ...mapRow(data), authorName: null });
+    const rows = await db.insert(clinicalNotesTable).values({ ...parsed.data, authorId: 1, content: parsed.data.content ?? "" }).returning();
+    res.status(201).json({ ...rows[0], authorName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -82,14 +79,13 @@ router.get("/clinical-notes/:id", async (req, res): Promise<void> => {
   const params = GetClinicalNoteParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("clinical_notes").select("*").eq("id", params.data.id).limit(1);
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    if (!data?.[0]) { res.status(404).json({ error: "Note not found" }); return; }
-    const note = mapRow(data[0]);
+    const rows = await db.select().from(clinicalNotesTable).where(eq(clinicalNotesTable.id, params.data.id)).limit(1);
+    if (!rows[0]) { res.status(404).json({ error: "Note not found" }); return; }
+    const note = rows[0];
     const callerUnitId = await getCallerUnitId(req.headers.authorization);
     if (callerUnitId !== null && note.patientId) {
-      const { data: pd } = await supabase.from("patients").select("unit_id").eq("id", note.patientId).limit(1);
-      const patientUnitId = pd?.[0]?.unit_id ?? null;
+      const pts = await db.select({ unitId: patientsTable.unitId }).from(patientsTable).where(eq(patientsTable.id, note.patientId)).limit(1);
+      const patientUnitId = pts[0]?.unitId ?? null;
       if (patientUnitId !== callerUnitId) { res.status(403).json({ error: "Access denied" }); return; }
     }
     res.json({ ...note, authorName: null });
@@ -104,10 +100,9 @@ router.patch("/clinical-notes/:id", async (req, res): Promise<void> => {
   const parsed = UpdateClinicalNoteBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("clinical_notes").update(toSnake(parsed.data as Record<string, unknown>)).eq("id", params.data.id).select().single();
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    if (!data) { res.status(404).json({ error: "Note not found" }); return; }
-    res.json({ ...mapRow(data), authorName: null });
+    const rows = await db.update(clinicalNotesTable).set(parsed.data).where(eq(clinicalNotesTable.id, params.data.id)).returning();
+    if (!rows[0]) { res.status(404).json({ error: "Note not found" }); return; }
+    res.json({ ...rows[0], authorName: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -117,11 +112,10 @@ router.get("/diagnoses", async (req, res): Promise<void> => {
   const params = ListDiagnosesQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
-    let query = supabase.from("diagnoses").select("*");
-    if (params.data.patientId) query = query.eq("patient_id", params.data.patientId);
-    const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    res.json(mapRows(data ?? []));
+    const rows = params.data.patientId
+      ? await db.select().from(diagnosesTable).where(eq(diagnosesTable.patientId, params.data.patientId))
+      : await db.select().from(diagnosesTable);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -131,9 +125,8 @@ router.post("/diagnoses", async (req, res): Promise<void> => {
   const parsed = CreateDiagnosisBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("diagnoses").insert(toSnake(parsed.data as Record<string, unknown>)).select().single();
-    if (error) { res.status(500).json({ error: error.message }); return; }
-    res.status(201).json(mapRow(data));
+    const rows = await db.insert(diagnosesTable).values(parsed.data).returning();
+    res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
