@@ -211,6 +211,87 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
   );
 }
 
+/* ── SOAP note parser + card renderer ── */
+function parseSoap(content: string) {
+  const sections: { letter: string; text: string }[] = [];
+  const lines = content.split("\n");
+  let current: { letter: string; text: string } | null = null;
+  for (const line of lines) {
+    const m = line.match(/^([SOAP]):\s*(.*)/);
+    if (m) {
+      if (current) sections.push(current);
+      current = { letter: m[1], text: m[2] };
+    } else if (current) {
+      current.text += (current.text ? "\n" : "") + line;
+    }
+  }
+  if (current) sections.push(current);
+  return sections.length >= 2 ? sections : null;
+}
+
+const SOAP_META: Record<string, { label: string; labelAr: string; badge: string; border: string; bg: string }> = {
+  S: { label: "Subjective",  labelAr: "الأعراض (ذاتي)",    badge: "text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300",    border: "border-blue-200 dark:border-blue-800",   bg: "bg-blue-50/60 dark:bg-blue-950/20" },
+  O: { label: "Objective",   labelAr: "الفحص الموضوعي",    badge: "text-purple-700 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300", border: "border-purple-200 dark:border-purple-800", bg: "bg-purple-50/60 dark:bg-purple-950/20" },
+  A: { label: "Assessment",  labelAr: "التقييم",            badge: "text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300",   border: "border-amber-200 dark:border-amber-800",  bg: "bg-amber-50/60 dark:bg-amber-950/20" },
+  P: { label: "Plan",        labelAr: "الخطة",              badge: "text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800", bg: "bg-emerald-50/60 dark:bg-emerald-950/20" },
+};
+
+function SoapNoteCard({ note, t }: { note: any; t: (k: string) => string }) {
+  const { isRtl } = useTranslation();
+  const soap = parseSoap(note.content ?? "");
+  const date = new Date(note.createdAt).toLocaleDateString(isRtl ? "ar-SA" : "en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+  const time = new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <Card className="overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/30">
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="font-mono text-xs uppercase tracking-wide">
+            {note.type ?? "soap"}
+          </Badge>
+          <span className="text-sm text-muted-foreground">{date} · {time}</span>
+        </div>
+        {note.authorName && (
+          <span className="text-xs text-muted-foreground">{note.authorName}</span>
+        )}
+      </div>
+
+      {/* Body */}
+      <CardContent className="p-5">
+        {soap ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {soap.map(({ letter, text }) => {
+              const meta = SOAP_META[letter];
+              if (!meta) return null;
+              const label = isRtl ? meta.labelAr : meta.label;
+              return (
+                <div key={letter} className={`rounded-lg border p-3 ${meta.border} ${meta.bg}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold shrink-0 ${meta.badge}`}>
+                      {letter}
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+                  </div>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                    {text.trim() || <span className="text-muted-foreground italic">—</span>}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+            {note.content}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ── Add Clinical Note dialog (Consultant / Specialist / Admin) ── */
 const SOAP_EMPTY = { subjective: "", objective: "", assessment: "", plan: "" };
 
@@ -1198,36 +1279,22 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               <h2 className="text-lg font-semibold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />{t("patient.clinicalNotes")}</h2>
               {canWrite && <AddNoteDialog patientId={patientId} onSuccess={handleNoteSuccess} />}
             </div>
-            <Card>
-              <CardContent className="px-4 pb-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("generic.date")}</TableHead>
-                      <TableHead>{t("generic.type")}</TableHead>
-                      <TableHead>{t("notes.author")}</TableHead>
-                      <TableHead>{t("notes.preview")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loadingNotes ? (
-                      <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
-                    ) : notesList && notesList.length > 0 ? (
-                      notesList.map(note => (
-                        <TableRow key={note.id}>
-                          <TableCell className="text-sm">{new Date(note.createdAt).toLocaleDateString()}</TableCell>
-                          <TableCell><Badge variant="outline" className="capitalize">{note.type}</Badge></TableCell>
-                          <TableCell>{note.authorName ?? '-'}</TableCell>
-                          <TableCell className="max-w-xs truncate text-muted-foreground">{note.content}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">{t("notes.noNotes")}</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            {loadingNotes ? (
+              <div className="space-y-4">
+                {[1,2,3].map(i => <Card key={i}><CardContent className="p-5"><Skeleton className="h-4 w-1/3 mb-3" /><Skeleton className="h-20 w-full" /></CardContent></Card>)}
+              </div>
+            ) : notesList && notesList.length > 0 ? (
+              <div className="space-y-4">
+                {notesList.map(note => <SoapNoteCard key={note.id} note={note} t={t} />)}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-16 flex flex-col items-center text-muted-foreground gap-2">
+                  <FileText className="h-8 w-8 opacity-30" />
+                  <p className="text-sm">{t("notes.noNotes")}</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         )}
 
