@@ -48,6 +48,8 @@ export interface Patient {
   /** @nullable */
   bloodGroup?: string | null;
   /** @nullable */
+  motherBloodGroup?: string | null;
+  /** @nullable */
   nationality?: string | null;
   /** @nullable */
   nationalId?: string | null;
@@ -85,6 +87,7 @@ export interface PatientInput {
   dateOfBirth: string;
   gender: string;
   bloodGroup?: string;
+  motherBloodGroup?: string;
   nationality?: string;
   nationalId?: string;
   phone?: string;
@@ -116,6 +119,7 @@ export interface PatientUpdate {
   guardianPhone?: string;
   allergies?: string;
   bloodGroup?: string;
+  motherBloodGroup?: string;
   unitId?: number;
   status?: string;
 }

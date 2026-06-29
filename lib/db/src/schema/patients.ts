@@ -10,6 +10,7 @@ export const patientsTable = pgTable("patients", {
   dateOfBirth: text("date_of_birth").notNull(),
   gender: text("gender").notNull(),
   bloodGroup: text("blood_group"),
+  motherBloodGroup: text("mother_blood_group"),
   nationality: text("nationality"),
   nationalId: text("national_id"),
   phone: text("phone"),

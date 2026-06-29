@@ -342,3 +342,6 @@ INSERT INTO activity_log (type, description, description_ar, patient_name, staff
   ('lab_order',    'Lab order created: CBC for Layan Al-Dosari',        'طلب مختبر: CBC لليان الدوسري',          'Layan Al-Dosari',   'Dr. Sarah Al-Rashidi'),
   ('prescription', 'Prescription issued: Amoxicillin for Omar Al-Harbi','وصفة طبية: أموكسيسيلين لعمر الحربي',   'Omar Al-Harbi',     'Dr. Khalid Al-Otaibi'),
   ('appointment',  'Appointment completed: Norah Al-Shammari',          'اكتمل الموعد: نورة الشمري',             'Norah Al-Shammari', 'Dr. Sarah Al-Rashidi');
+
+-- ─── MIGRATION: Add mother_blood_group column ────────────────────────────────
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS mother_blood_group text;

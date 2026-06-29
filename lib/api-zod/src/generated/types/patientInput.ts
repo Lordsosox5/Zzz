@@ -12,6 +12,7 @@ export interface PatientInput {
   dateOfBirth: string;
   gender: string;
   bloodGroup?: string;
+  motherBloodGroup?: string;
   nationality?: string;
   nationalId?: string;
   phone?: string;

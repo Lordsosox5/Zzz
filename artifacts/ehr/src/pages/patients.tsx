@@ -212,7 +212,15 @@ export default function Patients() {
                   >
                     <TableCell className="px-4 font-mono text-xs">{patient.mrn}</TableCell>
                     <TableCell className="px-4 font-medium">
-                      {isRtl && patient.nameAr ? patient.nameAr : patient.nameEn}
+                      <div className="flex flex-col">
+                        <span>{isRtl && patient.nameAr ? patient.nameAr : patient.nameEn}</span>
+                        {(patient as any).motherBloodGroup && (
+                          <span className="text-xs text-muted-foreground mt-0.5">
+                            {isRtl ? "فصيلة دم الأم:" : "Mother BG:"}{" "}
+                            <span className="font-mono font-medium text-foreground">{(patient as any).motherBloodGroup}</span>
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="px-4">
                       {new Date(patient.dateOfBirth).toLocaleDateString()}

@@ -17,6 +17,8 @@ export interface Patient {
   /** @nullable */
   bloodGroup?: string | null;
   /** @nullable */
+  motherBloodGroup?: string | null;
+  /** @nullable */
   nationality?: string | null;
   /** @nullable */
   nationalId?: string | null;

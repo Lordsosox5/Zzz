@@ -211,7 +211,7 @@ export default function NewPatient() {
   // ── Demographics (Step 1) ──
   const [demo, setDemo] = useState({
     nameEn: "", nameAr: "", dateOfBirth: "", gender: "male",
-    bloodGroup: "", nationality: "", nationalId: "",
+    bloodGroup: "", motherBloodGroup: "", nationality: "", nationalId: "",
     phone: "", address: "", residence: "",
     weight: "", height: "", admissionDate: "", dischargeDate: "",
     guardianName: "", guardianRelation: "parent", guardianPhone: "",
@@ -316,7 +316,7 @@ export default function NewPatient() {
       gender: demo.gender,
     };
     const optionals: (keyof typeof demo)[] = [
-      "nameAr","bloodGroup","nationality","nationalId","phone","address","residence",
+      "nameAr","bloodGroup","motherBloodGroup","nationality","nationalId","phone","address","residence",
       "weight","height","admissionDate","dischargeDate","guardianName","guardianRelation","guardianPhone","allergies",
     ];
     for (const k of optionals) { if (demo[k]) patientData[k] = demo[k]; }
@@ -381,6 +381,16 @@ export default function NewPatient() {
       <Field label={t("patient.bloodGroup")}>
         <Select value={demo.bloodGroup} onValueChange={v => setDemo(p => ({ ...p, bloodGroup: v }))}>
           <SelectTrigger><SelectValue placeholder={t("patient.selectBloodGroup")} /></SelectTrigger>
+          <SelectContent>
+            {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(g => (
+              <SelectItem key={g} value={g}>{g}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label={isRtl ? "فصيلة دم الأم" : "Mother Blood Group"}>
+        <Select value={demo.motherBloodGroup} onValueChange={v => setDemo(p => ({ ...p, motherBloodGroup: v }))}>
+          <SelectTrigger><SelectValue placeholder={isRtl ? "اختر فصيلة دم الأم" : "Select mother's blood group"} /></SelectTrigger>
           <SelectContent>
             {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(g => (
               <SelectItem key={g} value={g}>{g}</SelectItem>

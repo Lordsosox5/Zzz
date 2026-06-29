@@ -1220,6 +1220,7 @@ components:
         dateOfBirth: { type: string }
         gender: { type: string }
         bloodGroup: { type: ["string", "null"] }
+        motherBloodGroup: { type: ["string", "null"] }
         nationality: { type: ["string", "null"] }
         nationalId: { type: ["string", "null"] }
         phone: { type: ["string", "null"] }
@@ -1246,6 +1247,7 @@ components:
         dateOfBirth: { type: string }
         gender: { type: string }
         bloodGroup: { type: string }
+        motherBloodGroup: { type: string }
         nationality: { type: string }
         nationalId: { type: string }
         phone: { type: string }
@@ -1278,6 +1280,7 @@ components:
         guardianPhone: { type: string }
         allergies: { type: string }
         bloodGroup: { type: string }
+        motherBloodGroup: { type: string }
         unitId: { type: integer }
         status: { type: string }
 
