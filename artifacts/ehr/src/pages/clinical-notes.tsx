@@ -116,7 +116,7 @@ export default function ClinicalNotes() {
 
       {/* View Note Dialog */}
       <Dialog open={!!viewNote} onOpenChange={(open) => { if (!open) setViewNote(null); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b bg-card shrink-0">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
               <FileText className="h-5 w-5 text-primary" />

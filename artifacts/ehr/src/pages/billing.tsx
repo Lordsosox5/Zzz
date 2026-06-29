@@ -150,7 +150,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
       <DialogTrigger asChild>
         <Button><Plus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />{t("billing.newInvoice")}</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className={`px-6 py-4 border-b shrink-0 ${isRtl ? "text-right" : "text-left"}`}>
           <DialogTitle className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
             <Receipt className="h-5 w-5 text-primary" />

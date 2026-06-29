@@ -382,7 +382,7 @@ function EnterResultDialog({
           <FlaskConical className="h-3 w-3" /> {t("lab.enterResult")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2">
             <FlaskConical className="h-4 w-4 text-blue-500" />
