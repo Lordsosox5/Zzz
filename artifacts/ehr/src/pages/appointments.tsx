@@ -597,7 +597,11 @@ export default function Appointments() {
                 </TableRow>
               ) : appointments && appointments.length > 0 ? (
                 (appointments as Appointment[]).map((appt) => (
-                  <TableRow key={appt.id}>
+                  <TableRow
+                    key={appt.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => openEdit(appt as Appointment)}
+                  >
                     <TableCell className="font-medium">
                       {new Date(appt.scheduledAt).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -607,7 +611,7 @@ export default function Appointments() {
                     <TableCell>
                       <button
                         className="font-medium text-foreground hover:text-primary hover:underline transition-colors text-left"
-                        onClick={() => navigate(`/patients/${appt.patientId}`)}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/patients/${appt.patientId}`); }}
                       >
                         {appt.patientName ?? `#${appt.patientId}`}
                       </button>
@@ -619,7 +623,7 @@ export default function Appointments() {
                     <TableCell>
                       {STATUS_CYCLE[appt.status] ? (
                         <button
-                          onClick={() => handleQuickStatus(appt as Appointment)}
+                          onClick={(e) => { e.stopPropagation(); handleQuickStatus(appt as Appointment); }}
                           disabled={cyclingId !== null}
                           className="group inline-flex items-center gap-1 focus:outline-none"
                           title={`Advance to ${STATUS_CYCLE[appt.status]}`}
@@ -649,7 +653,7 @@ export default function Appointments() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openEdit(appt as Appointment)}
+                        onClick={(e) => { e.stopPropagation(); openEdit(appt as Appointment); }}
                       >
                         <Pencil className="h-4 w-4 mr-1" />
                         {t("generic.edit")}

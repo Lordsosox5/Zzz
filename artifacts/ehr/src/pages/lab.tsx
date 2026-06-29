@@ -601,6 +601,7 @@ export default function Lab() {
 
   const [statusFilter, setStatusFilter] = useState<string>(isLabTech ? "pending" : "all");
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderForReport | null>(null);
   const { data: orders, isLoading } = useListLabOrders(statusFilter !== "all" ? { status: statusFilter } : {});
   const createMutation = useCreateLabOrder();
 
@@ -783,12 +784,16 @@ export default function Lab() {
                 </TableRow>
               ) : orders && orders.length > 0 ? (
                 orders.map((order) => (
-                  <TableRow key={order.id} className={order.isCritical ? "bg-destructive/5" : undefined}>
+                  <TableRow
+                    key={order.id}
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${order.isCritical ? "bg-destructive/5" : ""}`}
+                    onClick={() => setSelectedOrder(order as OrderForReport)}
+                  >
                     <TableCell className="text-sm">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <button
                         className="font-medium text-foreground hover:text-primary hover:underline transition-colors text-left"
-                        onClick={() => navigate(`/patients/${order.patientId}`)}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/patients/${order.patientId}`); }}
                       >
                         {order.patientName ?? `#${order.patientId}`}
                       </button>
@@ -818,7 +823,7 @@ export default function Lab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-end">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                         {order.status === "resulted" && (
                           <LabResultViewDialog order={order as OrderForReport} />
                         )}
@@ -843,6 +848,14 @@ export default function Lab() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedOrder && selectedOrder.status === "resulted" && (
+        <LabResultViewDialog
+          order={selectedOrder}
+          open={true}
+          onOpenChange={(open) => { if (!open) setSelectedOrder(null); }}
+        />
+      )}
     </div>
   );
 }

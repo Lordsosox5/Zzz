@@ -79,9 +79,20 @@ function FieldFlag({ status }: { status: "normal" | "abnormal" | "critical" | nu
   return <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium text-xs"><TrendingUp className="h-3 w-3" />{t("lab.flagAbnormal")}</span>;
 }
 
-export function LabResultViewDialog({ order }: { order: OrderForReport }) {
+export function LabResultViewDialog({
+  order,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  order: OrderForReport;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t, isRtl, language } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen;
   const testDef = useMemo(() => findTest(order.testName), [order.testName]);
   const fieldRows = useMemo(() => parseFieldRows(order, testDef), [order, testDef]);
 
@@ -159,11 +170,13 @@ export function LabResultViewDialog({ order }: { order: OrderForReport }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5 whitespace-nowrap border-primary/30 text-primary hover:bg-primary/5">
-          <Eye className="h-3.5 w-3.5" /> {t("lab.viewReport")}
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5 whitespace-nowrap border-primary/30 text-primary hover:bg-primary/5">
+            <Eye className="h-3.5 w-3.5" /> {t("lab.viewReport")}
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="max-w-3xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b bg-card shrink-0">

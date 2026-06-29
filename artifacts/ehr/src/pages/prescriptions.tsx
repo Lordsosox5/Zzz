@@ -328,10 +328,17 @@ export default function Prescriptions() {
                 <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
               ) : prescriptions && prescriptions.length > 0 ? (
                 prescriptions.map((rx) => (
-                  <TableRow key={rx.id}>
+                  <TableRow
+                    key={rx.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => canWrite && openEdit(rx as Prescription)}
+                  >
                     <TableCell>{new Date(rx.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <button onClick={() => navigate(`/patients/${rx.patientId}`)} className="font-medium text-primary hover:underline cursor-pointer">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/patients/${rx.patientId}`); }}
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                      >
                         {rx.patientName ?? rx.patientId}
                       </button>
                     </TableCell>
@@ -349,8 +356,7 @@ export default function Prescriptions() {
                           size="sm"
                           className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
                           disabled={updateMutation.isPending}
-                          onClick={() =>
-                            updateMutation.mutate(
+                          onClick={(e) => { e.stopPropagation(); updateMutation.mutate(
                               { id: rx.id, data: { status: "dispensed" } },
                               {
                                 onSuccess: () => {
@@ -359,14 +365,14 @@ export default function Prescriptions() {
                                 },
                                 onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
                               }
-                            )
-                          }
+                            );
+                          }}
                         >
                           <PackageCheck className="h-3 w-3" /> {t("rx.dispense")}
                         </Button>
                       )}
                       {canWrite && (
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(rx as Prescription)}>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(rx as Prescription); }}>
                           <Pencil className="h-3 w-3 mr-1" />{t("generic.edit")}
                         </Button>
                       )}

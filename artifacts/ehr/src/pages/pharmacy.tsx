@@ -224,7 +224,11 @@ export default function Pharmacy() {
                 <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
               ) : drugs && drugs.length > 0 ? (
                 drugs.map((drug) => (
-                  <TableRow key={drug.id}>
+                  <TableRow
+                    key={drug.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => openEdit(drug as Drug)}
+                  >
                     <TableCell className="font-medium">
                       <div>{drug.name}</div>
                       <div className="text-xs text-muted-foreground">{drug.genericName}</div>
@@ -241,7 +245,7 @@ export default function Pharmacy() {
                     </TableCell>
                     <TableCell>{drug.unitPrice ? `$${drug.unitPrice.toFixed(2)}` : '-'}</TableCell>
                     <TableCell className={isRtl ? "text-left" : "text-right"}>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(drug as Drug)}>
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(drug as Drug); }}>
                         <Pencil className="h-3 w-3 mr-1" />{t("generic.edit")}
                       </Button>
                     </TableCell>

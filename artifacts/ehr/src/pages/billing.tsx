@@ -390,6 +390,7 @@ export default function Billing() {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const { data: filterPatientsResp } = useListPatients({ search: filterQuery || undefined });
   const filterPatients: Patient[] = (filterPatientsResp as any)?.patients ?? (Array.isArray(filterPatientsResp) ? (filterPatientsResp as Patient[]) : []);
@@ -546,7 +547,11 @@ export default function Billing() {
                 displayInvoices.map((inv) => {
                   const balance = inv.totalAmount - (inv.paidAmount ?? 0);
                   return (
-                    <TableRow key={inv.id}>
+                    <TableRow
+                      key={inv.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedInvoice(inv)}
+                    >
                       <TableCell className="pl-6 font-mono text-sm font-medium">
                         {inv.invoiceNumber ? `#${inv.invoiceNumber}` : `#${String(inv.id).padStart(4, "0")}`}
                       </TableCell>
@@ -580,7 +585,7 @@ export default function Billing() {
                         </Badge>
                       </TableCell>
                       <TableCell className={`pr-6 ${isRtl ? "text-left" : "text-right"}`}>
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <RecordPaymentDialog invoice={inv} />
                           <InvoiceViewDialog invoice={inv} />
                         </div>
@@ -599,6 +604,14 @@ export default function Billing() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedInvoice && (
+        <InvoiceViewDialog
+          invoice={selectedInvoice}
+          open={true}
+          onOpenChange={(open) => { if (!open) setSelectedInvoice(null); }}
+        />
+      )}
     </div>
   );
 }

@@ -34,9 +34,20 @@ function ModalityIcon({ modality }: { modality: string }) {
   }
 }
 
-export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForReport }) {
+export function RadiologyReportViewDialog({
+  order,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  order: RadiologyOrderForReport;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t, isRtl, language } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen;
 
   const modalityLabel = (m: string): string => {
     switch (m.toLowerCase()) {
@@ -107,11 +118,13 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5 whitespace-nowrap border-primary/30 text-primary hover:bg-primary/5">
-          <Eye className="h-3.5 w-3.5" /> {t("radiology.viewReport")}
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5 whitespace-nowrap border-primary/30 text-primary hover:bg-primary/5">
+            <Eye className="h-3.5 w-3.5" /> {t("radiology.viewReport")}
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b bg-card shrink-0">

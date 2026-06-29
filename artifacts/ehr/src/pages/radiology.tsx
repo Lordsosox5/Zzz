@@ -96,6 +96,7 @@ export default function Radiology() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<RadiologyOrder | null>(null);
   const { data: orders, isLoading } = useListRadiologyOrders({});
   const createMutation = useCreateRadiologyOrder();
 
@@ -211,11 +212,15 @@ export default function Radiology() {
                 <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
               ) : orders && orders.length > 0 ? (
                 orders.map((order: RadiologyOrder) => (
-                  <TableRow key={order.id}>
+                  <TableRow
+                    key={order.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedOrder(order)}
+                  >
                     <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <button
-                        onClick={() => navigate(`/patients/${order.patientId}`)}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/patients/${order.patientId}`); }}
                         className="font-medium text-primary hover:underline cursor-pointer"
                       >
                         {order.patientName ?? order.patientId}
@@ -236,7 +241,7 @@ export default function Radiology() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-end">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                         {order.status === "reported" && (
                           <RadiologyReportViewDialog order={order as RadiologyOrderForReport} />
                         )}
@@ -258,6 +263,14 @@ export default function Radiology() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedOrder && (
+        <RadiologyReportViewDialog
+          order={selectedOrder as RadiologyOrderForReport}
+          open={true}
+          onOpenChange={(open) => { if (!open) setSelectedOrder(null); }}
+        />
+      )}
     </div>
   );
 }

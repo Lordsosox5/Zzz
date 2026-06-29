@@ -9,9 +9,20 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Eye, Receipt, User, DollarSign, FileText, Printer } from "lucide-react";
 
-export function InvoiceViewDialog({ invoice }: { invoice: Invoice }) {
+export function InvoiceViewDialog({
+  invoice,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  invoice: Invoice;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t, isRtl, language } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen;
   const printRef = useRef<HTMLDivElement>(null);
 
   const balance = invoice.totalAmount - (invoice.paidAmount ?? 0);
@@ -178,11 +189,13 @@ export function InvoiceViewDialog({ invoice }: { invoice: Invoice }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5">
-          <Eye className="h-3.5 w-3.5" /> {t("generic.view")}
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-1.5">
+            <Eye className="h-3.5 w-3.5" /> {t("generic.view")}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-card shrink-0">
