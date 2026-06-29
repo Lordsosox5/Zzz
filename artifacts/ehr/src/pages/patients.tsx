@@ -234,7 +234,7 @@ export default function Patients() {
                     </TableCell>
                     <TableCell className="px-4">
                       <Badge variant={patient.status === "active" ? "default" : "secondary"}>
-                        {patient.status}
+                        {patient.status === "active" ? "في المستشفى" : "خرج"}
                       </Badge>
                     </TableCell>
                     <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
