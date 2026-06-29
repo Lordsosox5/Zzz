@@ -639,14 +639,24 @@ export const GetPatientSummaryResponse = zod.object({
   "latestGrowth": zod.object({
   "id": zod.number(),
   "patientId": zod.number(),
+  "patientName": zod.string().nullish(),
+  "patientDob": zod.string().nullish(),
+  "patientGender": zod.string().nullish(),
   "measurementDate": zod.string(),
   "weight": zod.number().nullish(),
   "height": zod.number().nullish(),
   "headCircumference": zod.number().nullish(),
+  "muac": zod.number().nullish(),
   "bmi": zod.number().nullish(),
+  "weightZScore": zod.number().nullish(),
   "weightPercentile": zod.number().nullish(),
+  "heightZScore": zod.number().nullish(),
   "heightPercentile": zod.number().nullish(),
+  "bmiZScore": zod.number().nullish(),
   "bmiPercentile": zod.number().nullish(),
+  "muacZScore": zod.number().nullish(),
+  "muacPercentile": zod.number().nullish(),
+  "sdCategory": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
 }).optional(),
@@ -1528,14 +1538,24 @@ export const ListGrowthRecordsQueryParams = zod.object({
 export const ListGrowthRecordsResponseItem = zod.object({
   "id": zod.number(),
   "patientId": zod.number(),
+  "patientName": zod.string().nullish(),
+  "patientDob": zod.string().nullish(),
+  "patientGender": zod.string().nullish(),
   "measurementDate": zod.string(),
   "weight": zod.number().nullish(),
   "height": zod.number().nullish(),
   "headCircumference": zod.number().nullish(),
+  "muac": zod.number().nullish(),
   "bmi": zod.number().nullish(),
+  "weightZScore": zod.number().nullish(),
   "weightPercentile": zod.number().nullish(),
+  "heightZScore": zod.number().nullish(),
   "heightPercentile": zod.number().nullish(),
+  "bmiZScore": zod.number().nullish(),
   "bmiPercentile": zod.number().nullish(),
+  "muacZScore": zod.number().nullish(),
+  "muacPercentile": zod.number().nullish(),
+  "sdCategory": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -1551,6 +1571,7 @@ export const CreateGrowthRecordBody = zod.object({
   "weight": zod.number().optional(),
   "height": zod.number().optional(),
   "headCircumference": zod.number().optional(),
+  "muac": zod.number().optional(),
   "notes": zod.string().optional()
 })
 

@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS growth_records (
   weight              NUMERIC(5,2),
   height              NUMERIC(5,2),
   head_circumference  NUMERIC(5,2),
+  muac                NUMERIC(5,2),
   bmi                 NUMERIC(5,2),
   weight_percentile   NUMERIC(5,2),
   height_percentile   NUMERIC(5,2),
@@ -345,3 +346,6 @@ INSERT INTO activity_log (type, description, description_ar, patient_name, staff
 
 -- ─── MIGRATION: Add mother_blood_group column ────────────────────────────────
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS mother_blood_group text;
+
+-- ─── MIGRATION v2: Add MUAC column to growth_records ────────────────────────
+ALTER TABLE growth_records ADD COLUMN IF NOT EXISTS muac NUMERIC(5,2);

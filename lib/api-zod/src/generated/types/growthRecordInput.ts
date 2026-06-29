@@ -12,5 +12,6 @@ export interface GrowthRecordInput {
   weight?: number;
   height?: number;
   headCircumference?: number;
+  muac?: number;
   notes?: string;
 }

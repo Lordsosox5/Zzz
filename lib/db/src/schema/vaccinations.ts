@@ -27,6 +27,7 @@ export const growthRecordsTable = pgTable("growth_records", {
   weight: numeric("weight", { precision: 5, scale: 2 }),
   height: numeric("height", { precision: 5, scale: 2 }),
   headCircumference: numeric("head_circumference", { precision: 5, scale: 2 }),
+  muac: numeric("muac", { precision: 5, scale: 2 }),
   bmi: numeric("bmi", { precision: 5, scale: 2 }),
   weightPercentile: numeric("weight_percentile", { precision: 5, scale: 2 }),
   heightPercentile: numeric("height_percentile", { precision: 5, scale: 2 }),

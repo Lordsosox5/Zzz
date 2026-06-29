@@ -370,6 +370,12 @@ export interface Appointment {
 export interface GrowthRecord {
   id: number;
   patientId: number;
+  /** @nullable */
+  patientName?: string | null;
+  /** @nullable */
+  patientDob?: string | null;
+  /** @nullable */
+  patientGender?: string | null;
   measurementDate: string;
   /** @nullable */
   weight?: number | null;
@@ -378,13 +384,27 @@ export interface GrowthRecord {
   /** @nullable */
   headCircumference?: number | null;
   /** @nullable */
+  muac?: number | null;
+  /** @nullable */
   bmi?: number | null;
+  /** @nullable */
+  weightZScore?: number | null;
   /** @nullable */
   weightPercentile?: number | null;
   /** @nullable */
+  heightZScore?: number | null;
+  /** @nullable */
   heightPercentile?: number | null;
   /** @nullable */
+  bmiZScore?: number | null;
+  /** @nullable */
   bmiPercentile?: number | null;
+  /** @nullable */
+  muacZScore?: number | null;
+  /** @nullable */
+  muacPercentile?: number | null;
+  /** @nullable */
+  sdCategory?: string | null;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -701,6 +721,7 @@ export interface GrowthRecordInput {
   weight?: number;
   height?: number;
   headCircumference?: number;
+  muac?: number;
   notes?: string;
 }
 

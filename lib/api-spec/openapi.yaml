@@ -1849,14 +1849,24 @@ components:
       properties:
         id: { type: integer }
         patientId: { type: integer }
+        patientName: { type: ["string", "null"] }
+        patientDob: { type: ["string", "null"] }
+        patientGender: { type: ["string", "null"] }
         measurementDate: { type: string }
         weight: { type: ["number", "null"] }
         height: { type: ["number", "null"] }
         headCircumference: { type: ["number", "null"] }
+        muac: { type: ["number", "null"] }
         bmi: { type: ["number", "null"] }
+        weightZScore: { type: ["number", "null"] }
         weightPercentile: { type: ["number", "null"] }
+        heightZScore: { type: ["number", "null"] }
         heightPercentile: { type: ["number", "null"] }
+        bmiZScore: { type: ["number", "null"] }
         bmiPercentile: { type: ["number", "null"] }
+        muacZScore: { type: ["number", "null"] }
+        muacPercentile: { type: ["number", "null"] }
+        sdCategory: { type: ["string", "null"] }
         notes: { type: ["string", "null"] }
         createdAt: { type: string }
 
@@ -1869,6 +1879,7 @@ components:
         weight: { type: number }
         height: { type: number }
         headCircumference: { type: number }
+        muac: { type: number }
         notes: { type: string }
 
     # UNITS
