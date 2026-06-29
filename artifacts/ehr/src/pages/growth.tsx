@@ -183,7 +183,7 @@ export default function Growth() {
   const latest = sorted.length > 0 ? (sorted[sorted.length - 1] as unknown as Rec) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.growth")}</h1>
