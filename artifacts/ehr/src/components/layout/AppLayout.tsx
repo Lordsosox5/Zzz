@@ -178,10 +178,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const initials = displayName.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground select-none">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
 
       {/* ── Sidebar ── */}
-      <aside className="flex flex-col w-60 border-e bg-card flex-shrink-0">
+      <aside className="flex flex-col w-60 border-e bg-card flex-shrink-0 select-none">
 
         {/* Logo */}
         <div className="h-13 flex items-center gap-2.5 px-4 border-b">
@@ -266,7 +266,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
         {/* Top bar */}
-        <header className="h-13 border-b bg-card flex items-center justify-between px-5 flex-shrink-0">
+        <header className="h-13 border-b bg-card flex items-center justify-between px-5 flex-shrink-0 select-none">
           {/* Page title */}
           <div className="flex items-center gap-2">
             {activeItem && <activeItem.icon className="h-4 w-4 text-muted-foreground shrink-0" />}
@@ -386,7 +386,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-6 select-text">
+        <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>
