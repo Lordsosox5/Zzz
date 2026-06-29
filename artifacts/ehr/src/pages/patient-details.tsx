@@ -1583,14 +1583,13 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       <TableHead>{t("generic.priority")}</TableHead>
                       <TableHead>{t("generic.status")}</TableHead>
                       <TableHead>{t("generic.result")}</TableHead>
-                      <TableHead>{t("lab.resultValue")}</TableHead>
                       <TableHead>{t("lab.referenceRange")}</TableHead>
                       <TableHead className="text-end">{t("generic.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loadingLab ? (
-                      <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
                     ) : labOrders && labOrders.length > 0 ? (
                       labOrders.map(order => (
                         <TableRow key={order.id} className={order.isCritical ? "bg-destructive/5" : undefined}>
@@ -1608,11 +1607,6 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                               ? <span className={`font-medium capitalize ${order.result === 'critical' ? 'text-destructive' : order.result === 'abnormal' ? 'text-orange-600' : 'text-green-600'}`}>{order.result}</span>
                               : <span className="text-muted-foreground">-</span>}
                           </TableCell>
-                          <TableCell>
-                            {order.resultValue
-                              ? <span className="font-mono text-xs">{order.resultValue}{order.unit ? ` ${order.unit}` : ''}</span>
-                              : <span className="text-muted-foreground">-</span>}
-                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{order.referenceRange ?? '-'}</TableCell>
                           <TableCell className="text-end">
                             <div className="flex items-center justify-end gap-2">
@@ -1627,7 +1621,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                         </TableRow>
                       ))
                     ) : (
-                      <TableRow><TableCell colSpan={8} className="h-24 text-center text-muted-foreground">{t("lab.noLabOrders")}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">{t("lab.noLabOrders")}</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
