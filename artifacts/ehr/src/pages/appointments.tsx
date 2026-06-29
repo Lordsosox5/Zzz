@@ -297,160 +297,162 @@ export default function Appointments() {
               {t("appt.newAppointment")}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
+          <DialogContent className="max-w-lg h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+            <DialogHeader className="px-6 py-4 border-b shrink-0">
               <DialogTitle>{t("appt.newAppointment")}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 py-2">
-              {/* Ordered by banner */}
-              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                <span className="text-muted-foreground">{t("appt.orderedBy")}:</span>
-                <span className="font-medium">
-                  {isRtl && user?.nameAr ? user.nameAr : user?.nameEn ?? user?.username ?? "—"}
-                </span>
-                <span className="ml-auto text-xs text-muted-foreground capitalize">
-                  {user?.role?.replace(/_/g, " ")}
-                </span>
-              </div>
-              <div className="space-y-3">
-                <Label>{t("appt.filterByUnit")} *</Label>
-                <Select
-                  value={selectedUnitId}
-                  onValueChange={(v) => {
-                    setSelectedUnitId(v);
-                    setForm((p) => ({ ...p, patientId: "" }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("appt.selectUnit")} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-52 overflow-y-auto">
-                    {(units ?? []).map((u) => (
-                      <SelectItem key={u.id} value={String(u.id)}>
-                        {isRtl && u.nameAr ? u.nameAr : u.nameEn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-3">
-                <Label>{t("generic.patient")} *</Label>
-                <Select
-                  value={form.patientId}
-                  onValueChange={(v) => setForm((p) => ({ ...p, patientId: v }))}
-                  disabled={!selectedUnitId}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        selectedUnitId
-                          ? t("appt.selectPatient")
-                          : t("appt.selectUnit")
-                      }
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                {/* Ordered by banner */}
+                <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                  <span className="text-muted-foreground">{t("appt.orderedBy")}:</span>
+                  <span className="font-medium">
+                    {isRtl && user?.nameAr ? user.nameAr : user?.nameEn ?? user?.username ?? "—"}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground capitalize">
+                    {user?.role?.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  <Label>{t("appt.filterByUnit")} *</Label>
+                  <Select
+                    value={selectedUnitId}
+                    onValueChange={(v) => {
+                      setSelectedUnitId(v);
+                      setForm((p) => ({ ...p, patientId: "" }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("appt.selectUnit")} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-52 overflow-y-auto">
+                      {(units ?? []).map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>
+                          {isRtl && u.nameAr ? u.nameAr : u.nameEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label>{t("generic.patient")} *</Label>
+                  <Select
+                    value={form.patientId}
+                    onValueChange={(v) => setForm((p) => ({ ...p, patientId: v }))}
+                    disabled={!selectedUnitId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          selectedUnitId
+                            ? t("appt.selectPatient")
+                            : t("appt.selectUnit")
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {unitPatients.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                          {t("appt.noPatients")}
+                        </div>
+                      ) : (
+                        unitPatients.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            <span className="font-mono text-xs text-muted-foreground mr-2">
+                              {p.mrn}
+                            </span>
+                            {isRtl && p.nameAr ? p.nameAr : p.nameEn}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label>{t("appt.doctor")} *</Label>
+                  <Select
+                    value={form.doctorId}
+                    onValueChange={(v) => setForm((p) => ({ ...p, doctorId: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("appt.selectDoctor")} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {doctors.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                          {t("appt.noDoctors")}
+                        </div>
+                      ) : (
+                        doctors.map((d) => (
+                          <SelectItem key={d.id} value={String(d.id)}>
+                            <span className="capitalize text-xs text-muted-foreground mr-2">
+                              {d.role.replace(/_/g, " ")}
+                            </span>
+                            {isRtl && d.nameAr ? d.nameAr : d.nameEn}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <Label>{t("appt.dateTime")} *</Label>
+                    <Input
+                      name="scheduledAt"
+                      type="datetime-local"
+                      required
+                      value={form.scheduledAt}
+                      onChange={handleChange}
                     />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {unitPatients.length === 0 ? (
-                      <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                        {t("appt.noPatients")}
-                      </div>
-                    ) : (
-                      unitPatients.map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
-                          <span className="font-mono text-xs text-muted-foreground mr-2">
-                            {p.mrn}
-                          </span>
-                          {isRtl && p.nameAr ? p.nameAr : p.nameEn}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-3">
-                <Label>{t("appt.doctor")} *</Label>
-                <Select
-                  value={form.doctorId}
-                  onValueChange={(v) => setForm((p) => ({ ...p, doctorId: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("appt.selectDoctor")} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {doctors.length === 0 ? (
-                      <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                        {t("appt.noDoctors")}
-                      </div>
-                    ) : (
-                      doctors.map((d) => (
-                        <SelectItem key={d.id} value={String(d.id)}>
-                          <span className="capitalize text-xs text-muted-foreground mr-2">
-                            {d.role.replace(/_/g, " ")}
-                          </span>
-                          {isRtl && d.nameAr ? d.nameAr : d.nameEn}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+                  </div>
+                  <div className="space-y-3">
+                    <Label>{t("appt.duration")}</Label>
+                    <Input
+                      name="duration"
+                      type="number"
+                      value={form.duration}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-3">
-                  <Label>{t("appt.dateTime")} *</Label>
+                  <Label>{t("generic.type")} *</Label>
+                  <Select
+                    value={form.type}
+                    onValueChange={(v) => setForm((p) => ({ ...p, type: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("appt.selectType")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {t(`appt.${opt.replace("-", "")}` as keyof typeof t extends never ? string : string) || opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label>{t("appt.chiefComplaint")}</Label>
                   <Input
-                    name="scheduledAt"
-                    type="datetime-local"
-                    required
-                    value={form.scheduledAt}
+                    name="chiefComplaint"
+                    value={form.chiefComplaint}
                     onChange={handleChange}
                   />
                 </div>
                 <div className="space-y-3">
-                  <Label>{t("appt.duration")}</Label>
-                  <Input
-                    name="duration"
-                    type="number"
-                    value={form.duration}
+                  <Label>{t("generic.notes")}</Label>
+                  <Textarea
+                    name="notes"
+                    value={form.notes}
                     onChange={handleChange}
+                    className="min-h-[72px]"
                   />
                 </div>
               </div>
-              <div className="space-y-3">
-                <Label>{t("generic.type")} *</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => setForm((p) => ({ ...p, type: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("appt.selectType")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TYPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {t(`appt.${opt.replace("-", "")}` as keyof typeof t extends never ? string : string) || opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-3">
-                <Label>{t("appt.chiefComplaint")}</Label>
-                <Input
-                  name="chiefComplaint"
-                  value={form.chiefComplaint}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-3">
-                <Label>{t("generic.notes")}</Label>
-                <Textarea
-                  name="notes"
-                  value={form.notes}
-                  onChange={handleChange}
-                  className="min-h-[80px]"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 px-6 py-4 border-t bg-card shrink-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -462,9 +464,7 @@ export default function Appointments() {
                   {createMutation.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Save
-                      className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`}
-                    />
+                    <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />
                   )}
                   {t("generic.save")}
                 </Button>
