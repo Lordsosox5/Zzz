@@ -71,18 +71,11 @@ Then click **Run**. The app will start automatically.
 - **Growth Monitoring**: weight/height/BMI charts with percentile tracking
 - **Settings**: language, dark mode, user profile
 
-## Demo credentials
+## Login credentials
 
 | Username | Password | Role |
 |---|---|---|
 | admin | admin123 | Super Admin |
-| dr.sarah | password123 | Pediatric Consultant |
-| dr.khalid | password123 | Pediatric Specialist |
-| nurse.fatima | password123 | Nurse |
-| dr.omar | password123 | Emergency Physician |
-| pharmacist.noor | password123 | Pharmacist |
-| lab.tech | password123 | Lab Technician |
-| billing.officer | password123 | Billing Officer |
 
 ## User preferences
 
