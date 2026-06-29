@@ -178,7 +178,7 @@ export function LabResultViewDialog({
         </DialogTrigger>
       )}
 
-      <DialogContent className="max-w-3xl max-h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-3xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b bg-card shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
