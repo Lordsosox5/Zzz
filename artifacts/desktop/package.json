@@ -1,0 +1,67 @@
+{
+  "name": "@workspace/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Almuzini Children Hospital EHR — Desktop Application",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "bash scripts/build.sh",
+    "build:win": "bash scripts/build.sh --win",
+    "build:mac": "bash scripts/build.sh --mac",
+    "build:linux": "bash scripts/build.sh --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.almuzini.ehr",
+    "productName": "Almuzini EHR",
+    "copyright": "© Almuzini Children Hospital",
+    "asar": true,
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../api-server/dist",
+        "to": "api",
+        "filter": ["**/*", "!**/*.map"]
+      },
+      {
+        "from": "../ehr/dist/public",
+        "to": "www",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "config.json",
+        "to": "config.json"
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "Almuzini EHR"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "category": "public.app-category.medical"
+    },
+    "dmg": {
+      "title": "Almuzini EHR ${version}"
+    },
+    "linux": {
+      "target": [{ "target": "AppImage", "arch": ["x64"] }],
+      "category": "Science"
+    }
+  }
+}
