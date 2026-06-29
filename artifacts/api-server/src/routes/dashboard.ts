@@ -88,6 +88,23 @@ router.get("/dashboard/alerts", async (_req, res): Promise<void> => {
   }
 });
 
+router.get("/dashboard/appointments/today", async (_req, res): Promise<void> => {
+  try {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*")
+      .gte("scheduled_at", today.toISOString())
+      .lte("scheduled_at", todayEnd.toISOString())
+      .order("scheduled_at", { ascending: true });
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json(mapRows(data ?? []));
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.get("/dashboard/revenue", async (_req, res): Promise<void> => {
   try {
     const { data: rows, error } = await supabase.from("invoices").select("total_amount, paid_amount, status, created_at");
@@ -108,6 +125,37 @@ router.get("/dashboard/revenue", async (_req, res): Promise<void> => {
       return { date: d.toISOString().split("T")[0], amount: Math.floor(Math.random() * 15000) + 5000 };
     });
 
+    res.json({
+      totalRevenue, paidRevenue, pendingRevenue, thisMonth, lastMonth,
+      byPaymentMethod: [
+        { method: "cash", amount: totalRevenue * 0.4 },
+        { method: "insurance", amount: totalRevenue * 0.45 },
+        { method: "credit", amount: totalRevenue * 0.15 },
+      ],
+      daily,
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+router.get("/dashboard/revenue-stats", async (_req, res): Promise<void> => {
+  try {
+    const { data: rows, error } = await supabase.from("invoices").select("total_amount, paid_amount, status, created_at");
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    const totalRevenue = (rows ?? []).reduce((s, i) => s + Number(i.total_amount ?? 0), 0);
+    const paidRevenue = (rows ?? []).filter(i => i.status === "paid").reduce((s, i) => s + Number(i.paid_amount ?? 0), 0);
+    const pendingRevenue = (rows ?? []).filter(i => i.status === "pending").reduce((s, i) => s + (Number(i.total_amount ?? 0) - Number(i.paid_amount ?? 0)), 0);
+    const thisMonth = (rows ?? []).filter(i => new Date(i.created_at) >= firstOfMonth).reduce((s, i) => s + Number(i.total_amount ?? 0), 0);
+    const lastMonth = (rows ?? []).filter(i => { const d = new Date(i.created_at); return d >= firstOfLastMonth && d <= lastOfLastMonth; }).reduce((s, i) => s + Number(i.total_amount ?? 0), 0);
+    const daily = Array.from({ length: 7 }, (_, idx) => {
+      const d = new Date(); d.setDate(d.getDate() - (6 - idx));
+      return { date: d.toISOString().split("T")[0], amount: Math.floor(Math.random() * 15000) + 5000 };
+    });
     res.json({
       totalRevenue, paidRevenue, pendingRevenue, thisMonth, lastMonth,
       byPaymentMethod: [
