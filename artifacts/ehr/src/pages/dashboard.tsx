@@ -284,7 +284,7 @@ function GeneralDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight">
             {t(getGreeting(hour))}, {displayName} 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("dash.overview")}</p>
@@ -596,7 +596,7 @@ function LabDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight">
             {t(getGreeting(hour))}, {displayName} 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("lab.queueDesc")}</p>
@@ -762,7 +762,7 @@ function UnitDashboard() {
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{roleLabel}</p>
           <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
-          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
           {unitName && (
             <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
               <Activity className="h-3.5 w-3.5" />
@@ -959,7 +959,7 @@ function NurseDashboard() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("dash.nurse.title")}</p>
           <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
-          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("dash.nurse.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -1164,7 +1164,7 @@ function PharmacistDashboard() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("dash.pharma.title")}</p>
           <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
-          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("dash.pharma.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -1358,7 +1358,7 @@ function BillingOfficerDashboard() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("dash.billing.title")}</p>
           <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
-          <h1 className="text-2xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("dash.billing.subtitle")}</p>
         </div>
         <Button size="sm" onClick={() => navigate("/billing")} className="gap-1.5 self-start sm:self-auto">
