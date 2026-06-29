@@ -721,11 +721,15 @@ const translations: Translations = {
   "discharge.dischargeDate":      { en: "Discharge Date *",         ar: "تاريخ الخروج *" },
   "discharge.noneYet":            { en: "No discharge summaries yet.", ar: "لا توجد ملخصات خروج بعد." },
   "discharge.printLetter":        { en: "Print Discharge Letter",   ar: "طباعة رسالة الخروج" },
-  "discharge.condition.good":     { en: "Good",                     ar: "جيدة" },
-  "discharge.condition.improved": { en: "Improved",                 ar: "تحسنت" },
-  "discharge.condition.fair":     { en: "Fair",                     ar: "مقبولة" },
-  "discharge.condition.poor":     { en: "Poor",                     ar: "ضعيفة" },
-  "discharge.blockedByInvoices":  { en: "Cannot discharge: patient has unpaid invoices. Settle all invoices first.", ar: "لا يمكن الخروج: يوجد فواتير غير مسددة. يرجى تسوية جميع الفواتير أولاً." },
+  "discharge.condition.totally_cured":   { en: "Totally Cured",                    ar: "شُفي تماماً" },
+  "discharge.condition.partially_cured": { en: "Partially Cured",                   ar: "شُفي جزئياً" },
+  "discharge.condition.escaped":         { en: "Escaped",                           ar: "هروب" },
+  "discharge.condition.dama":            { en: "DAMA (Discharge Against Medical Advice)", ar: "خروج ضد الإرادة الطبية (DAMA)" },
+  "discharge.condition.death":           { en: "Death",                             ar: "وفاة" },
+  "discharge.deathReport":               { en: "Death Report",                      ar: "تقرير الوفاة" },
+  "discharge.deathReportPlaceholder":    { en: "Describe the cause and circumstances of death, time of death, resuscitation efforts, and any relevant clinical details…", ar: "صف سبب الوفاة وملابساتها، وتوقيت الوفاة، وجهود الإنعاش، وأي تفاصيل سريرية ذات صلة…" },
+  "discharge.diagnosisSearch":           { en: "Search diagnosis…",                 ar: "ابحث عن التشخيص…" },
+  "discharge.blockedByInvoices":         { en: "Cannot discharge: patient has unpaid invoices. Settle all invoices first.", ar: "لا يمكن الخروج: يوجد فواتير غير مسددة. يرجى تسوية جميع الفواتير أولاً." },
 };
 
 interface I18nContextType {

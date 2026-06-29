@@ -36,8 +36,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
-  Building2, Pencil, ClipboardList, Receipt,
+  Building2, Pencil, ClipboardList, Receipt, Search, ChevronsUpDown, Check,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { LabResultViewDialog, type OrderForReport } from "@/components/lab-result-view-dialog";
 import { RadiologyReportViewDialog, type RadiologyOrderForReport } from "@/components/radiology-report-view-dialog";
 import { InvoiceViewDialog } from "@/components/invoice-view-dialog";
@@ -689,30 +692,95 @@ function AssignUnitDropdown({
   );
 }
 
+/* ── Pediatric diagnosis list ── */
+const PEDS_DIAGNOSES = [
+  "Acute bronchiolitis", "Acute gastroenteritis", "Acute otitis media", "Acute pharyngitis",
+  "Acute rhinosinusitis", "Acute tonsillitis", "Anaphylaxis", "Aplastic anaemia",
+  "Appendicitis", "Asthma — acute exacerbation", "Asthma — persistent",
+  "Atopic dermatitis (eczema)", "Attention deficit hyperactivity disorder (ADHD)",
+  "Autism spectrum disorder", "Beta-thalassaemia major", "Beta-thalassaemia trait",
+  "Biliary atresia", "Bronchial asthma", "Brucellosis", "Cerebral palsy",
+  "Chickenpox (varicella)", "Chronic kidney disease", "Coarctation of the aorta",
+  "Community-acquired pneumonia", "Congenital heart disease — ASD",
+  "Congenital heart disease — VSD", "Congenital heart disease — TOF",
+  "Congenital heart disease — PDA", "Congenital hypothyroidism",
+  "Convulsive disorder / epilepsy", "Croup (laryngotracheobronchitis)",
+  "Cystic fibrosis", "Dengue fever", "Developmental delay",
+  "Diabetic ketoacidosis (DKA)", "Down syndrome (Trisomy 21)",
+  "Epiglottitis", "Failure to thrive", "Febrile neutropenia",
+  "Febrile seizure — simple", "Febrile seizure — complex",
+  "G6PD deficiency haemolytic anaemia", "Gastro-oesophageal reflux disease (GORD)",
+  "Hand, foot and mouth disease", "Haemolytic uraemic syndrome (HUS)",
+  "Henoch-Schönlein purpura (IgA vasculitis)", "Hepatitis A", "Hepatitis B",
+  "Hirschsprung disease", "Hydrocephalus", "Hyperbilirubinaemia — neonatal",
+  "Hypoglycaemia", "Hypospadias", "Idiopathic thrombocytopenic purpura (ITP)",
+  "Impetigo", "Infantile spasms (West syndrome)", "Inflammatory bowel disease",
+  "Intussusception", "Iron deficiency anaemia", "Juvenile idiopathic arthritis (JIA)",
+  "Kawasaki disease", "Kwashiorkor", "Leukaemia — ALL", "Leukaemia — AML",
+  "Lymphoma — Hodgkin", "Lymphoma — non-Hodgkin", "Malaria — Plasmodium falciparum",
+  "Malnutrition — severe acute (SAM)", "Malnutrition — moderate acute (MAM)",
+  "Measles", "Meningitis — bacterial", "Meningitis — viral",
+  "Meningococcal disease", "Mumps", "Nephrotic syndrome",
+  "Neonatal jaundice", "Neonatal sepsis", "Nephroblastoma (Wilms tumour)",
+  "Neural tube defect — spina bifida", "Neutropenia", "Obesity — childhood",
+  "Osteomyelitis", "Paediatric COVID-19", "Pertussis (whooping cough)",
+  "Pneumonia — aspiration", "Pneumonia — community-acquired", "Pneumonia — viral",
+  "Pyloric stenosis — hypertrophic", "Renal calculi", "Respiratory distress syndrome — neonatal",
+  "Retinoblastoma", "Rheumatic fever — acute", "Rickets — nutritional",
+  "Rotavirus gastroenteritis", "Rubella", "Salmonella gastroenteritis",
+  "Schistosomiasis", "Sickle cell anaemia", "Septic arthritis",
+  "Severe combined immunodeficiency (SCID)", "Shigellosis (bacillary dysentery)",
+  "Status epilepticus", "Streptococcal pharyngitis", "Thalassaemia",
+  "Tinea capitis", "Tuberculosis — pulmonary", "Tuberculosis — extrapulmonary",
+  "Type 1 diabetes mellitus", "Typhoid fever", "Undescended testis (cryptorchidism)",
+  "Upper respiratory tract infection (URTI)", "Urinary tract infection (UTI)",
+  "Urticaria", "Vesicoureteral reflux (VUR)", "Viral meningitis",
+  "Vitamin D deficiency", "Volvulus — neonatal", "Wilson disease",
+].sort();
+
+const DISCHARGE_CONDITIONS = [
+  { value: "totally_cured",   key: "discharge.condition.totally_cured" },
+  { value: "partially_cured", key: "discharge.condition.partially_cured" },
+  { value: "escaped",         key: "discharge.condition.escaped" },
+  { value: "dama",            key: "discharge.condition.dama" },
+  { value: "death",           key: "discharge.condition.death" },
+];
+
+const DISCHARGE_FORM_DEFAULTS = {
+  admissionDate: "",
+  dischargeDate: new Date().toISOString().slice(0, 10),
+  primaryDiagnosis: "",
+  secondaryDiagnoses: "",
+  hospitalCourse: "",
+  conditionAtDischarge: "totally_cured",
+  dischargeMedications: "",
+  followUpInstructions: "",
+  dietInstructions: "",
+  activityRestrictions: "",
+  deathReport: "",
+};
+
 /* ── Discharge Summary dialog ── */
 function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patientId: number; patientName: string; onSuccess: () => void }) {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [diagQuery, setDiagQuery] = useState("");
+
   const { data: patientInvoicesRaw } = useListInvoices({ patientId });
   const patientInvoices = Array.isArray(patientInvoicesRaw) ? patientInvoicesRaw : [];
   const hasUnresolvedInvoices = patientInvoices.some((inv: any) => inv.status === "pending" || inv.status === "partial");
-  const [form, setForm] = useState({
-    admissionDate: "",
-    dischargeDate: new Date().toISOString().slice(0, 10),
-    primaryDiagnosis: "",
-    secondaryDiagnoses: "",
-    hospitalCourse: "",
-    conditionAtDischarge: "good",
-    dischargeMedications: "",
-    followUpInstructions: "",
-    dietInstructions: "",
-    activityRestrictions: "",
-  });
+
+  const [form, setForm] = useState(DISCHARGE_FORM_DEFAULTS);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(p => ({ ...p, [e.target.name]: e.target.value }));
+
+  const filteredDiagnoses = PEDS_DIAGNOSES.filter(d =>
+    d.toLowerCase().includes(diagQuery.toLowerCase())
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -734,12 +802,13 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
           followUpInstructions: form.followUpInstructions || null,
           dietInstructions: form.dietInstructions || null,
           activityRestrictions: form.activityRestrictions || null,
+          deathReport: form.conditionAtDischarge === "death" ? (form.deathReport || null) : null,
         }),
       });
       if (!res.ok) throw new Error("Failed");
       toast({ title: t("generic.success"), description: t("generic.addSuccess") });
       setOpen(false);
-      setForm({ admissionDate: "", dischargeDate: new Date().toISOString().slice(0, 10), primaryDiagnosis: "", secondaryDiagnoses: "", hospitalCourse: "", conditionAtDischarge: "good", dischargeMedications: "", followUpInstructions: "", dietInstructions: "", activityRestrictions: "" });
+      setForm(DISCHARGE_FORM_DEFAULTS);
       onSuccess();
     } catch {
       toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") });
@@ -758,7 +827,7 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(DISCHARGE_FORM_DEFAULTS); setDiagQuery(""); } }}>
       <DialogTrigger asChild>
         <Button className="gap-2"><ClipboardList className="h-4 w-4" />{t("discharge.createSummary")}</Button>
       </DialogTrigger>
@@ -770,6 +839,7 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{t("discharge.admissionDate")}</Label>
@@ -780,38 +850,113 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
               <Input type="date" name="dischargeDate" required value={form.dischargeDate} onChange={handleChange} />
             </div>
           </div>
+
+          {/* Primary Diagnosis — searchable combobox */}
           <div className="space-y-1.5">
             <Label>{t("discharge.primaryDiagnosis")} *</Label>
-            <Input name="primaryDiagnosis" required value={form.primaryDiagnosis} onChange={handleChange} placeholder="e.g. Community-acquired pneumonia" />
+            <Popover open={diagOpen} onOpenChange={setDiagOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal h-10 text-sm"
+                >
+                  {form.primaryDiagnosis ? (
+                    <span className="truncate">{form.primaryDiagnosis}</span>
+                  ) : (
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Search className="h-3.5 w-3.5" />
+                      {t("discharge.diagnosisSearch")}
+                    </span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[480px] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder={t("discharge.diagnosisSearch")}
+                    value={diagQuery}
+                    onValueChange={setDiagQuery}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No diagnosis found.</CommandEmpty>
+                    <CommandGroup>
+                      <ScrollArea className="h-64">
+                        {filteredDiagnoses.map(d => (
+                          <CommandItem
+                            key={d}
+                            value={d}
+                            onSelect={() => {
+                              setForm(p => ({ ...p, primaryDiagnosis: d }));
+                              setDiagOpen(false);
+                              setDiagQuery("");
+                            }}
+                          >
+                            <Check className={`mr-2 h-4 w-4 shrink-0 ${form.primaryDiagnosis === d ? "opacity-100" : "opacity-0"}`} />
+                            {d}
+                          </CommandItem>
+                        ))}
+                      </ScrollArea>
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {/* Allow free-text override */}
+            <Input
+              name="primaryDiagnosis"
+              value={form.primaryDiagnosis}
+              onChange={handleChange}
+              placeholder="Or type a custom diagnosis…"
+              className="mt-1.5 text-sm"
+              required
+            />
           </div>
+
+          {/* Secondary diagnoses */}
           <div className="space-y-1.5">
             <Label>{t("discharge.secondaryDiagnoses")}</Label>
             <Input name="secondaryDiagnoses" value={form.secondaryDiagnoses} onChange={handleChange} placeholder="e.g. Mild dehydration, Iron deficiency anaemia" />
           </div>
+
+          {/* Hospital course */}
           <div className="space-y-1.5">
             <Label>{t("discharge.hospitalCourse")} *</Label>
             <Textarea name="hospitalCourse" required value={form.hospitalCourse} onChange={handleChange} className="min-h-[100px]" placeholder="Summary of treatment, investigations, and response..." />
           </div>
+
+          {/* Condition at discharge */}
           <div className="space-y-1.5">
             <Label>{t("discharge.condition")}</Label>
-            <Select value={form.conditionAtDischarge} onValueChange={v => setForm(p => ({ ...p, conditionAtDischarge: v }))}>
+            <Select value={form.conditionAtDischarge} onValueChange={v => setForm(p => ({ ...p, conditionAtDischarge: v, deathReport: v !== "death" ? "" : p.deathReport }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="good">{t("discharge.condition.good")}</SelectItem>
-                <SelectItem value="improved">{t("discharge.condition.improved")}</SelectItem>
-                <SelectItem value="fair">{t("discharge.condition.fair")}</SelectItem>
-                <SelectItem value="poor">{t("discharge.condition.poor")}</SelectItem>
+                {DISCHARGE_CONDITIONS.map(c => (
+                  <SelectItem key={c.value} value={c.value}
+                    className={c.value === "death" ? "text-destructive font-medium" : ""}
+                  >
+                    {t(c.key)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Discharge medications */}
           <div className="space-y-1.5">
             <Label>{t("discharge.medications")}</Label>
             <Textarea name="dischargeMedications" value={form.dischargeMedications} onChange={handleChange} className="min-h-[80px]" placeholder="List discharge medications, doses, and durations..." />
           </div>
+
+          {/* Follow-up */}
           <div className="space-y-1.5">
             <Label>{t("discharge.followUp")}</Label>
             <Textarea name="followUpInstructions" value={form.followUpInstructions} onChange={handleChange} className="min-h-[60px]" placeholder="Follow-up clinic, review dates, specialist referrals..." />
           </div>
+
+          {/* Diet & Activity */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{t("discharge.diet")}</Label>
@@ -822,6 +967,25 @@ function DischargeSummaryDialog({ patientId, patientName, onSuccess }: { patient
               <Input name="activityRestrictions" value={form.activityRestrictions} onChange={handleChange} placeholder="e.g. Bed rest for 3 days" />
             </div>
           </div>
+
+          {/* Death report — only when condition = death */}
+          {form.conditionAtDischarge === "death" && (
+            <div className="space-y-1.5 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+              <Label className="text-destructive font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                {t("discharge.deathReport")}
+              </Label>
+              <Textarea
+                name="deathReport"
+                value={form.deathReport}
+                onChange={handleChange}
+                className="min-h-[120px]"
+                placeholder={t("discharge.deathReportPlaceholder")}
+                required
+              />
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={saving}>
