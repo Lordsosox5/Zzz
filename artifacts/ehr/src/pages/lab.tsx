@@ -769,14 +769,13 @@ export default function Lab() {
                 <TableHead>{t("lab.orderedBy")}</TableHead>
                 <TableHead>{t("generic.priority")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
-                <TableHead>{t("generic.result")}</TableHead>
                 <TableHead className="text-end">{t("generic.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
@@ -809,9 +808,6 @@ export default function Lab() {
                         {order.status === "resulted" ? t("lab.resulted") : order.status === "collected" ? t("lab.collected") : t("lab.pending")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-[220px]">
-                      <ResultDisplay order={order} />
-                    </TableCell>
                     <TableCell className="text-end">
                       <div className="flex items-center justify-end gap-2">
                         {order.status === "resulted" && (
@@ -829,7 +825,7 @@ export default function Lab() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     {t("lab.noOrders")}
                   </TableCell>
                 </TableRow>

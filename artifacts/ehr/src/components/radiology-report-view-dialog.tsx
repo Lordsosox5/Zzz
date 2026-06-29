@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Eye, Printer, Activity, HeartPulse, Scan, Zap, Waves,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
 export type RadiologyOrderForReport = {
   id: number;
@@ -26,37 +27,47 @@ export type RadiologyOrderForReport = {
 function ModalityIcon({ modality }: { modality: string }) {
   const cls = "h-5 w-5 text-primary";
   switch (modality.toLowerCase()) {
-    case "ct":        return <Scan className={cls} />;
-    case "mri":       return <Activity className={cls} />;
-    case "ultrasound":return <Waves className={cls} />;
-    default:          return <Zap className={cls} />;
-  }
-}
-
-function modalityLabel(modality: string): string {
-  switch (modality.toLowerCase()) {
-    case "x-ray":     return "X-Ray";
-    case "ct":        return "CT Scan";
-    case "mri":       return "MRI";
-    case "ultrasound":return "Ultrasound";
-    default:          return modality.toUpperCase();
+    case "ct":         return <Scan className={cls} />;
+    case "mri":        return <Activity className={cls} />;
+    case "ultrasound": return <Waves className={cls} />;
+    default:           return <Zap className={cls} />;
   }
 }
 
 export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForReport }) {
+  const { t, isRtl, language } = useTranslation();
   const [open, setOpen] = useState(false);
+
+  const modalityLabel = (m: string): string => {
+    switch (m.toLowerCase()) {
+      case "x-ray":      return t("radiology.xray");
+      case "ct":         return t("radiology.ct");
+      case "mri":        return t("radiology.mri");
+      case "ultrasound": return t("radiology.ultrasound");
+      default:           return m.toUpperCase();
+    }
+  };
+
+  const priorityLabel =
+    order.priority === "stat"   ? t("generic.stat") :
+    order.priority === "urgent" ? t("generic.urgent") :
+    t("generic.routine");
 
   const handlePrint = () => {
     const el = document.getElementById(`rad-report-${order.id}`);
     if (!el) return;
     const win = window.open("", "_blank");
     if (!win) return;
+    const dir = language === "ar" ? "rtl" : "ltr";
+    const fontFamily = language === "ar" ? "'Tajawal', 'Segoe UI', Arial, sans-serif" : "'Segoe UI', Arial, sans-serif";
     win.document.write(`
-      <html><head>
-        <title>Radiology Report – ${order.studyDescription}</title>
+      <html dir="${dir}"><head>
+        <title>${t("radiology.reportTitle")} – ${order.studyDescription}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
         <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-          body { background: #fff; color: #111; padding: 32px; font-size: 13px; }
+          * { box-sizing: border-box; margin: 0; padding: 0; font-family: ${fontFamily}; }
+          body { background: #fff; color: #111; padding: 32px; font-size: 13px; direction: ${dir}; }
           .header { border-bottom: 2px solid #1d4ed8; padding-bottom: 14px; margin-bottom: 20px; }
           .hospital { font-size: 18px; font-weight: 800; color: #1d4ed8; }
           .department { font-size: 11px; color: #6b7280; margin-top: 2px; }
@@ -79,19 +90,26 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
     win.print();
   };
 
-  const orderedDate  = new Date(order.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const reportedDate = order.completedAt
-    ? new Date(order.completedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "—";
-  const scheduledDate = order.scheduledAt
-    ? new Date(order.scheduledAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "—";
+  const locale = language === "ar" ? "ar-SA" : "en-GB";
+  const fmt = { day: "2-digit" as const, month: "short" as const, year: "numeric" as const, hour: "2-digit" as const, minute: "2-digit" as const };
+  const orderedDate   = new Date(order.createdAt).toLocaleString(locale, fmt);
+  const reportedDate  = order.completedAt  ? new Date(order.completedAt).toLocaleString(locale, fmt)  : "—";
+  const scheduledDate = order.scheduledAt  ? new Date(order.scheduledAt).toLocaleString(locale, fmt)  : "—";
+
+  const infoItems = [
+    { label: t("radiology.infoPatient"),   value: order.patientName ?? `${t("radiology.patientHash")}${order.patientId}` },
+    { label: t("radiology.infoOrderedBy"), value: order.orderedByName ?? "—" },
+    { label: t("radiology.infoPriority"),  value: priorityLabel },
+    { label: t("radiology.infoOrderDate"), value: orderedDate },
+    { label: t("radiology.infoScheduled"), value: scheduledDate },
+    { label: t("radiology.infoReported"),  value: reportedDate },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1.5 whitespace-nowrap border-primary/30 text-primary hover:bg-primary/5">
-          <Eye className="h-3.5 w-3.5" /> View Report
+          <Eye className="h-3.5 w-3.5" /> {t("radiology.viewReport")}
         </Button>
       </DialogTrigger>
 
@@ -112,23 +130,15 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
             </div>
           </div>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
-            <Printer className="h-3.5 w-3.5" /> Print
+            <Printer className="h-3.5 w-3.5" /> {t("lab.print")}
           </Button>
         </div>
 
         <ScrollArea className="flex-1">
-          <div id={`rad-report-${order.id}`} className="p-6 space-y-5">
+          <div id={`rad-report-${order.id}`} className="p-6 space-y-5" dir={isRtl ? "rtl" : "ltr"}>
 
-            {/* Info grid */}
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Patient",    value: order.patientName ?? `Patient #${order.patientId}` },
-                { label: "Ordered By", value: order.orderedByName ?? "—" },
-                { label: "Priority",   value: order.priority ? order.priority.charAt(0).toUpperCase() + order.priority.slice(1) : "Routine" },
-                { label: "Order Date", value: orderedDate },
-                { label: "Scheduled",  value: scheduledDate },
-                { label: "Reported",   value: reportedDate },
-              ].map((item) => (
+              {infoItems.map((item) => (
                 <div key={item.label} className="rounded-lg bg-muted/40 border px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{item.label}</p>
                   <p className="text-sm font-semibold truncate">{item.value}</p>
@@ -136,13 +146,12 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
               ))}
             </div>
 
-            {/* Study details */}
             <div className="rounded-xl border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 px-5 py-4 flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700">
                 <ModalityIcon modality={order.modality} />
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Study Description</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{t("radiology.studyDesc")}</p>
                 <p className="text-lg font-bold text-blue-900 dark:text-blue-200">{order.studyDescription}</p>
                 <p className="text-sm text-blue-700 dark:text-blue-400 font-medium mt-0.5">{modalityLabel(order.modality)}</p>
               </div>
@@ -150,9 +159,8 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
 
             <Separator />
 
-            {/* Report */}
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Radiologist's Report</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">{t("radiology.radiologistReport")}</p>
               {order.report ? (
                 <div className="rounded-xl border bg-muted/30 px-5 py-4">
                   <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{order.report}</p>
@@ -160,8 +168,12 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
               ) : (
                 <div className="rounded-xl border border-dashed px-5 py-8 text-center">
                   <Activity className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No report has been filed yet.</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Status: <span className="capitalize font-medium">{order.status}</span></p>
+                  <p className="text-sm text-muted-foreground">{t("radiology.noReportFiled")}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    {t("radiology.reportStatus")}: <span className="font-medium">
+                      {order.status === "reported" ? t("radiology.statusReported") : t("radiology.statusPending")}
+                    </span>
+                  </p>
                 </div>
               )}
             </div>
@@ -170,10 +182,12 @@ export function RadiologyReportViewDialog({ order }: { order: RadiologyOrderForR
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <HeartPulse className="h-3.5 w-3.5" />
-                <span className="font-semibold">Almuzini Children Hospital</span>
-                <span>· Radiology Department</span>
+                <span className="font-semibold">{t("app.title")}</span>
+                <span>· {t("radiology.department")}</span>
               </div>
-              <span>Generated {new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              <span>
+                {t("radiology.reportGenerated")} {new Date().toLocaleString(locale, fmt)}
+              </span>
             </div>
 
           </div>

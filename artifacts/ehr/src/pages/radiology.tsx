@@ -34,14 +34,14 @@ function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.report.trim()) {
-      toast({ variant: "destructive", title: t("generic.error"), description: "Report text is required." });
+      toast({ variant: "destructive", title: t("generic.error"), description: t("generic.requiredField") });
       return;
     }
     updateMutation.mutate(
       { id: orderId, data: { status: "reported", report: form.report, completedAt: new Date(form.completedAt).toISOString() } },
       {
         onSuccess: () => {
-          toast({ title: t("generic.success"), description: "Radiology report saved." });
+          toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setOpen(false);
           setForm({ report: "", completedAt: new Date().toISOString().slice(0, 16) });
           onSuccess();
@@ -55,24 +55,26 @@ function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1.5">
-          <FileText className="h-3.5 w-3.5" /> Enter Report
+          <FileText className="h-3.5 w-3.5" /> {t("radiology.enterReport")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Radiology Report: {studyDescription}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{t("radiology.reportTitle")}: {studyDescription}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-3">
-            <Label>Report *</Label>
+            <Label>{t("radiology.reportText")} *</Label>
             <Textarea
               required
               value={form.report}
               onChange={e => setForm(p => ({ ...p, report: e.target.value }))}
               className="min-h-[180px]"
-              placeholder="Enter findings, impression, and conclusion..."
+              placeholder={t("radiology.reportPlaceholder")}
             />
           </div>
           <div className="space-y-3">
-            <Label>Reported At</Label>
+            <Label>{t("radiology.reportedAt")}</Label>
             <Input type="datetime-local" value={form.completedAt} onChange={e => setForm(p => ({ ...p, completedAt: e.target.value }))} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -224,13 +226,13 @@ export default function Radiology() {
                     </TableCell>
                     <TableCell>{order.studyDescription}</TableCell>
                     <TableCell>
-                      <Badge variant={order.priority === 'stat' ? 'destructive' : order.priority === 'urgent' ? 'default' : 'secondary'} className="capitalize">
-                        {order.priority}
+                      <Badge variant={order.priority === 'stat' ? 'destructive' : order.priority === 'urgent' ? 'default' : 'secondary'}>
+                        {order.priority === "stat" ? t("generic.stat") : order.priority === "urgent" ? t("generic.urgent") : t("generic.routine")}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={order.status === "reported" ? "default" : "outline"} className="capitalize">
-                        {order.status}
+                      <Badge variant={order.status === "reported" ? "default" : "outline"}>
+                        {order.status === "reported" ? t("radiology.statusReported") : t("radiology.statusPending")}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-end">
