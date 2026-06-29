@@ -165,6 +165,8 @@ function GeneralDashboard() {
   const { t, isRtl } = useTranslation();
   const [, navigate] = useLocation();
   const user = getUser();
+  const role = user?.role ?? "";
+  const isSuperAdmin = role === "super_admin";
   const hour = new Date().getHours();
 
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
@@ -234,7 +236,7 @@ function GeneralDashboard() {
       iconColor: "text-orange-600",
       iconBg: "bg-orange-500/10",
     },
-    {
+    ...(isSuperAdmin ? [{
       label: t("dash.revenue"),
       value: stats?.totalRevenue,
       subLabel: t("dash.thisMonth") + ":",
@@ -245,7 +247,7 @@ function GeneralDashboard() {
       iconColor: "text-emerald-600",
       iconBg: "bg-emerald-500/10",
       isCurrency: true,
-    },
+    }] : []),
   ];
 
   return (
@@ -489,81 +491,83 @@ function GeneralDashboard() {
         </Card>
       </div>
 
-      {/* Bottom row: Revenue */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-            {t("dash.revenueTitle")}
-          </CardTitle>
-          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/billing")}>
-            {t("dash.viewAll")}
-          </Button>
-        </CardHeader>
-        <CardContent className="p-4">
-          {revenueLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
-            </div>
-          ) : revenue ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: t("dash.revenue.total"), value: revenue.totalRevenue, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/20" },
-                { label: t("dash.revenue.paid"), value: revenue.paidRevenue, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/20" },
-                { label: t("dash.revenue.pending"), value: revenue.pendingRevenue, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/20" },
-                {
-                  label: t("dash.thisMonth"),
-                  value: revenue.thisMonth,
-                  color: "text-purple-600",
-                  bg: "bg-purple-50 dark:bg-purple-950/20",
-                  extra: <Trend current={revenue.thisMonth} previous={revenue.lastMonth} />,
-                },
-              ].map((item, i) => (
-                <div key={i} className={`rounded-lg p-4 ${item.bg}`}>
-                  <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                  <p className={`text-xl font-bold ${item.color}`}>{formatCurrency(item.value ?? 0)}</p>
-                  {item.extra && (
-                    <div className="flex items-center gap-1 mt-1">
-                      {item.extra}
-                      <span className="text-xs text-muted-foreground">{t("dash.vsLastMonth")}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {!revenueLoading && revenue?.byPaymentMethod && (
-            <div className="mt-4 pt-4 border-t">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Payment Methods</p>
-              <div className="flex gap-6 flex-wrap">
-                {revenue.byPaymentMethod.map((m: { method: string; amount: number }) => {
-                  const total = revenue.totalRevenue ?? 1;
-                  const pct = Math.round((m.amount / total) * 100);
-                  const labels: Record<string, string> = {
-                    cash: t("dash.revenue.cash"),
-                    insurance: t("dash.revenue.insurance"),
-                    credit: t("dash.revenue.credit"),
-                  };
-                  const colors: Record<string, string> = {
-                    cash: "bg-emerald-500",
-                    insurance: "bg-blue-500",
-                    credit: "bg-purple-500",
-                  };
-                  return (
-                    <div key={m.method} className="flex items-center gap-2 text-sm">
-                      <div className={`h-2.5 w-2.5 rounded-full ${colors[m.method] ?? "bg-gray-400"}`} />
-                      <span className="text-muted-foreground">{labels[m.method] ?? m.method}</span>
-                      <span className="font-semibold">{pct}%</span>
-                      <span className="text-muted-foreground text-xs">({formatCurrency(m.amount)})</span>
-                    </div>
-                  );
-                })}
+      {/* Bottom row: Revenue — super_admin only */}
+      {isSuperAdmin && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              {t("dash.revenueTitle")}
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/billing")}>
+              {t("dash.viewAll")}
+            </Button>
+          </CardHeader>
+          <CardContent className="p-4">
+            {revenueLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : revenue ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: t("dash.revenue.total"), value: revenue.totalRevenue, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/20" },
+                  { label: t("dash.revenue.paid"), value: revenue.paidRevenue, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/20" },
+                  { label: t("dash.revenue.pending"), value: revenue.pendingRevenue, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/20" },
+                  {
+                    label: t("dash.thisMonth"),
+                    value: revenue.thisMonth,
+                    color: "text-purple-600",
+                    bg: "bg-purple-50 dark:bg-purple-950/20",
+                    extra: <Trend current={revenue.thisMonth} previous={revenue.lastMonth} />,
+                  },
+                ].map((item, i) => (
+                  <div key={i} className={`rounded-lg p-4 ${item.bg}`}>
+                    <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                    <p className={`text-xl font-bold ${item.color}`}>{formatCurrency(item.value ?? 0)}</p>
+                    {item.extra && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {item.extra}
+                        <span className="text-xs text-muted-foreground">{t("dash.vsLastMonth")}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {!revenueLoading && revenue?.byPaymentMethod && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Payment Methods</p>
+                <div className="flex gap-6 flex-wrap">
+                  {revenue.byPaymentMethod.map((m: { method: string; amount: number }) => {
+                    const total = revenue.totalRevenue ?? 1;
+                    const pct = Math.round((m.amount / total) * 100);
+                    const labels: Record<string, string> = {
+                      cash: t("dash.revenue.cash"),
+                      insurance: t("dash.revenue.insurance"),
+                      credit: t("dash.revenue.credit"),
+                    };
+                    const colors: Record<string, string> = {
+                      cash: "bg-emerald-500",
+                      insurance: "bg-blue-500",
+                      credit: "bg-purple-500",
+                    };
+                    return (
+                      <div key={m.method} className="flex items-center gap-2 text-sm">
+                        <div className={`h-2.5 w-2.5 rounded-full ${colors[m.method] ?? "bg-gray-400"}`} />
+                        <span className="text-muted-foreground">{labels[m.method] ?? m.method}</span>
+                        <span className="font-semibold">{pct}%</span>
+                        <span className="text-muted-foreground text-xs">({formatCurrency(m.amount)})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
