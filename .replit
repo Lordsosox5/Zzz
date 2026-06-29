@@ -63,3 +63,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 BASE_PATH = "/"
+SUPABASE_URL = "https://vhiekleynomremcampnd.supabase.co"
