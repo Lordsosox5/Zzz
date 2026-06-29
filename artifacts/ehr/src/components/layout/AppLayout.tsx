@@ -179,7 +179,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const initials = displayName.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground" dir={isRtl ? "rtl" : "ltr"}>
 
       {/* ── Sidebar ── */}
       <aside className="flex flex-col w-60 border-e bg-card flex-shrink-0 select-none">
