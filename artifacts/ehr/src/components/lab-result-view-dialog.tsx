@@ -115,267 +115,414 @@ export function LabResultViewDialog({
     const win = window.open("", "_blank");
     if (!win) return;
     const dir = language === "ar" ? "rtl" : "ltr";
-    const fontFamily = language === "ar"
+    const isAr = language === "ar";
+    const fontFamily = isAr
       ? "'Tajawal', 'Segoe UI', Arial, sans-serif"
       : "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
 
-    const orderId = `LAB-${String(order.id).padStart(4, "0")}`;
+    const orderId = `LAB-${String(order.id).padStart(5, "0")}`;
     const statusClass = order.result === "critical" ? "critical" : order.result === "abnormal" ? "abnormal" : "normal";
     const statusLabel = order.result === "critical" ? t("lab.resultLabelCritical") : order.result === "abnormal" ? t("lab.resultLabelAbnormal") : t("lab.resultLabelNormal");
+    const now = new Date().toLocaleString(isAr ? "ar-SA" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
+    // ── Flag cell ──────────────────────────────────────────────────
     const flagHtml = (status: "normal" | "abnormal" | "critical" | null) => {
-      if (!status || status === "normal") return `<span class="flag flag-normal">&#10003; ${t("lab.flagNormal")}</span>`;
-      if (status === "critical") return `<span class="flag flag-critical">&#9888; ${t("lab.flagCritical")}</span>`;
-      return `<span class="flag flag-abnormal">&#8593; ${t("lab.flagAbnormal")}</span>`;
+      if (!status || status === "normal")
+        return `<span class="badge badge-normal">&#10003;&nbsp;${t("lab.flagNormal")}</span>`;
+      if (status === "critical")
+        return `<span class="badge badge-critical">&#9650;&nbsp;${t("lab.flagCritical")}</span>`;
+      return `<span class="badge badge-abnormal">&#8593;&nbsp;${t("lab.flagAbnormal")}</span>`;
     };
 
+    // ── Mini reference bar ─────────────────────────────────────────
     const refBarHtml = (row: FieldRow) => {
       const num = parseFloat(row.value);
-      if (!row.refRange || isNaN(num)) return "";
-      const match = row.refRange.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
-      if (!match) return "";
-      const lo = parseFloat(match[1]), hi = parseFloat(match[2]);
-      if (isNaN(lo) || isNaN(hi) || hi <= lo) return "";
-      const range = hi - lo;
-      const padding = range * 0.25;
-      const min = lo - padding, max = hi + padding;
-      const pct = Math.min(100, Math.max(0, ((num - min) / (max - min)) * 100));
-      const loPct = ((lo - min) / (max - min)) * 100;
-      const hiPct = ((hi - min) / (max - min)) * 100;
-      const color = row.status === "critical" ? "#dc2626" : row.status === "abnormal" ? "#d97706" : "#16a34a";
+      if (!row.refRange || isNaN(num)) return `<span class="ref-text">${row.refRange || "—"}</span>`;
+      const m = row.refRange.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
+      if (!m) return `<span class="ref-text">${row.refRange}</span>`;
+      const lo = parseFloat(m[1]), hi = parseFloat(m[2]);
+      if (isNaN(lo) || isNaN(hi) || hi <= lo) return `<span class="ref-text">${row.refRange}</span>`;
+      const pad = (hi - lo) * 0.3;
+      const vmin = lo - pad, vmax = hi + pad;
+      const pct  = Math.min(100, Math.max(0, ((num - vmin) / (vmax - vmin)) * 100));
+      const loPct = ((lo - vmin) / (vmax - vmin)) * 100;
+      const hiPct = ((hi - vmin) / (vmax - vmin)) * 100;
+      const dotColor = row.status === "critical" ? "#dc2626" : row.status === "abnormal" ? "#d97706" : "#16a34a";
       return `
-        <div class="ref-bar-wrap">
-          <div class="ref-bar-track">
-            <div class="ref-bar-normal" style="left:${loPct}%;width:${hiPct - loPct}%"></div>
-            <div class="ref-bar-marker" style="left:${pct}%;background:${color}"></div>
+        <span class="ref-text">${row.refRange}</span>
+        <div class="rbar-wrap">
+          <div class="rbar-track">
+            <div class="rbar-zone" style="left:${loPct}%;width:${hiPct - loPct}%"></div>
+            <div class="rbar-dot" style="left:${pct}%;background:${dotColor}"></div>
           </div>
-          <div class="ref-bar-labels">
-            <span>${lo}</span><span>${hi}</span>
-          </div>
+          <div class="rbar-ends"><span>${lo}</span><span>${hi}</span></div>
         </div>`;
     };
 
-    const tableRows = fieldRows.map((row) => `
-      <tr class="row-${row.status ?? "normal"}">
-        <td class="td-analyte">${row.label}</td>
-        <td class="td-value val-${row.status ?? "normal"}">${row.value || "—"}</td>
+    // ── Table rows ─────────────────────────────────────────────────
+    const tableRows = fieldRows.map((row, i) => {
+      const s = row.status ?? "normal";
+      const accentColor = s === "critical" ? "#dc2626" : s === "abnormal" ? "#d97706" : "transparent";
+      const rowBg = s === "critical" ? "#fff5f5" : s === "abnormal" ? "#fffbeb" : i % 2 === 1 ? "#f8fafc" : "#fff";
+      return `<tr style="background:${rowBg};">
+        <td class="td-name" style="border-${dir === "rtl" ? "right" : "left"}:3px solid ${accentColor}">${row.label}</td>
+        <td class="td-val s-${s}">${row.value || "—"}</td>
         <td class="td-unit">${row.unit || "—"}</td>
-        <td class="td-ref">${row.refRange || "—"}${refBarHtml(row)}</td>
+        <td class="td-ref">${refBarHtml(row)}</td>
         <td class="td-flag">${flagHtml(row.status)}</td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
 
-    const singleResult = fieldRows.length === 0 && order.result ? `
-      <div class="single-result val-${statusClass}">
-        ${order.resultValue || order.result}${order.unit ? `<span class="single-unit"> ${order.unit}</span>` : ""}
-      </div>
-      ${order.referenceRange ? `<p class="single-ref">${t("lab.referenceRangeLabel")} <b>${order.referenceRange}</b></p>` : ""}` : "";
-
-    const notesSection = order.notes ? `
-      <div class="section-title">${t("lab.clinicalNotesSection")}</div>
-      <div class="notes-box">${order.notes}</div>` : "";
-
-    const criticalBanner = order.isCritical ? `
-      <div class="critical-alert">
-        <b>⚠ ${t("lab.criticalResultTitle")}</b> — ${t("lab.criticalResultDesc")}
+    // ── Single value fallback ──────────────────────────────────────
+    const singleBlock = fieldRows.length === 0 && order.result ? `
+      <div class="single-wrap">
+        <div class="single-val s-${statusClass}">
+          ${order.resultValue || order.result}
+          ${order.unit ? `<span class="single-unit">${order.unit}</span>` : ""}
+        </div>
+        ${order.referenceRange ? `<div class="single-ref">${t("lab.referenceRangeLabel")} &nbsp;<b>${order.referenceRange}</b></div>` : ""}
       </div>` : "";
 
-    const now = new Date().toLocaleString(language === "ar" ? "ar-SA" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    // ── Status stamp ───────────────────────────────────────────────
+    const stampColors = {
+      normal:   { bg: "#f0fdf4", border: "#4ade80", text: "#15803d", icon: "M20 6L9 17l-5-5" },
+      abnormal: { bg: "#fffbeb", border: "#fbbf24", text: "#b45309", icon: "M12 9v4m0 4h.01" },
+      critical: { bg: "#fef2f2", border: "#f87171", text: "#b91c1c", icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" },
+    }[statusClass];
+
+    const stampHtml = order.result ? `
+      <div class="stamp" style="background:${stampColors.bg};border-color:${stampColors.border}">
+        <div>
+          <div class="stamp-eyebrow">${t("lab.overallResult")}</div>
+          <div class="stamp-word" style="color:${stampColors.text}">${statusLabel}</div>
+        </div>
+        <svg class="stamp-icon" viewBox="0 0 24 24" style="stroke:${stampColors.text}">
+          <path d="${stampColors.icon}" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>` : "";
 
     win.document.write(`<!DOCTYPE html>
-<html dir="${dir}" lang="${language}"><head>
+<html dir="${dir}" lang="${language}">
+<head>
   <meta charset="utf-8">
   <title>${t("lab.report")} – ${order.testName}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: ${fontFamily}; background: #fff; color: #1e293b; font-size: 12.5px; line-height: 1.5; direction: ${dir}; }
-    @page { size: A4; margin: 18mm 16mm; }
+    body {
+      font-family: ${fontFamily};
+      background: #fff; color: #1e293b;
+      font-size: 12px; line-height: 1.55;
+      direction: ${dir};
+    }
+    @page { size: A4; margin: 0; }
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
-    /* ── Header ── */
-    .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 3px solid #1e40af; margin-bottom: 18px; }
-    .hospital-block { display: flex; align-items: center; gap: 12px; }
-    .hospital-logo { width: 44px; height: 44px; border-radius: 10px; background: #1e40af; display: flex; align-items: center; justify-content: center; }
-    .hospital-logo svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 1.8; }
-    .hospital-name { font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.2; }
-    .hospital-sub  { font-size: 10px; color: #64748b; font-weight: 500; }
-    .report-meta { text-align: ${dir === "rtl" ? "left" : "right"}; }
-    .report-id   { font-size: 13px; font-weight: 800; color: #1e40af; font-family: monospace; }
-    .report-date { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+    /* ── Page wrapper ── */
+    .page { min-height: 297mm; display: flex; flex-direction: column; }
+    .body-content { padding: 0 22mm 12mm; flex: 1; }
 
-    /* ── Test title bar ── */
-    .test-bar { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
-    .test-name { font-size: 16px; font-weight: 800; color: #0f172a; }
-    .test-code  { font-size: 10px; color: #64748b; font-family: monospace; margin-top: 2px; }
-    .priority-badge { padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-    .priority-stat    { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-    .priority-urgent  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
-    .priority-routine { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+    /* ── Letterhead ── */
+    .letterhead {
+      background: #0f2855;
+      color: #fff;
+      padding: 14px 22mm;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0;
+    }
+    .lh-left { display: flex; align-items: center; gap: 14px; }
+    .lh-logo {
+      width: 46px; height: 46px; border-radius: 10px;
+      background: rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .lh-logo svg { width: 28px; height: 28px; }
+    .lh-hosp  { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+    .lh-dept  { font-size: 10.5px; color: #93c5fd; font-weight: 500; margin-top: 1px; }
+    .lh-right { text-align: ${dir === "rtl" ? "left" : "right"}; }
+    .lh-id    { font-size: 13px; font-weight: 800; font-family: monospace; color: #93c5fd; letter-spacing: 0.05em; }
+    .lh-date  { font-size: 10px; color: #cbd5e1; margin-top: 3px; }
+
+    /* ── Accent stripe ── */
+    .stripe { height: 4px; background: linear-gradient(90deg, #3b82f6 0%, #06b6d4 60%, #10b981 100%); margin-bottom: 18px; }
+
+    /* ── Report type banner ── */
+    .report-banner {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 12px; margin-bottom: 16px;
+    }
+    .report-title-block .report-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; margin-bottom: 3px; }
+    .report-title-block .report-test  { font-size: 19px; font-weight: 800; color: #0f172a; line-height: 1.1; }
+    .report-title-block .report-sub   { font-size: 10.5px; color: #64748b; font-family: monospace; margin-top: 3px; }
+    .priority-pill {
+      padding: 4px 13px; border-radius: 999px;
+      font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      border: 1.5px solid;
+    }
+    .p-stat    { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
+    .p-urgent  { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+    .p-routine { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+
+    /* ── Info panel: 2-column ── */
+    .info-panel {
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr;
+      gap: 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .info-col { padding: 14px 16px; }
+    .info-divider { background: #e2e8f0; }
+    .info-col-title {
+      font-size: 9px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.12em; color: #94a3b8;
+      border-bottom: 1px solid #f1f5f9; padding-bottom: 7px; margin-bottom: 10px;
+    }
+    .info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-key { font-size: 10.5px; color: #64748b; white-space: nowrap; }
+    .info-val { font-size: 11.5px; font-weight: 700; color: #1e293b; text-align: ${dir === "rtl" ? "left" : "right"}; word-break: break-word; }
+    .mono { font-family: monospace; }
 
     /* ── Critical alert ── */
-    .critical-alert { background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 7px; padding: 10px 14px; margin-bottom: 14px; color: #b91c1c; font-size: 12px; }
+    .crit-alert {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: #fef2f2; border: 1.5px solid #fca5a5;
+      border-radius: 7px; padding: 11px 14px; margin-bottom: 14px;
+    }
+    .crit-alert-icon { font-size: 16px; color: #dc2626; flex-shrink: 0; margin-top: 1px; }
+    .crit-alert-title { font-size: 12px; font-weight: 800; color: #b91c1c; }
+    .crit-alert-body  { font-size: 11px; color: #ef4444; margin-top: 2px; }
 
-    /* ── Info grid ── */
-    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-    .info-card { border: 1px solid #e2e8f0; border-radius: 7px; padding: 10px 12px; background: #fafbfc; }
-    .info-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; display: block; margin-bottom: 3px; }
-    .info-value { font-size: 12.5px; font-weight: 700; color: #1e293b; }
+    /* ── Status stamp ── */
+    .stamp {
+      display: flex; align-items: center; justify-content: space-between;
+      border: 2px solid; border-radius: 10px;
+      padding: 13px 18px; margin-bottom: 16px;
+    }
+    .stamp-eyebrow { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; margin-bottom: 4px; }
+    .stamp-word    { font-size: 26px; font-weight: 900; line-height: 1; }
+    .stamp-icon    { width: 42px; height: 42px; stroke-width: 2; fill: none; flex-shrink: 0; }
 
-    /* ── Status banner ── */
-    .status-banner { border-radius: 10px; padding: 14px 20px; margin-bottom: 16px; border: 2px solid; display: flex; align-items: center; justify-content: space-between; }
-    .status-normal   { background: #f0fdf4; border-color: #86efac; }
-    .status-abnormal { background: #fffbeb; border-color: #fcd34d; }
-    .status-critical { background: #fef2f2; border-color: #fca5a5; }
-    .status-left .status-eyebrow { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 4px; }
-    .status-word { font-size: 28px; font-weight: 900; line-height: 1; letter-spacing: -0.01em; }
-    .word-normal   { color: #15803d; }
-    .word-abnormal { color: #b45309; }
-    .word-critical { color: #b91c1c; }
-    .status-icon { width: 52px; height: 52px; border-radius: 50%; border: 3px solid; display: flex; align-items: center; justify-content: center; }
-    .icon-normal   { border-color: #86efac; background: #dcfce7; color: #16a34a; }
-    .icon-abnormal { border-color: #fcd34d; background: #fef9c3; color: #ca8a04; }
-    .icon-critical { border-color: #fca5a5; background: #fee2e2; color: #dc2626; }
-    .status-icon svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 2; }
-
-    /* ── Section title ── */
-    .section-title { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; margin: 16px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+    /* ── Section header ── */
+    .sec-head {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 9px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.14em; color: #64748b;
+      margin: 18px 0 8px;
+    }
+    .sec-head::after { content:""; flex:1; height:1px; background:#e2e8f0; }
 
     /* ── Results table ── */
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    thead tr { background: #1e40af; }
-    thead th { color: #fff; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; padding: 9px 12px; text-align: start; }
+    .tbl-wrap { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    thead tr { background: #0f2855; }
+    thead th {
+      color: #e2e8f0; font-size: 9px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 9px 12px; text-align: start;
+    }
     tbody tr { border-bottom: 1px solid #f1f5f9; }
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:nth-child(even) { background: #f8fafc; }
-    .row-critical { background: #fef2f2 !important; }
-    .row-abnormal { background: #fffbeb !important; }
     td { padding: 9px 12px; vertical-align: middle; }
-    .td-analyte { font-weight: 600; color: #1e293b; font-size: 12.5px; }
-    .td-value   { font-weight: 800; font-size: 14px; font-family: monospace; text-align: center; }
-    .td-unit    { text-align: center; color: #64748b; font-size: 11px; font-family: monospace; }
-    .td-ref     { color: #64748b; font-size: 11px; font-family: monospace; }
-    .td-flag    { text-align: center; }
-    .val-normal   { color: #15803d; }
-    .val-abnormal { color: #b45309; }
-    .val-critical { color: #b91c1c; }
+    .td-name { font-weight: 700; font-size: 12px; color: #1e293b; padding-${dir === "rtl" ? "right" : "left"}: 10px; }
+    .td-val  { font-weight: 800; font-size: 14px; font-family: monospace; text-align: center; }
+    .td-unit { text-align: center; color: #64748b; font-size: 10.5px; font-family: monospace; }
+    .td-ref  { font-size: 10.5px; color: #475569; }
+    .td-flag { text-align: center; white-space: nowrap; }
+    .s-normal   { color: #15803d; }
+    .s-abnormal { color: #b45309; }
+    .s-critical { color: #b91c1c; }
 
     /* ── Reference bar ── */
-    .ref-bar-wrap   { margin-top: 5px; }
-    .ref-bar-track  { position: relative; height: 6px; background: #e2e8f0; border-radius: 3px; }
-    .ref-bar-normal { position: absolute; top: 0; height: 100%; background: #86efac; border-radius: 3px; }
-    .ref-bar-marker { position: absolute; top: -3px; width: 12px; height: 12px; border-radius: 50%; transform: translateX(-50%); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
-    .ref-bar-labels { display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; margin-top: 2px; }
+    .ref-text  { display: block; font-family: monospace; font-size: 10.5px; color: #475569; margin-bottom: 4px; }
+    .rbar-wrap { width: 100%; }
+    .rbar-track { position: relative; height: 5px; background: #e2e8f0; border-radius: 3px; }
+    .rbar-zone  { position: absolute; top: 0; height: 100%; background: #bbf7d0; border-radius: 3px; }
+    .rbar-dot   { position: absolute; top: -3.5px; width: 12px; height: 12px; border-radius: 50%; transform: translateX(-50%); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+    .rbar-ends  { display: flex; justify-content: space-between; font-size: 8.5px; color: #94a3b8; margin-top: 2px; }
 
-    /* ── Flag ── */
-    .flag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-block; }
-    .flag-normal   { background: #dcfce7; color: #15803d; }
-    .flag-abnormal { background: #fef9c3; color: #a16207; }
-    .flag-critical { background: #fee2e2; color: #b91c1c; }
+    /* ── Badge ── */
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+    .badge-normal   { background: #dcfce7; color: #15803d; }
+    .badge-abnormal { background: #fef3c7; color: #92400e; }
+    .badge-critical { background: #fee2e2; color: #b91c1c; }
 
-    /* ── Single result (no structured fields) ── */
-    .single-result { font-size: 42px; font-weight: 900; font-family: monospace; text-align: center; padding: 24px; border: 1.5px solid #e2e8f0; border-radius: 10px; }
-    .single-unit { font-size: 18px; font-weight: 500; color: #64748b; }
-    .single-ref  { text-align: center; font-size: 11px; color: #64748b; margin-top: 8px; }
+    /* ── Single value ── */
+    .single-wrap { border: 1px solid #e2e8f0; border-radius: 10px; padding: 28px; text-align: center; }
+    .single-val  { font-size: 48px; font-weight: 900; font-family: monospace; line-height: 1; }
+    .single-unit { font-size: 20px; font-weight: 500; color: #64748b; margin-${dir === "rtl" ? "right" : "left"}: 8px; }
+    .single-ref  { font-size: 11.5px; color: #64748b; margin-top: 10px; }
 
     /* ── Notes ── */
-    .notes-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; padding: 10px 14px; font-size: 12px; color: #374151; line-height: 1.6; }
+    .notes-box {
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 7px; padding: 12px 16px;
+      font-size: 11.5px; color: #374151; line-height: 1.65;
+    }
+
+    /* ── Signature section ── */
+    .sig-section {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 20px; margin-top: 24px; padding-top: 16px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .sig-block { }
+    .sig-line  { border-bottom: 1px solid #94a3b8; height: 32px; margin-bottom: 5px; }
+    .sig-label { font-size: 9.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
 
     /* ── Footer ── */
-    .footer { border-top: 2px solid #e2e8f0; padding-top: 12px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .footer-left  { font-size: 10px; color: #64748b; font-weight: 600; }
-    .footer-right { font-size: 10px; color: #94a3b8; }
-    .confidential { text-align: center; font-size: 9px; color: #cbd5e1; margin-top: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
-    hr.divider { border: none; border-top: 1px solid #e2e8f0; margin: 14px 0; }
+    .footer {
+      padding: 10px 22mm 10mm;
+      border-top: 1px solid #e2e8f0;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: auto;
+    }
+    .footer-l { font-size: 9.5px; color: #64748b; font-weight: 600; }
+    .footer-r { font-size: 9px; color: #94a3b8; text-align: ${dir === "rtl" ? "left" : "right"}; }
+    .footer-conf { font-size: 8.5px; color: #cbd5e1; text-align: center; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 3px; }
   </style>
-</head><body>
+</head>
+<body>
+<div class="page">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="hospital-block">
-      <div class="hospital-logo">
-        <svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>
+  <!-- ══ LETTERHEAD ══ -->
+  <div class="letterhead">
+    <div class="lh-left">
+      <div class="lh-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
       </div>
       <div>
-        <div class="hospital-name">${t("app.title")}</div>
-        <div class="hospital-sub">${t("lab.pediatricLaboratory")}</div>
+        <div class="lh-hosp">${t("app.title")}</div>
+        <div class="lh-dept">${t("lab.pediatricLaboratory")}</div>
       </div>
     </div>
-    <div class="report-meta">
-      <div class="report-id">${orderId}</div>
-      <div class="report-date">${t("lab.reportGenerated")} ${now}</div>
+    <div class="lh-right">
+      <div class="lh-id">${orderId}</div>
+      <div class="lh-date">${t("lab.reportGenerated")} ${now}</div>
     </div>
   </div>
+  <div class="stripe"></div>
 
-  <!-- Test title bar -->
-  <div class="test-bar">
-    <div>
-      <div class="test-name">${order.testName}</div>
-      ${order.testCode ? `<div class="test-code">${order.testCode}${testDef?.category ? ` &nbsp;·&nbsp; ${testDef.category}` : ""}</div>` : ""}
+  <!-- ══ BODY ══ -->
+  <div class="body-content">
+
+    <!-- Report title + priority -->
+    <div class="report-banner">
+      <div class="report-title-block">
+        <div class="report-label">${t("lab.testResultsSection")}</div>
+        <div class="report-test">${order.testName}</div>
+        ${order.testCode || testDef?.category ? `<div class="report-sub">${[order.testCode, testDef?.category].filter(Boolean).join(" &nbsp;·&nbsp; ")}</div>` : ""}
+      </div>
+      <span class="priority-pill p-${order.priority ?? "routine"}">${priorityLabel}</span>
     </div>
-    <span class="priority-badge priority-${order.priority ?? "routine"}">${priorityLabel}</span>
-  </div>
 
-  ${criticalBanner}
+    <!-- ── Critical alert ── -->
+    ${order.isCritical ? `
+    <div class="crit-alert">
+      <div class="crit-alert-icon">&#9888;</div>
+      <div>
+        <div class="crit-alert-title">${t("lab.criticalResultTitle")}</div>
+        <div class="crit-alert-body">${t("lab.criticalResultDesc")}</div>
+      </div>
+    </div>` : ""}
 
-  <!-- Patient & order info -->
-  <div class="info-grid">
-    <div class="info-card"><span class="info-label">${t("lab.infoPatient")}</span><div class="info-value">${order.patientName ?? `#${order.patientId}`}</div></div>
-    <div class="info-card"><span class="info-label">${t("lab.infoOrderedBy")}</span><div class="info-value">${order.orderedByName ?? "—"}</div></div>
-    <div class="info-card"><span class="info-label">${t("lab.infoOrderId")}</span><div class="info-value" style="font-family:monospace">${orderId}</div></div>
-    <div class="info-card"><span class="info-label">${t("lab.infoOrderDate")}</span><div class="info-value">${orderedDate}</div></div>
-    <div class="info-card"><span class="info-label">${t("lab.infoResultDate")}</span><div class="info-value">${resultedDate}</div></div>
-    <div class="info-card"><span class="info-label">${t("lab.infoPriority")}</span><div class="info-value">${priorityLabel}</div></div>
-  </div>
-
-  <!-- Overall status banner -->
-  ${order.result ? `
-  <div class="status-banner status-${statusClass}">
-    <div class="status-left">
-      <div class="status-eyebrow">${t("lab.overallResult")}</div>
-      <div class="status-word word-${statusClass}">${statusLabel}</div>
+    <!-- ── Patient | Order info ── -->
+    <div class="info-panel">
+      <div class="info-col">
+        <div class="info-col-title">${t("lab.infoPatient")}</div>
+        <div class="info-row">
+          <span class="info-key">${t("lab.infoPatient")}</span>
+          <span class="info-val">${order.patientName ?? `#${order.patientId}`}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">${t("lab.infoOrderedBy")}</span>
+          <span class="info-val">${order.orderedByName ?? "—"}</span>
+        </div>
+      </div>
+      <div class="info-divider"></div>
+      <div class="info-col">
+        <div class="info-col-title">${t("lab.infoOrderId")}</div>
+        <div class="info-row">
+          <span class="info-key">${t("lab.infoOrderId")}</span>
+          <span class="info-val mono">${orderId}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">${t("lab.infoPriority")}</span>
+          <span class="info-val">${priorityLabel}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">${t("lab.infoOrderDate")}</span>
+          <span class="info-val">${orderedDate}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">${t("lab.infoResultDate")}</span>
+          <span class="info-val">${resultedDate}</span>
+        </div>
+      </div>
     </div>
-    <div class="status-icon icon-${statusClass}">
-      <svg viewBox="0 0 24 24">
-        ${statusClass === "normal"
-          ? '<path d="M20 6L9 17l-5-5"/>'
-          : statusClass === "critical"
-            ? '<path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
-            : '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>'}
-      </svg>
+
+    <!-- ── Overall result stamp ── -->
+    ${stampHtml}
+
+    <!-- ── Results ── -->
+    <div class="sec-head">${t("lab.testResultsSection")}</div>
+    ${fieldRows.length > 0 ? `
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:26%">${t("lab.colAnalyte")}</th>
+            <th style="width:13%;text-align:center">${t("lab.colValue")}</th>
+            <th style="width:12%;text-align:center">${t("lab.colUnit")}</th>
+            <th style="width:33%">${t("lab.colReferenceRange")}</th>
+            <th style="width:16%;text-align:center">${t("lab.colFlag")}</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>` : singleBlock}
+
+    <!-- ── Clinical notes ── -->
+    ${order.notes ? `
+    <div class="sec-head">${t("lab.clinicalNotesSection")}</div>
+    <div class="notes-box">${order.notes}</div>` : ""}
+
+    <!-- ── Signature / verification ── -->
+    <div class="sig-section">
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-label">${isAr ? "توقيع أخصائي المختبر" : "Laboratory Specialist Signature"}</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-label">${isAr ? "التاريخ والوقت" : "Date & Time"}</div>
+      </div>
     </div>
-  </div>` : ""}
 
-  <!-- Results section -->
-  <div class="section-title">${t("lab.testResultsSection")}</div>
-  ${fieldRows.length > 0 ? `
-  <table>
-    <thead>
-      <tr>
-        <th style="width:28%">${t("lab.colAnalyte")}</th>
-        <th style="width:12%;text-align:center">${t("lab.colValue")}</th>
-        <th style="width:12%;text-align:center">${t("lab.colUnit")}</th>
-        <th style="width:32%">${t("lab.colReferenceRange")}</th>
-        <th style="width:16%;text-align:center">${t("lab.colFlag")}</th>
-      </tr>
-    </thead>
-    <tbody>${tableRows}</tbody>
-  </table>` : singleResult}
+  </div><!-- /body-content -->
 
-  ${notesSection}
-
-  <hr class="divider">
-
-  <!-- Footer -->
+  <!-- ══ FOOTER ══ -->
   <div class="footer">
-    <div class="footer-left">&#10084; ${t("app.title")} &nbsp;·&nbsp; ${t("lab.pediatricLaboratory")}</div>
-    <div class="footer-right">${t("lab.reportGenerated")} ${now}</div>
+    <div class="footer-l">&#10084;&nbsp; ${t("app.title")} &nbsp;·&nbsp; ${t("lab.pediatricLaboratory")}</div>
+    <div class="footer-r">
+      ${orderId}<br>
+      <span class="footer-conf">${isAr ? "سجل طبي سري — للاستخدام المرخص فقط" : "Confidential Medical Record — For Authorized Use Only"}</span>
+    </div>
   </div>
-  <div class="confidential">Confidential Medical Record — For Authorized Use Only</div>
 
+</div><!-- /page -->
 </body></html>`);
     win.document.close();
-    setTimeout(() => win.print(), 600);
+    setTimeout(() => win.print(), 700);
   };
 
   const resultedDate = order.resultedAt
