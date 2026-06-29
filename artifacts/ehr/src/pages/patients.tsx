@@ -9,7 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
-import { isUnitRole } from "@/lib/permissions";
+import { isUnitRole, canExportData } from "@/lib/permissions";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +25,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, UserPlus, Loader2, Building2, Trash2 } from "lucide-react";
+import { Search, UserPlus, Loader2, Building2, Trash2, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 type Patient = {
   id: number;
@@ -46,10 +47,13 @@ export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const user = getUser();
   const unitRestricted = user && isUnitRole(user.role);
   const isAdmin = user?.role === "super_admin";
+  const canExport = user ? canExportData(user.role) : false;
+  const isDataAnalyser = user?.role === "data_analyser";
 
   const { data: unitsData = [] } = useListUnits();
   const userUnit = unitRestricted && user?.unitId

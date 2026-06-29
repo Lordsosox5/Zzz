@@ -730,6 +730,29 @@ const translations: Translations = {
   "discharge.deathReportPlaceholder":    { en: "Describe the cause and circumstances of death, time of death, resuscitation efforts, and any relevant clinical details…", ar: "صف سبب الوفاة وملابساتها، وتوقيت الوفاة، وجهود الإنعاش، وأي تفاصيل سريرية ذات صلة…" },
   "discharge.diagnosisSearch":           { en: "Search diagnosis…",                 ar: "ابحث عن التشخيص…" },
   "discharge.blockedByInvoices":         { en: "Cannot discharge: patient has unpaid invoices. Settle all invoices first.", ar: "لا يمكن الخروج: يوجد فواتير غير مسددة. يرجى تسوية جميع الفواتير أولاً." },
+
+  // Data Analyser
+  "analyser.title":           { en: "Data Analyser",                           ar: "محلل البيانات" },
+  "analyser.subtitle":        { en: "Read-only patient data overview and export", ar: "نظرة عامة وتصدير بيانات المرضى (قراءة فقط)" },
+  "analyser.totalPatients":   { en: "Total Patients",                          ar: "إجمالي المرضى" },
+  "analyser.activePatients":  { en: "Active Patients",                         ar: "المرضى النشطون" },
+  "analyser.malePatients":    { en: "Male",                                    ar: "ذكور" },
+  "analyser.femalePatients":  { en: "Female",                                  ar: "إناث" },
+  "analyser.exportExcel":     { en: "Export to Excel",                         ar: "تصدير إلى Excel" },
+  "analyser.exporting":       { en: "Exporting…",                              ar: "جارٍ التصدير…" },
+  "analyser.exportSuccess":   { en: "Patient data exported successfully",      ar: "تم تصدير بيانات المرضى بنجاح" },
+  "analyser.exportAll":       { en: "Export All Patients",                     ar: "تصدير جميع المرضى" },
+  "analyser.viewPatients":    { en: "View Patient List",                       ar: "عرض قائمة المرضى" },
+  "analyser.quickStats":      { en: "Quick Statistics",                        ar: "إحصاءات سريعة" },
+  "analyser.ageGroup.infant": { en: "Infant (0–1)",                            ar: "رضيع (٠–١)" },
+  "analyser.ageGroup.toddler":{ en: "Toddler (1–3)",                           ar: "طفل صغير (١–٣)" },
+  "analyser.ageGroup.child":  { en: "Child (4–12)",                            ar: "طفل (٤–١٢)" },
+  "analyser.ageGroup.teen":   { en: "Teenager (13–17)",                        ar: "مراهق (١٣–١٧)" },
+  "analyser.byGender":        { en: "By Gender",                               ar: "حسب الجنس" },
+  "analyser.byAgeGroup":      { en: "By Age Group",                            ar: "حسب الفئة العمرية" },
+  "analyser.byStatus":        { en: "By Status",                               ar: "حسب الحالة" },
+  "analyser.noData":          { en: "No patient data available.",              ar: "لا توجد بيانات مرضى متاحة." },
+  "analyser.excelSheet":      { en: "Patients",                                ar: "المرضى" },
 };
 
 interface I18nContextType {

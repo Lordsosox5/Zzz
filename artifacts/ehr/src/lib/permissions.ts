@@ -158,6 +158,18 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     ],
     allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units"],
   },
+  data_analyser: {
+    label: { en: "Data Analyser", ar: "محلل البيانات" },
+    description: { en: "Read-only access to all patient data with full export capabilities", ar: "وصول للقراءة فقط على جميع بيانات المرضى مع إمكانية التصدير الكامل" },
+    badgeClass: "bg-violet-100 text-violet-800 border border-violet-200 dark:bg-violet-900/30 dark:text-violet-300",
+    authorities: [
+      { en: "View all patient records (read-only)", ar: "عرض جميع سجلات المرضى (للقراءة فقط)" },
+      { en: "Export patient data to Excel spreadsheet", ar: "تصدير بيانات المرضى إلى جداول بيانات Excel" },
+      { en: "View patient demographics and statistics", ar: "عرض البيانات الديموغرافية للمرضى والإحصاءات" },
+      { en: "Access aggregated clinical reports", ar: "الوصول إلى التقارير السريرية المجمّعة" },
+    ],
+    allowedNav: ["/dashboard", "/patients"],
+  },
 };
 
 export type PatientTab = "overview" | "notes" | "prescriptions" | "labs" | "discharge" | "billing" | "vitals";
@@ -174,6 +186,7 @@ const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
   pharmacist:           ["overview", "prescriptions"],
   lab_technician:       ["labs"],
   billing_officer:      ["overview", "billing"],
+  data_analyser:        ["overview"],
 };
 
 export function isLabRole(role: string): boolean {
@@ -230,6 +243,10 @@ export function canEditPatient(role: string): boolean {
 
 export function canCreateDischargeSummary(role: string): boolean {
   return ["super_admin", "pediatric_consultant", "pediatric_specialist", "emergency_physician", "medical_officer", "registrar"].includes(role);
+}
+
+export function canExportData(role: string): boolean {
+  return ["super_admin", "data_analyser"].includes(role);
 }
 
 export function canManageStaff(role: string): boolean {
