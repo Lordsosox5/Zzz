@@ -52,6 +52,7 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   house_officer:        "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
   medical_officer:      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
   registrar:            "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+  data_analyser:        "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
 };
 
 const NOTIF_ICONS: Record<string, React.ElementType> = {

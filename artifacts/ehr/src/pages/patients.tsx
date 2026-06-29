@@ -90,16 +90,71 @@ export default function Patients() {
     );
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const allPatients: typeof data.patients = [];
+      let page = 1;
+      const pageSize = 100;
+      while (true) {
+        const resp = await fetch(`/api/patients?limit=${pageSize}&page=${page}`, {
+          headers: { Authorization: `Bearer ${(await import("@/lib/auth")).getToken()}` },
+        });
+        const json = await resp.json();
+        if (!json.patients?.length) break;
+        allPatients.push(...json.patients);
+        if (allPatients.length >= json.total) break;
+        page++;
+      }
+
+      const rows = allPatients.map((p: any) => ({
+        MRN: p.mrn,
+        "Name (EN)": p.nameEn,
+        "Name (AR)": p.nameAr ?? "",
+        "Date of Birth": p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString() : "",
+        Gender: p.gender,
+        Status: p.status,
+        "Blood Type": p.bloodType ?? "",
+        Nationality: p.nationality ?? "",
+        Phone: p.phone ?? "",
+        "Guardian Name": p.guardianName ?? "",
+        "Registered At": p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Patients");
+      XLSX.writeFile(wb, `patients_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast({ title: isRtl ? "تم التصدير" : "Exported", description: isRtl ? `تم تصدير ${rows.length} مريض` : `Exported ${rows.length} patients` });
+    } catch {
+      toast({ variant: "destructive", title: t("generic.error"), description: isRtl ? "فشل التصدير" : "Export failed" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.patients")}</h1>
-        <Button asChild>
-          <Link href="/patients/new">
-            <UserPlus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />
-            {t("patient.newPatient")}
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {canExport && (
+            <Button variant="outline" onClick={handleExport} disabled={exporting}>
+              {exporting
+                ? <Loader2 className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4 animate-spin`} />
+                : <FileSpreadsheet className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
+              {isRtl ? "تصدير Excel" : "Export Excel"}
+            </Button>
+          )}
+          {!isDataAnalyser && (
+            <Button asChild>
+              <Link href="/patients/new">
+                <UserPlus className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />
+                {t("patient.newPatient")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {unitRestricted && (

@@ -462,6 +462,7 @@ export default function Staff() {
                             <SelectItem value="pharmacist">{t("staff.pharmacist")}</SelectItem>
                             <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
                             <SelectItem value="admin">{t("staff.admin")}</SelectItem>
+                            <SelectItem value="data_analyser">Data Analyser</SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
@@ -739,6 +740,7 @@ export default function Staff() {
                       <SelectItem value="pharmacist">{t("staff.pharmacist")}</SelectItem>
                       <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
                       <SelectItem value="admin">{t("staff.admin")}</SelectItem>
+                      <SelectItem value="data_analyser">Data Analyser</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>

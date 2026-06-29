@@ -83,6 +83,15 @@ const DEMO_ACCOUNTS = [
     badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
     dot: "bg-yellow-500",
   },
+  {
+    username: "data.analyser",
+    password: "password123",
+    role: "Data Analyser",
+    roleAr: "محلل البيانات",
+    name: "Reem Al-Harbi",
+    badge: "bg-violet-100 text-violet-800 border-violet-200",
+    dot: "bg-violet-500",
+  },
 ];
 
 export default function Login() {
