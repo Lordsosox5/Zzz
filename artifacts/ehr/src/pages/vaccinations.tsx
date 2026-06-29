@@ -24,11 +24,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 export default function Vaccinations() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { data: vaccinations, isLoading } = useListVaccinations({});
   const createMutation = useRecordVaccination();
@@ -288,7 +290,14 @@ export default function Vaccinations() {
               ) : vaccinations && vaccinations.length > 0 ? (
                 vaccinations.map((v) => (
                   <TableRow key={v.id}>
-                    <TableCell>{v.patientId}</TableCell>
+                    <TableCell>
+                      <button
+                        className="font-mono text-primary hover:underline transition-colors"
+                        onClick={() => navigate(`/patients/${v.patientId}`)}
+                      >
+                        {v.patientId}
+                      </button>
+                    </TableCell>
                     <TableCell className="font-medium">{v.vaccineName}</TableCell>
                     <TableCell>{v.doseNumber ?? "-"}</TableCell>
                     <TableCell>{v.administeredDate}</TableCell>

@@ -379,7 +379,11 @@ function GeneralDashboard() {
                   const time = new Date(appt.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                   const avatarLetter = initials(appt.patientName);
                   return (
-                    <div key={appt.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                    <div
+                      key={appt.id}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/patients/${appt.patientId}`)}
+                    >
                       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
                         {avatarLetter}
                       </div>
@@ -1051,7 +1055,11 @@ function NurseDashboard() {
                 {appts.slice(0, 8).map((appt) => {
                   const time = new Date(appt.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
                   return (
-                    <div key={appt.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                    <div
+                      key={appt.id}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/patients/${appt.patientId}`)}
+                    >
                       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
                         {initials(appt.patientName)}
                       </div>
@@ -1280,7 +1288,7 @@ function PharmacistDashboard() {
             ) : rxList.length > 0 ? (
               <div className="divide-y">
                 {rxList.slice(0, 6).map((rx: any) => (
-                  <div key={rx.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate("/prescriptions")}>
+                  <div key={rx.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate(`/patients/${rx.patientId}`)}>
                     <Pill className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{rx.patientName ?? `Patient #${rx.patientId}`}</p>
@@ -1450,7 +1458,7 @@ function BillingOfficerDashboard() {
                 {invoices.slice(0, 8).map((inv: any) => {
                   const balance = inv.totalAmount - (inv.paidAmount ?? 0);
                   return (
-                    <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/40" onClick={() => navigate("/billing")}>
+                    <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/40" onClick={() => navigate(`/patients/${inv.patientId}`)}>
                       <TableCell className="pl-6 font-mono text-sm font-medium">
                         {inv.invoiceNumber ? `#${inv.invoiceNumber}` : `#${String(inv.id).padStart(4, "0")}`}
                       </TableCell>

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useLocation } from "wouter";
 import {
   useListLabOrders, useCreateLabOrder, useUpdateLabOrder,
   getListLabOrdersQueryKey, useListPatients,
@@ -593,6 +594,7 @@ export default function Lab() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const user = getUser();
   const isLabTech = isLabRole(user?.role ?? "");
   const canEnter = canEnterLabResults(user?.role ?? "");
@@ -783,7 +785,14 @@ export default function Lab() {
                 orders.map((order) => (
                   <TableRow key={order.id} className={order.isCritical ? "bg-destructive/5" : undefined}>
                     <TableCell className="text-sm">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="font-medium">{order.patientName ?? `#${order.patientId}`}</TableCell>
+                    <TableCell>
+                      <button
+                        className="font-medium text-foreground hover:text-primary hover:underline transition-colors text-left"
+                        onClick={() => navigate(`/patients/${order.patientId}`)}
+                      >
+                        {order.patientName ?? `#${order.patientId}`}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{order.testName}</span>

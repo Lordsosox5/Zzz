@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceViewDialog } from "@/components/invoice-view-dialog";
+import { useLocation } from "wouter";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -382,6 +383,7 @@ function RecordPaymentDialog({ invoice }: { invoice: Invoice }) {
 export default function Billing() {
   const { t, isRtl, language } = useTranslation();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
 
   const [filterPatientId, setFilterPatientId] = useState<number | null>(null);
   const [filterPatientName, setFilterPatientName] = useState<string>("");
@@ -549,7 +551,14 @@ export default function Billing() {
                         {inv.invoiceNumber ? `#${inv.invoiceNumber}` : `#${String(inv.id).padStart(4, "0")}`}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(inv.createdAt)}</TableCell>
-                      <TableCell className="font-medium">{inv.patientName ?? `${t("billing.patient")} #${inv.patientId}`}</TableCell>
+                      <TableCell>
+                        <button
+                          className="font-medium text-foreground hover:text-primary hover:underline transition-colors text-left"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/patients/${inv.patientId}`); }}
+                        >
+                          {inv.patientName ?? `${t("billing.patient")} #${inv.patientId}`}
+                        </button>
+                      </TableCell>
                       <TableCell className="text-sm">{paymentLabel(inv.paymentMethod)}</TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">SDG {inv.totalAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">

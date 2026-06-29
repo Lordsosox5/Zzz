@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Loader2, Save, Pencil, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 type Appointment = {
   id: number;
@@ -101,6 +102,7 @@ export default function Appointments() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const user = getUser();
 
   const [date, setDate] = useState<string>(
@@ -602,7 +604,14 @@ export default function Appointments() {
                         minute: "2-digit",
                       })}
                     </TableCell>
-                    <TableCell>{appt.patientName}</TableCell>
+                    <TableCell>
+                      <button
+                        className="font-medium text-foreground hover:text-primary hover:underline transition-colors text-left"
+                        onClick={() => navigate(`/patients/${appt.patientId}`)}
+                      >
+                        {appt.patientName ?? `#${appt.patientId}`}
+                      </button>
+                    </TableCell>
                     <TableCell>
                       {appt.doctorName ? `Dr. ${appt.doctorName}` : "—"}
                     </TableCell>

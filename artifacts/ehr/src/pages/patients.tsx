@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   useListPatients,
   useListUnits,
@@ -42,6 +42,7 @@ export default function Patients() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
@@ -145,7 +146,11 @@ export default function Patients() {
                 </TableRow>
               ) : data?.patients && data.patients.length > 0 ? (
                 data.patients.map((patient) => (
-                  <TableRow key={patient.id}>
+                  <TableRow
+                    key={patient.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/patients/${patient.id}`)}
+                  >
                     <TableCell className="px-4 font-mono text-xs">{patient.mrn}</TableCell>
                     <TableCell className="px-4 font-medium">
                       {isRtl && patient.nameAr ? patient.nameAr : patient.nameEn}
@@ -165,7 +170,7 @@ export default function Patients() {
                         {patient.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="px-4">
+                    <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/patients/${patient.id}`}>
