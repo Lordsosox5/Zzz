@@ -1491,6 +1491,14 @@ export const UpdateStaffResponse = zod.object({
 
 
 /**
+ * @summary Delete staff member
+ */
+export const DeleteStaffParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary List vaccinations for a patient
  */
 export const ListVaccinationsQueryParams = zod.object({

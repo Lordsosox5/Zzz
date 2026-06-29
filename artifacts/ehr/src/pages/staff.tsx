@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
-  useListStaff, useCreateStaff, useUpdateStaff,
+  useListStaff, useCreateStaff, useUpdateStaff, useDeleteStaff,
   useListUnits, getListStaffQueryKey,
 } from "@workspace/api-client-react";
+import { getUser } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { ROLE_DEFINITIONS } from "@/lib/permissions";
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Plus, Loader2, Save, CheckCircle2, ShieldCheck, CalendarClock,
-  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, KeyRound, Pencil,
+  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, KeyRound, Pencil, Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -187,6 +188,9 @@ export default function Staff() {
   const [resetShowPass, setResetShowPass] = useState(false);
   const [resetCopied, setResetCopied] = useState(false);
 
+  // Delete staff dialog
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; nameEn: string } | null>(null);
+
   // Edit staff dialog
   const [editTarget, setEditTarget] = useState<{ id: number } | null>(null);
   const [editForm, setEditForm] = useState({
@@ -237,10 +241,28 @@ export default function Staff() {
     );
   };
 
+  const currentUser = getUser();
+
   const { data: staff, isLoading } = useListStaff({});
   const { data: units = [] } = useListUnits();
   const createMutation = useCreateStaff();
   const updateMutation = useUpdateStaff();
+  const deleteMutation = useDeleteStaff();
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(
+      { id: deleteTarget.id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
+          toast({ title: "Account deleted", description: `${deleteTarget.nameEn} has been permanently removed.` });
+          setDeleteTarget(null);
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to delete staff member." }),
+      }
+    );
+  };
 
   const [form, setForm] = useState({
     nameEn: "", nameAr: "", username: "", role: "nurse", department: "", unitId: "",
@@ -690,6 +712,45 @@ export default function Staff() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={v => { if (!v) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Delete Account
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                This will permanently delete{" "}
+                <span className="text-destructive">{deleteTarget?.nameEn}</span>'s account.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This action cannot be undone. The user will immediately lose access to the system.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                {t("generic.cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleteMutation.isPending}
+                className="gap-2"
+              >
+                {deleteMutation.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Trash2 className="h-4 w-4" />}
+                Delete Account
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Staff Dialog */}
       <Dialog open={!!editTarget} onOpenChange={v => { if (!v) setEditTarget(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -981,12 +1042,23 @@ export default function Staff() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs"
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/20 gap-1.5 text-xs"
                               disabled={updateMutation.isPending}
                               onClick={() => handleCancelAccount(member.id, member.nameEn)}
                             >
                               <UserX className="h-3.5 w-3.5" />
-                              Cancel Account
+                              Suspend
+                            </Button>
+                          )}
+                          {currentUser?.id !== member.id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs"
+                              onClick={() => setDeleteTarget({ id: member.id, nameEn: member.nameEn })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
                             </Button>
                           )}
                         </div>
