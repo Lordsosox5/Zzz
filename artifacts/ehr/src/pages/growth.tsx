@@ -204,7 +204,7 @@ export default function Growth() {
             <DialogHeader>
               <DialogTitle>{t("growth.addRecord")}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 py-2">
+            <form onSubmit={handleSubmit} className="space-y-4 py-2" dir={isRtl ? "rtl" : "ltr"}>
               <div className="space-y-2">
                 <Label>{t("generic.patient")} *</Label>
                 <PatientSearchCombobox
@@ -349,7 +349,7 @@ export default function Growth() {
       </Card>
 
       {/* ── Tabs ── */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} dir={isRtl ? "rtl" : "ltr"}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="records" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
@@ -471,10 +471,10 @@ export default function Growth() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <LineChart data={trendData} margin={{ top: 5, right: isRtl ? 0 : 20, left: isRtl ? 20 : 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                      <YAxis unit=" kg" tick={{ fontSize: 11 }} />
+                      <YAxis unit=" kg" tick={{ fontSize: 11 }} orientation={isRtl ? "right" : "left"} />
                       <Tooltip formatter={(v: number) => [`${Number(v).toFixed(1)} kg`, t("growth.weight")]} />
                       <Line
                         type="monotone"
@@ -497,10 +497,10 @@ export default function Growth() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <LineChart data={trendData} margin={{ top: 5, right: isRtl ? 0 : 20, left: isRtl ? 20 : 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                      <YAxis unit=" cm" tick={{ fontSize: 11 }} />
+                      <YAxis unit=" cm" tick={{ fontSize: 11 }} orientation={isRtl ? "right" : "left"} />
                       <Tooltip formatter={(v: number) => [`${Number(v).toFixed(1)} cm`, t("growth.height")]} />
                       <Line
                         type="monotone"
@@ -524,10 +524,10 @@ export default function Growth() {
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={220}>
-                      <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <LineChart data={trendData} margin={{ top: 5, right: isRtl ? 0 : 20, left: isRtl ? 20 : 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                         <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                        <YAxis unit=" cm" tick={{ fontSize: 11 }} domain={["auto", "auto"]} />
+                        <YAxis unit=" cm" tick={{ fontSize: 11 }} domain={["auto", "auto"]} orientation={isRtl ? "right" : "left"} />
                         <Tooltip formatter={(v: number) => [`${Number(v).toFixed(1)} cm`, "MUAC"]} />
                         <ReferenceLine
                           y={12.5}
@@ -619,14 +619,14 @@ export default function Growth() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <ComposedChart data={centileData.weight} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
+                    <ComposedChart data={centileData.weight} margin={{ top: 5, right: isRtl ? 0 : 20, left: isRtl ? 20 : 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                       <XAxis
                         dataKey="month"
                         label={{ value: t("growth.ageMonths"), position: "insideBottom", offset: -10, fontSize: 11 }}
                         tick={{ fontSize: 11 }}
                       />
-                      <YAxis unit=" kg" tick={{ fontSize: 11 }} />
+                      <YAxis unit=" kg" tick={{ fontSize: 11 }} orientation={isRtl ? "right" : "left"} />
                       <Tooltip
                         content={({ active, payload, label }) => {
                           if (!active || !payload?.length) return null;
@@ -689,14 +689,14 @@ export default function Growth() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <ComposedChart data={centileData.height} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
+                    <ComposedChart data={centileData.height} margin={{ top: 5, right: isRtl ? 0 : 20, left: isRtl ? 20 : 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                       <XAxis
                         dataKey="month"
                         label={{ value: t("growth.ageMonths"), position: "insideBottom", offset: -10, fontSize: 11 }}
                         tick={{ fontSize: 11 }}
                       />
-                      <YAxis unit=" cm" tick={{ fontSize: 11 }} />
+                      <YAxis unit=" cm" tick={{ fontSize: 11 }} orientation={isRtl ? "right" : "left"} />
                       <Tooltip
                         content={({ active, payload, label }) => {
                           if (!active || !payload?.length) return null;
