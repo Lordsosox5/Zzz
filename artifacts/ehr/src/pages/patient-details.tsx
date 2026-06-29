@@ -237,19 +237,6 @@ function AddNoteDialog({ patientId, onSuccess }: { patientId: number; onSuccess:
         <DialogHeader><DialogTitle>{t("notes.addClinicalNote")}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-3">
-            <Label>{t("notes.noteType")} *</Label>
-            <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="soap">SOAP</SelectItem>
-                <SelectItem value="progress">Progress</SelectItem>
-                <SelectItem value="discharge">Discharge</SelectItem>
-                <SelectItem value="admission">Admission</SelectItem>
-                <SelectItem value="consultation">Consultation</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-3">
             <Label>{t("notes.content")} *</Label>
             <Textarea required value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} className="min-h-[160px]" placeholder={t("notes.contentPlaceholder")} />
           </div>
