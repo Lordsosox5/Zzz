@@ -440,6 +440,9 @@ function EditPatientDialog({
     nameEn: patient.nameEn ?? "",
     nameAr: patient.nameAr ?? "",
     bloodGroup: patient.bloodGroup ?? "",
+    motherBloodGroup: (patient as any).motherBloodGroup ?? "",
+    nationality: (patient as any).nationality ?? "",
+    nationalId: (patient as any).nationalId ?? "",
     phone: patient.phone ?? "",
     address: patient.address ?? "",
     residence: patient.residence ?? "",
@@ -460,10 +463,13 @@ function EditPatientDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const data: any = {};
-    if (form.nameEn)         data.nameEn         = form.nameEn;
-    if (form.nameAr)         data.nameAr         = form.nameAr;
-    if (form.bloodGroup)     data.bloodGroup     = form.bloodGroup;
-    if (form.phone)          data.phone          = form.phone;
+    if (form.nameEn)            data.nameEn            = form.nameEn;
+    if (form.nameAr)            data.nameAr            = form.nameAr;
+    if (form.bloodGroup)        data.bloodGroup        = form.bloodGroup;
+    if (form.motherBloodGroup)  data.motherBloodGroup  = form.motherBloodGroup;
+    if (form.nationality)       data.nationality       = form.nationality;
+    if (form.nationalId)        data.nationalId        = form.nationalId;
+    if (form.phone)             data.phone             = form.phone;
     if (form.address)        data.address        = form.address;
     if (form.residence)      data.residence      = form.residence;
     if (form.guardianName)   data.guardianName   = form.guardianName;
@@ -527,6 +533,25 @@ function EditPatientDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.motherBloodGroup")}</Label>
+                <Select value={form.motherBloodGroup} onValueChange={v => setForm(p => ({ ...p, motherBloodGroup: v }))}>
+                  <SelectTrigger><SelectValue placeholder={t("patient.selectBloodGroup")} /></SelectTrigger>
+                  <SelectContent>
+                    {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(g => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.nationality")}</Label>
+                <Input value={form.nationality} onChange={set("nationality")} placeholder="e.g. Saudi" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.nationalId")}</Label>
+                <Input value={form.nationalId} onChange={set("nationalId")} placeholder="National / Iqama ID" />
               </div>
               <div className="space-y-1.5">
                 <Label>{t("patient.patientStatus")}</Label>
@@ -1212,6 +1237,26 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                       <span className="text-muted-foreground block mb-1">{t("generic.phone")}</span>
                       <span className="font-medium">{patient.phone || patient.guardianPhone || '-'}</span>
                     </div>
+                    {(patient as any).nationality && (
+                      <div>
+                        <span className="text-muted-foreground block mb-1">{t("patient.nationality")}</span>
+                        <span className="font-medium">{(patient as any).nationality}</span>
+                      </div>
+                    )}
+                    {(patient as any).nationalId && (
+                      <div>
+                        <span className="text-muted-foreground block mb-1">{t("patient.nationalId")}</span>
+                        <span className="font-mono font-medium">{(patient as any).nationalId}</span>
+                      </div>
+                    )}
+                    {(patient as any).motherBloodGroup && (
+                      <div>
+                        <span className="text-muted-foreground block mb-1">{t("patient.motherBloodGroup")}</span>
+                        <Badge variant="outline" className="bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300">
+                          {(patient as any).motherBloodGroup}
+                        </Badge>
+                      </div>
+                    )}
                     <div className="col-span-2">
                       <span className="text-muted-foreground block mb-1">{t("patient.allergies")}</span>
                       {patient.allergies

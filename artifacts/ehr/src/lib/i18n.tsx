@@ -225,6 +225,7 @@ const translations: Translations = {
   "patient.female": { en: "Female", ar: "أنثى" },
   "patient.nationalId": { en: "National ID", ar: "رقم الهوية الوطنية" },
   "patient.nationality": { en: "Nationality", ar: "الجنسية" },
+  "patient.motherBloodGroup": { en: "Mother's Blood Group", ar: "فصيلة دم الأم" },
   "patient.bloodGroup": { en: "Blood Group", ar: "فصيلة الدم" },
   "patient.selectGender": { en: "Select gender", ar: "اختر الجنس" },
   "patient.selectBloodGroup": { en: "Select blood group", ar: "اختر فصيلة الدم" },
