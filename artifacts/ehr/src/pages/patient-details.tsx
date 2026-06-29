@@ -212,34 +212,73 @@ function RecordVitalsDialog({ patientId, onSuccess }: { patientId: number; onSuc
 }
 
 /* ── Add Clinical Note dialog (Consultant / Specialist / Admin) ── */
+const SOAP_EMPTY = { subjective: "", objective: "", assessment: "", plan: "" };
+
 function AddNoteDialog({ patientId, onSuccess }: { patientId: number; onSuccess: () => void }) {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const createNote = useCreateClinicalNote();
-  const [form, setForm] = useState({ type: "soap", content: "" });
+  const [soap, setSoap] = useState(SOAP_EMPTY);
+
+  const set = (field: keyof typeof SOAP_EMPTY) =>
+    (e: React.ChangeEvent<HTMLTextAreaElement>) =>
+      setSoap(p => ({ ...p, [field]: e.target.value }));
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const content = [
+      `S: ${soap.subjective.trim()}`,
+      `O: ${soap.objective.trim()}`,
+      `A: ${soap.assessment.trim()}`,
+      `P: ${soap.plan.trim()}`,
+    ].join("\n\n");
     createNote.mutate(
-      { data: { patientId, type: form.type, content: form.content } },
+      { data: { patientId, type: "soap", content } },
       {
-        onSuccess: () => { toast({ title: t("generic.success"), description: t("generic.addSuccess") }); setOpen(false); setForm({ type: "soap", content: "" }); onSuccess(); },
+        onSuccess: () => {
+          toast({ title: t("generic.success"), description: t("generic.addSuccess") });
+          setOpen(false);
+          setSoap(SOAP_EMPTY);
+          onSuccess();
+        },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
       }
     );
   };
+
+  const sections: { key: keyof typeof SOAP_EMPTY; label: string; hint: string; letter: string; color: string }[] = [
+    { key: "subjective",  label: t("notes.soap.subjective"),  hint: t("notes.soap.subjective.hint"),  letter: "S", color: "text-blue-600 bg-blue-500/10" },
+    { key: "objective",   label: t("notes.soap.objective"),   hint: t("notes.soap.objective.hint"),   letter: "O", color: "text-purple-600 bg-purple-500/10" },
+    { key: "assessment",  label: t("notes.soap.assessment"),  hint: t("notes.soap.assessment.hint"),  letter: "A", color: "text-amber-600 bg-amber-500/10" },
+    { key: "plan",        label: t("notes.soap.plan"),        hint: t("notes.soap.plan.hint"),        letter: "P", color: "text-emerald-600 bg-emerald-500/10" },
+  ];
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSoap(SOAP_EMPTY); }}>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2"><FileText className="h-4 w-4" />{t("patient.addNote")}</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{t("notes.addClinicalNote")}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{t("notes.addClinicalNote")} — SOAP</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-3">
-            <Label>{t("notes.content")} *</Label>
-            <Textarea required value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} className="min-h-[160px]" placeholder={t("notes.contentPlaceholder")} />
-          </div>
+          {sections.map(({ key, label, hint, letter, color }) => (
+            <div key={key} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold shrink-0 ${color}`}>
+                  {letter}
+                </span>
+                <Label className="font-semibold">{label}</Label>
+              </div>
+              <Textarea
+                required={key === "subjective"}
+                value={soap[key]}
+                onChange={set(key)}
+                className="min-h-[80px] resize-y"
+                placeholder={hint}
+              />
+            </div>
+          ))}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={createNote.isPending}>
