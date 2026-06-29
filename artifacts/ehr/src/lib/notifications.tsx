@@ -1,3 +1,4 @@
+// @refresh reset
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { getToken, getUser } from "@/lib/auth";
 
@@ -412,8 +413,21 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   );
 }
 
-export function useNotifications() {
+const EMPTY_NOTIFICATIONS: NotificationsContextValue = {
+  notifications: [],
+  unreadCount: 0,
+  markAllRead: () => {},
+  markRead: () => {},
+  dismiss: () => {},
+};
+
+export function useNotifications(): NotificationsContextValue {
   const ctx = useContext(NotificationsContext);
-  if (!ctx) throw new Error("useNotifications must be used inside NotificationsProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) {
+      console.warn("useNotifications called outside NotificationsProvider — returning empty state.");
+    }
+    return EMPTY_NOTIFICATIONS;
+  }
   return ctx;
 }
