@@ -184,6 +184,7 @@ export const ListPatientsResponse = zod.object({
   "guardianPhone": zod.string().nullish(),
   "allergies": zod.string().nullish(),
   "unitId": zod.number().nullish(),
+  "place": zod.string().nullish(),
   "status": zod.string().optional(),
   "createdAt": zod.string()
 })),
@@ -216,7 +217,8 @@ export const CreatePatientBody = zod.object({
   "guardianRelation": zod.string().optional(),
   "guardianPhone": zod.string().optional(),
   "allergies": zod.string().optional(),
-  "unitId": zod.number().optional()
+  "unitId": zod.number().optional(),
+  "place": zod.string().optional()
 })
 
 
@@ -250,6 +252,7 @@ export const GetPatientResponse = zod.object({
   "guardianPhone": zod.string().nullish(),
   "allergies": zod.string().nullish(),
   "unitId": zod.number().nullish(),
+  "place": zod.string().nullish(),
   "status": zod.string().optional(),
   "createdAt": zod.string()
 })
@@ -279,6 +282,7 @@ export const UpdatePatientBody = zod.object({
   "bloodGroup": zod.string().optional(),
   "motherBloodGroup": zod.string().optional(),
   "unitId": zod.number().optional(),
+  "place": zod.string().optional(),
   "status": zod.string().optional()
 })
 
@@ -305,6 +309,7 @@ export const UpdatePatientResponse = zod.object({
   "guardianPhone": zod.string().nullish(),
   "allergies": zod.string().nullish(),
   "unitId": zod.number().nullish(),
+  "place": zod.string().nullish(),
   "status": zod.string().optional(),
   "createdAt": zod.string()
 })
@@ -569,6 +574,7 @@ export const GetPatientSummaryResponse = zod.object({
   "guardianPhone": zod.string().nullish(),
   "allergies": zod.string().nullish(),
   "unitId": zod.number().nullish(),
+  "place": zod.string().nullish(),
   "status": zod.string().optional(),
   "createdAt": zod.string()
 }),

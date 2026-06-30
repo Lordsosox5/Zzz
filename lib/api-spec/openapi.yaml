@@ -1247,6 +1247,7 @@ components:
         guardianPhone: { type: ["string", "null"] }
         allergies: { type: ["string", "null"] }
         unitId: { type: ["integer", "null"] }
+        place: { type: ["string", "null"] }
         status: { type: string }
         createdAt: { type: string }
 
@@ -1274,6 +1275,7 @@ components:
         guardianPhone: { type: string }
         allergies: { type: string }
         unitId: { type: integer }
+        place: { type: string }
 
     PatientUpdate:
       type: object
@@ -1294,6 +1296,7 @@ components:
         bloodGroup: { type: string }
         motherBloodGroup: { type: string }
         unitId: { type: integer }
+        place: { type: string }
         status: { type: string }
 
     AdmissionAssessment:

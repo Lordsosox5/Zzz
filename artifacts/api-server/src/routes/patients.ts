@@ -72,11 +72,12 @@ router.get("/patients", async (req, res): Promise<void> => {
 
 router.post("/patients", async (req, res): Promise<void> => {
   const unitId = req.body.unitId ? Number(req.body.unitId) : undefined;
+  const place = req.body.place ? String(req.body.place) : null;
   const parsed = CreatePatientBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
     const mrn = generateMRN();
-    const insertData = { ...toSnake(parsed.data as Record<string, unknown>), mrn, unit_id: unitId ?? null };
+    const insertData = { ...toSnake(parsed.data as Record<string, unknown>), mrn, unit_id: unitId ?? null, place };
     const { data, error } = await supabase.from("patients").insert(insertData).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
     res.status(201).json(mapRow(data));

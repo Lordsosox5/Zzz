@@ -77,6 +77,8 @@ export interface Patient {
   allergies?: string | null;
   /** @nullable */
   unitId?: number | null;
+  /** @nullable */
+  place?: string | null;
   status?: string;
   createdAt: string;
 }
@@ -102,6 +104,7 @@ export interface PatientInput {
   guardianPhone?: string;
   allergies?: string;
   unitId?: number;
+  place?: string;
 }
 
 export interface PatientUpdate {
@@ -121,6 +124,7 @@ export interface PatientUpdate {
   bloodGroup?: string;
   motherBloodGroup?: string;
   unitId?: number;
+  place?: string;
   status?: string;
 }
 

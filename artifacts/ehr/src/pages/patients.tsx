@@ -577,9 +577,20 @@ export default function Patients() {
                         : patient.gender}
                     </TableCell>
                     <TableCell className="px-4">
-                      <Badge variant={patient.status === "active" ? "default" : "secondary"}>
-                        {patient.status === "active" ? "في المستشفى" : "خرج"}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant={patient.status === "active" ? "default" : "secondary"}>
+                          {patient.status === "active" ? "في المستشفى" : "خرج"}
+                        </Badge>
+                        {(patient as any).place && (
+                          <span className="text-[11px] font-medium text-muted-foreground">
+                            {(patient as any).place === "picu" ? "PICU"
+                              : (patient as any).place === "phdu" ? "PHDU"
+                              : (patient as any).place === "nursery" ? (isRtl ? "الحضانة" : "Nursery")
+                              : (patient as any).place === "general_ward" ? (isRtl ? "العنبر العام" : "General Ward")
+                              : (patient as any).place}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">

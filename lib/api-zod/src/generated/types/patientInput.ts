@@ -27,4 +27,5 @@ export interface PatientInput {
   guardianPhone?: string;
   allergies?: string;
   unitId?: number;
+  place?: string;
 }

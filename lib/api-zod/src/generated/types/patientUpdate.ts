@@ -23,5 +23,6 @@ export interface PatientUpdate {
   bloodGroup?: string;
   motherBloodGroup?: string;
   unitId?: number;
+  place?: string;
   status?: string;
 }

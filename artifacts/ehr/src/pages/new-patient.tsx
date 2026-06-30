@@ -215,7 +215,7 @@ export default function NewPatient() {
     phone: "", address: "", residence: "",
     weight: "", height: "", admissionDate: "", dischargeDate: "",
     guardianName: "", guardianRelation: "parent", guardianPhone: "",
-    allergies: "", unitId: "",
+    allergies: "", unitId: "", place: "",
   });
 
   // ── History (Step 2) ──
@@ -317,7 +317,7 @@ export default function NewPatient() {
     };
     const optionals: (keyof typeof demo)[] = [
       "nameAr","bloodGroup","motherBloodGroup","nationality","nationalId","phone","address","residence",
-      "weight","height","admissionDate","dischargeDate","guardianName","guardianRelation","guardianPhone","allergies",
+      "weight","height","admissionDate","dischargeDate","guardianName","guardianRelation","guardianPhone","allergies","place",
     ];
     for (const k of optionals) { if (demo[k]) patientData[k] = demo[k]; }
     if (demo.unitId) patientData.unitId = Number(demo.unitId);
@@ -437,6 +437,19 @@ export default function NewPatient() {
                 {u.nameEn}{u.nameAr ? ` — ${u.nameAr}` : ""}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label={t("patient.placeInHospital")}>
+        <Select value={demo.place} onValueChange={v => setDemo(p => ({ ...p, place: v }))}>
+          <SelectTrigger>
+            <SelectValue placeholder={isRtl ? "اختر المكان" : "Select place"} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="picu">{t("patient.placePicu")}</SelectItem>
+            <SelectItem value="phdu">{t("patient.placePhdu")}</SelectItem>
+            <SelectItem value="nursery">{t("patient.placeNursery")}</SelectItem>
+            <SelectItem value="general_ward">{t("patient.placeGeneralWard")}</SelectItem>
           </SelectContent>
         </Select>
       </Field>

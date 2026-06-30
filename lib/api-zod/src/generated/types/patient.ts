@@ -46,6 +46,8 @@ export interface Patient {
   allergies?: string | null;
   /** @nullable */
   unitId?: number | null;
+  /** @nullable */
+  place?: string | null;
   status?: string;
   createdAt: string;
 }
