@@ -537,6 +537,7 @@ const translations: Translations = {
   "staff.pharmacist": { en: "Pharmacist", ar: "صيدلاني" },
   "staff.admin": { en: "Admin", ar: "مدير نظام" },
   "staff.accountsManager": { en: "Accounts Manager", ar: "مدير الحسابات" },
+  "staff.administrative": { en: "Administrative", ar: "إداري" },
   "staff.noStaff": { en: "No staff members found.", ar: "لا يوجد موظفون." },
 
   // Vaccinations dialog

@@ -168,6 +168,17 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     ],
     allowedNav: ["/staff"],
   },
+  administrative: {
+    label: { en: "Administrative", ar: "إداري" },
+    description: { en: "General administrative staff handling scheduling, coordination and support", ar: "موظف إداري يتولى الجدولة والتنسيق والدعم العام" },
+    badgeClass: "bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300",
+    authorities: [
+      { en: "View dashboard and general statistics", ar: "عرض لوحة التحكم والإحصائيات العامة" },
+      { en: "View and manage appointments", ar: "عرض وإدارة المواعيد" },
+      { en: "View staff directory", ar: "عرض دليل الموظفين" },
+    ],
+    allowedNav: ["/dashboard", "/appointments", "/staff"],
+  },
   data_analyser: {
     label: { en: "Data Analyser", ar: "محلل البيانات" },
     description: { en: "Read-only access to all patient data with full export capabilities", ar: "وصول للقراءة فقط على جميع بيانات المرضى مع إمكانية التصدير الكامل" },
@@ -198,6 +209,7 @@ const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
   billing_officer:      ["overview", "billing"],
   data_analyser:        ["overview"],
   accounts_manager:     [],
+  administrative:       [],
 };
 
 export function isLabRole(role: string): boolean {

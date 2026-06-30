@@ -49,6 +49,9 @@ const ROLE_NOTIF_TYPES: Record<string, NotifType[]> = {
   pharmacist:           ["low_stock", "pending_rx", "system_alert"],
   lab_technician:       ["critical_lab", "pending_lab", "system_alert"],
   billing_officer:      ["pending_invoice", "overdue_invoice", "system_alert"],
+  administrative:       ["new_appointment", "system_alert"],
+  accounts_manager:     ["system_alert"],
+  data_analyser:        ["system_alert"],
 };
 
 function getAllowedTypes(role: string): NotifType[] {
