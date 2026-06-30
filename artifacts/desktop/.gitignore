@@ -1,6 +1,8 @@
-# Credentials — never commit this
-config.json
-
-# Build output
-dist-electron/
+dist/
+dist-ssr/
 node_modules/
+src-tauri/target/
+*.local
+.env
+config.json
+dist-electron/

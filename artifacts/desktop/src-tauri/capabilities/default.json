@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capability.json",
+  "identifier": "default",
+  "description": "Default capability for the Almuzini EHR desktop app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default"
+  ]
+}

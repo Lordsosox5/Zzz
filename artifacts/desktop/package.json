@@ -1,67 +1,37 @@
 {
   "name": "@workspace/desktop",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Almuzini Children Hospital EHR — Desktop Application",
-  "main": "electron/main.js",
+  "type": "module",
   "scripts": {
-    "start": "electron .",
-    "build": "bash scripts/build.sh",
-    "build:win": "bash scripts/build.sh --win",
-    "build:mac": "bash scripts/build.sh --mac",
-    "build:linux": "bash scripts/build.sh --linux"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:windows": "tauri build --target x86_64-pc-windows-msvc"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "bcryptjs": "^2.4.3",
+    "lucide-react": "^0.545.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-router-dom": "^6.27.0"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
-  },
-  "build": {
-    "appId": "com.almuzini.ehr",
-    "productName": "Almuzini EHR",
-    "copyright": "© Almuzini Children Hospital",
-    "asar": true,
-    "directories": {
-      "output": "dist-electron",
-      "buildResources": "build"
-    },
-    "files": [
-      "electron/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../api-server/dist",
-        "to": "api",
-        "filter": ["**/*", "!**/*.map"]
-      },
-      {
-        "from": "../ehr/dist/public",
-        "to": "www",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "config.json",
-        "to": "config.json"
-      }
-    ],
-    "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }]
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "deleteAppDataOnUninstall": false,
-      "shortcutName": "Almuzini EHR"
-    },
-    "mac": {
-      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
-      "category": "public.app-category.medical"
-    },
-    "dmg": {
-      "title": "Almuzini EHR ${version}"
-    },
-    "linux": {
-      "target": [{ "target": "AppImage", "arch": ["x64"] }],
-      "category": "Science"
-    }
+    "@tauri-apps/cli": "^2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3",
+    "vite": "^7.3.2"
   }
 }
