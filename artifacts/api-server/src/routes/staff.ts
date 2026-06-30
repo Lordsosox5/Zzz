@@ -132,6 +132,12 @@ router.delete("/staff/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
+    const { data: target, error: fetchErr } = await supabase.from("users").select("role").eq("id", id).single();
+    if (fetchErr || !target) { res.status(404).json({ error: "User not found" }); return; }
+    if (target.role === "super_admin") {
+      res.status(403).json({ error: "Super admin accounts cannot be deleted." });
+      return;
+    }
     const { error } = await supabase.from("users").delete().eq("id", id);
     if (error) { res.status(500).json({ error: error.message }); return; }
     expiryStore.delete(id);

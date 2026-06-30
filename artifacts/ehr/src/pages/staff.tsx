@@ -6,7 +6,7 @@ import {
 import { getUser } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
-import { ROLE_DEFINITIONS } from "@/lib/permissions";
+import { ROLE_DEFINITIONS, canFullyManageStaff } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,6 +242,7 @@ export default function Staff() {
   };
 
   const currentUser = getUser();
+  const isFullAdmin = canFullyManageStaff(currentUser?.role ?? "");
 
   const { data: staff, isLoading } = useListStaff({});
   const { data: units = [] } = useListUnits();
@@ -485,6 +486,7 @@ export default function Staff() {
                             <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
                             <SelectItem value="admin">{t("staff.admin")}</SelectItem>
                             <SelectItem value="data_analyser">Data Analyser</SelectItem>
+                            <SelectItem value="accounts_manager">{t("staff.accountsManager")}</SelectItem>
                           </SelectGroup>
                         </SelectContent>
                       </Select>
@@ -802,6 +804,7 @@ export default function Staff() {
                       <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
                       <SelectItem value="admin">{t("staff.admin")}</SelectItem>
                       <SelectItem value="data_analyser">Data Analyser</SelectItem>
+                      <SelectItem value="accounts_manager">{t("staff.accountsManager")}</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -1029,28 +1032,43 @@ export default function Staff() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-1.5 text-xs"
-                            onClick={() => openEdit(member)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          {isActive && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/20 gap-1.5 text-xs"
-                              disabled={updateMutation.isPending}
-                              onClick={() => handleCancelAccount(member.id, member.nameEn)}
-                            >
-                              <UserX className="h-3.5 w-3.5" />
-                              Suspend
-                            </Button>
+                          {isFullAdmin && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-1.5 text-xs"
+                                onClick={() => openEdit(member)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit
+                              </Button>
+                              {isActive && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/20 gap-1.5 text-xs"
+                                  disabled={updateMutation.isPending}
+                                  onClick={() => handleCancelAccount(member.id, member.nameEn)}
+                                >
+                                  <UserX className="h-3.5 w-3.5" />
+                                  Suspend
+                                </Button>
+                              )}
+                              {isActive && currentUser?.id !== member.id && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1.5 text-xs"
+                                  onClick={() => openReset(member.id, member.nameEn)}
+                                >
+                                  <KeyRound className="h-3.5 w-3.5" />
+                                  Reset
+                                </Button>
+                              )}
+                            </>
                           )}
-                          {currentUser?.id !== member.id && (
+                          {currentUser?.id !== member.id && member.role !== "super_admin" && (
                             <Button
                               size="sm"
                               variant="ghost"

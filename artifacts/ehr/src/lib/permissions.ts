@@ -158,6 +158,16 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
     ],
     allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units"],
   },
+  accounts_manager: {
+    label: { en: "Accounts Manager", ar: "مدير الحسابات" },
+    description: { en: "Can register and delete staff accounts (except super admins)", ar: "يمكنه تسجيل وحذف حسابات الموظفين (باستثناء المدراء)" },
+    badgeClass: "bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-900/30 dark:text-slate-300",
+    authorities: [
+      { en: "Register new staff accounts", ar: "تسجيل حسابات موظفين جدد" },
+      { en: "Delete staff accounts (non-super admin)", ar: "حذف حسابات الموظفين (غير المدراء)" },
+    ],
+    allowedNav: ["/staff"],
+  },
   data_analyser: {
     label: { en: "Data Analyser", ar: "محلل البيانات" },
     description: { en: "Read-only access to all patient data with full export capabilities", ar: "وصول للقراءة فقط على جميع بيانات المرضى مع إمكانية التصدير الكامل" },
@@ -187,6 +197,7 @@ const PATIENT_TAB_ACCESS: Record<string, PatientTab[]> = {
   lab_technician:       ["labs"],
   billing_officer:      ["overview", "billing"],
   data_analyser:        ["overview"],
+  accounts_manager:     [],
 };
 
 export function isLabRole(role: string): boolean {
@@ -250,6 +261,10 @@ export function canExportData(role: string): boolean {
 }
 
 export function canManageStaff(role: string): boolean {
+  return ["super_admin", "accounts_manager"].includes(role);
+}
+
+export function canFullyManageStaff(role: string): boolean {
   return ["super_admin"].includes(role);
 }
 
