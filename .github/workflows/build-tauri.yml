@@ -1,0 +1,84 @@
+name: Build Almuzini EHR Desktop (Windows)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./artifacts/ehr/src-tauri -> target"
+
+      - name: Install JS dependencies
+        run: pnpm install
+
+      - name: Generate app icons
+        shell: pwsh
+        run: |
+          $iconDir = "artifacts/ehr/src-tauri/icons"
+          New-Item -ItemType Directory -Force -Path $iconDir | Out-Null
+          # Install sharp to generate icons
+          pnpm --filter @workspace/ehr exec node -e "
+            const fs = require('fs');
+            const path = require('path');
+            // Create minimal valid 1x1 PNGs (will be replaced by tauri icon command)
+            const png1x1 = Buffer.from(
+              '89504e470d0a1a0a0000000d49484452000000010000000108020000' +
+              '0090775de0000000' + '0c4944415478016360f8cf0000000200' +
+              '01e221bc330000000049454e44ae426082', 'hex'
+            );
+            ['32x32.png','128x128.png','128x128@2x.png'].forEach(f =>
+              fs.writeFileSync(path.join('src-tauri','icons',f), png1x1)
+            );
+            console.log('Placeholder PNGs created');
+          " || echo "Node icon script skipped"
+          # Install tauri CLI and generate proper icons from SVG
+          pnpm --filter @workspace/ehr add -D @tauri-apps/cli@^2 --ignore-workspace-root-check 2>$null || true
+          pnpm --filter @workspace/ehr exec tauri icon artifacts/ehr/app-icon.svg --output artifacts/ehr/src-tauri/icons 2>&1 || echo "Tauri icon generation skipped - using placeholders"
+
+      - name: Build Tauri Windows installer
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_TAURI: "true"
+        with:
+          projectPath: "./artifacts/ehr"
+          tauriScript: "pnpm tauri"
+          args: --target x86_64-pc-windows-msvc
+
+      - name: Upload Windows installer (.msi)
+        uses: actions/upload-artifact@v4
+        with:
+          name: almuzini-ehr-windows-${{ github.sha }}
+          path: |
+            artifacts/ehr/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            artifacts/ehr/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: warn
+          retention-days: 30

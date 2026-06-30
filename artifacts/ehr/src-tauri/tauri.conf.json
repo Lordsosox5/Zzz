@@ -1,0 +1,41 @@
+{
+  "productName": "Almuzini EHR",
+  "version": "1.0.0",
+  "identifier": "sa.almuzini.ehr",
+  "build": {
+    "frontendDist": "../dist/public",
+    "devUrl": "http://localhost:5000",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Almuzini Children Hospital — EHR",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": {}
+    }
+  }
+}
