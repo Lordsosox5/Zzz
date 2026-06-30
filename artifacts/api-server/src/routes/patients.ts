@@ -102,7 +102,7 @@ router.get("/patients/:id", async (req, res): Promise<void> => {
     const { data, error } = await supabase.from("patients").select("*").eq("id", params.data.id).limit(1);
     if (error) { res.status(500).json({ error: error.message }); return; }
     if (!data?.[0]) { res.status(404).json({ error: "Patient not found" }); return; }
-    res.json(mapRow(data[0]));
+    res.json(mapPatient(data[0]));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -114,10 +114,13 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
   const parsed = UpdatePatientBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const { data, error } = await supabase.from("patients").update(toSnake(parsed.data as Record<string, unknown>)).eq("id", params.data.id).select().single();
+    const updates = toSnake(parsed.data as Record<string, unknown>);
+    // remap place → address (Supabase has no 'place' column)
+    if ("place" in updates) { updates.address = updates.place; delete updates.place; }
+    const { data, error } = await supabase.from("patients").update(updates).eq("id", params.data.id).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
     if (!data) { res.status(404).json({ error: "Patient not found" }); return; }
-    res.json(mapRow(data));
+    res.json(mapPatient(data));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -191,7 +194,7 @@ router.get("/patients/:id/summary", async (req, res): Promise<void> => {
     ]);
 
     res.json({
-      patient: mapRow(patientData[0]),
+      patient: mapPatient(patientData[0]),
       recentNotes: mapRows(notes.data ?? []).map(n => ({ ...n, authorName: null })),
       activePrescriptions: mapRows(rxs.data ?? []).map(p => ({ ...p, patientName: null, prescriberName: null })),
       pendingLabOrders: mapRows(labs.data ?? []).map(l => ({ ...l, patientName: null, orderedByName: null })),
