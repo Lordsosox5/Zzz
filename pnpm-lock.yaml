@@ -283,6 +283,9 @@ importers:
 
   artifacts/ehr:
     dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.49.4
+        version: 2.108.2
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
