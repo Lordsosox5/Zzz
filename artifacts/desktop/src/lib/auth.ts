@@ -1,76 +1,35 @@
-import bcrypt from "bcryptjs";
-import { supabase } from "./supabase";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
-export interface StaffUser {
-  id: number;
-  nameEn: string;
-  nameAr?: string;
-  username: string;
-  role: string;
-  department?: string;
-  unitId?: number;
-  email?: string;
-  phone?: string;
-}
-
-const SESSION_KEY = "almuzini_desktop_user";
-
-export function getStoredUser(): StaffUser | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function storeUser(user: StaffUser) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-}
-
-export function clearUser() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
-export async function login(
-  username: string,
-  password: string
-): Promise<StaffUser> {
-  const { data, error } = await supabase
-    .from("staff")
-    .select("*")
-    .eq("username", username.trim())
-    .single();
-
-  if (error || !data) {
-    throw new Error("Invalid username or password.");
-  }
-
-  const storedPassword: string = data.password ?? "";
-
-  let passwordOk = false;
-  if (storedPassword.startsWith("$2")) {
-    passwordOk = await bcrypt.compare(password, storedPassword);
+export function setToken(token: string | null) {
+  if (token) {
+    localStorage.setItem("ehr_token", token);
   } else {
-    passwordOk = password === storedPassword;
+    localStorage.removeItem("ehr_token");
   }
-
-  if (!passwordOk) {
-    throw new Error("Invalid username or password.");
-  }
-
-  const user: StaffUser = {
-    id: data.id,
-    nameEn: data.nameEn ?? data.name_en ?? username,
-    nameAr: data.nameAr ?? data.name_ar,
-    username: data.username,
-    role: data.role,
-    department: data.department,
-    unitId: data.unitId ?? data.unit_id,
-    email: data.email,
-    phone: data.phone,
-  };
-
-  storeUser(user);
-  return user;
 }
+
+export function getToken(): string | null {
+  return localStorage.getItem("ehr_token");
+}
+
+export function setUser(user: any | null) {
+  if (user) {
+    localStorage.setItem("ehr_user", JSON.stringify(user));
+  } else {
+    localStorage.removeItem("ehr_user");
+  }
+}
+
+export function getUser(): any | null {
+  const user = localStorage.getItem("ehr_user");
+  return user ? JSON.parse(user) : null;
+}
+
+export function logout() {
+  setToken(null);
+  setUser(null);
+  window.location.href = "/login";
+}
+
+// Initialize API client with token from local storage
+setAuthTokenGetter(() => getToken());

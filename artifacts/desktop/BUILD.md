@@ -61,18 +61,25 @@ TAURI_ENV_PLATFORM=windows cargo tauri build --target x86_64-pc-windows-msvc -- 
 
 ## Architecture
 
-The desktop app calls **Supabase directly** — no separate API server needed:
+The desktop app is a **full clone of the main web EHR** — same pages, same components,
+same business logic — packaged as a native Tauri app that calls **Supabase directly**
+instead of going through the Express API server:
 
 ```
-Tauri WebView (Windows)
-  └── React frontend (src/)
-        └── @supabase/supabase-js → Supabase cloud
+Tauri WebView
+  └── React frontend (src/) — identical to artifacts/ehr/src
+        └── src/lib/supabase-interceptor.ts patches window.fetch
+              so every /api/* call the shared pages make is served
+              locally via @supabase/supabase-js → Supabase cloud
 ```
 
-- **Login** authenticates against the `staff` table (supports bcrypt-hashed passwords)
-- **Dashboard** queries patient counts, today's appointments, critical lab flags
-- **Patients** — full list, search, add new patient
-- **Appointments** — day view with date picker
+All modules from the web app are included: Dashboard, Patients, Appointments,
+Clinical Notes, Diagnoses, Prescriptions, Laboratory, Radiology, Pharmacy, Billing,
+Staff, Vaccinations, Growth Monitoring, Units, Settings, and role-based access.
+
+Since the frontend source is copied directly from `artifacts/ehr/src`, keeping this
+app in sync with the web app going forward means re-copying `artifacts/ehr/src` into
+`artifacts/desktop/src` (minus `src/lib/supabase.ts`, which the desktop build doesn't use).
 
 ---
 
