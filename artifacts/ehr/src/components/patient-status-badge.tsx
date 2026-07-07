@@ -1,5 +1,4 @@
 import { Activity, CheckCircle2, UserRound, ArrowRightLeft, HelpCircle } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
 
 type PatientStatus = "admitted" | "outpatient" | "discharged" | "transferred" | string;
 
@@ -74,11 +73,14 @@ interface Props {
 }
 
 export function PatientStatusBadge({ status, size = "md" }: Props) {
-  const { language } = useTranslation();
+  const language =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("ehr_lang") ?? "en")
+      : "en";
+
   const cfg = STATUS_CONFIG[status] ?? FALLBACK;
   const Icon = cfg.icon;
   const label = language === "ar" ? cfg.labelAr : cfg.labelEn;
-
   const isSm = size === "sm";
 
   return (
@@ -88,7 +90,6 @@ export function PatientStatusBadge({ status, size = "md" }: Props) {
         ${isSm ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"}
       `}
     >
-      {/* Dot with optional pulse animation */}
       <span className="relative flex shrink-0 items-center justify-center">
         <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
         {cfg.pulse && (
