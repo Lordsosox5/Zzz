@@ -188,6 +188,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      hasown:
+        specifier: ^2.0.4
+        version: 2.0.4
       pino:
         specifier: ^9.14.0
         version: 9.14.0

@@ -4,17 +4,28 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// PORT and BASE_PATH are required in the Replit web environment but are
-// intentionally absent during `tauri build` (Vite is used for static output
-// only, no dev server starts). Fall back to safe defaults so the Tauri build
-// pipeline can complete without env vars.
+const isBuild = process.argv.includes("build");
+const isTauri = process.env.VITE_TAURI === "true";
+
+// PORT is only needed when running the dev/preview server, not during build
 const rawPort = process.env.PORT;
-const port = rawPort ? Number(rawPort) : 5000;
-if (Number.isNaN(port) || port <= 0) {
+if (!isBuild && !rawPort) {
+  throw new Error("PORT environment variable is required but was not provided.");
+}
+const port = rawPort ? Number(rawPort) : 3000;
+if (!isBuild && (Number.isNaN(port) || port <= 0)) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH ?? "/";
+// BASE_PATH: use "./" for Tauri desktop builds (file:// protocol needs relative paths),
+// "/" for web server, or the provided env var
+const basePath = isTauri
+  ? "./"
+  : (process.env.BASE_PATH ?? (isBuild ? "./" : "/"));
+
+if (!isBuild && !process.env.BASE_PATH) {
+  throw new Error("BASE_PATH environment variable is required but was not provided.");
+}
 
 export default defineConfig({
   base: basePath,
@@ -56,22 +67,10 @@ export default defineConfig({
     fs: {
       strict: true,
     },
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
-    },
   },
   preview: {
     port,
     host: "0.0.0.0",
     allowedHosts: true,
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
-    },
   },
 });
