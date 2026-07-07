@@ -23,13 +23,28 @@ import { useToast } from "@/hooks/use-toast";
 import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 import { RadiologyReportViewDialog, type RadiologyOrderForReport } from "@/components/radiology-report-view-dialog";
 
+const REPORT_TEMPLATE = `CLINICAL INDICATION:
+[Enter clinical indication / reason for study]
+
+TECHNIQUE:
+[Describe imaging technique, sequences, contrast used]
+
+FINDINGS:
+[Describe all relevant positive and negative findings systematically]
+
+IMPRESSION:
+[Summarize key findings and provide a differential diagnosis or conclusion]
+
+RECOMMENDATIONS:
+[Optional: follow-up imaging, clinical correlation, or further workup]`;
+
 /* ── Enter Radiology Report Dialog ── */
 function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { orderId: number; studyDescription: string; onSuccess: () => void }) {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const updateMutation = useUpdateRadiologyOrder();
-  const [form, setForm] = useState({ report: "", completedAt: new Date().toISOString().slice(0, 16) });
+  const [form, setForm] = useState({ report: REPORT_TEMPLATE, completedAt: new Date().toISOString().slice(0, 16) });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +58,7 @@ function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { 
         onSuccess: () => {
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setOpen(false);
-          setForm({ report: "", completedAt: new Date().toISOString().slice(0, 16) });
+          setForm({ report: REPORT_TEMPLATE, completedAt: new Date().toISOString().slice(0, 16) });
           onSuccess();
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
@@ -58,30 +73,38 @@ function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { 
           <FileText className="h-3.5 w-3.5" /> {t("radiology.enterReport")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{t("radiology.reportTitle")}: {studyDescription}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            {t("radiology.reportTitle")}: <span className="font-normal text-muted-foreground">{studyDescription}</span>
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-3">
-            <Label>{t("radiology.reportText")} *</Label>
+          <div className="rounded-lg border bg-muted/30 px-4 py-3 text-xs text-muted-foreground flex items-start gap-2">
+            <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>Fill in each section of the structured report below. Replace bracketed placeholders with actual findings.</span>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">{t("radiology.reportText")} *</Label>
             <Textarea
               required
               value={form.report}
               onChange={e => setForm(p => ({ ...p, report: e.target.value }))}
-              className="min-h-[180px]"
-              placeholder={t("radiology.reportPlaceholder")}
+              className="min-h-[340px] font-mono text-sm leading-relaxed resize-y"
             />
           </div>
-          <div className="space-y-3">
-            <Label>{t("radiology.reportedAt")}</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">{t("radiology.reportedAt")}</Label>
             <Input type="datetime-local" value={form.completedAt} onChange={e => setForm(p => ({ ...p, completedAt: e.target.value }))} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
-            <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className={`${isRtl ? "ml-2" : "mr-2"} h-4 w-4`} />}
-              {t("generic.save")}
+            <Button type="submit" disabled={updateMutation.isPending} className="gap-1.5">
+              {updateMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Save className="h-4 w-4" />}
+              {t("radiology.statusReported")} &amp; {t("generic.save")}
             </Button>
           </div>
         </form>
