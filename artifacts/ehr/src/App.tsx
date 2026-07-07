@@ -31,6 +31,7 @@ import Growth from "@/pages/growth";
 import Settings from "@/pages/settings";
 import Units from "@/pages/units";
 import MyPatients from "@/pages/my-patients";
+import WardPatients from "@/pages/ward-patients";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -168,6 +169,14 @@ function Router() {
 
       <Route path="/my-patients">
         {() => <ProtectedRoute component={MyPatients} requiredPath="/my-patients" />}
+      </Route>
+
+      <Route path="/nursery">
+        {() => <ProtectedRoute component={() => <WardPatients ward="nursery" />} requiredPath="/nursery" />}
+      </Route>
+
+      <Route path="/picu">
+        {() => <ProtectedRoute component={() => <WardPatients ward="picu" />} requiredPath="/picu" />}
       </Route>
 
       <Route component={NotFound} />

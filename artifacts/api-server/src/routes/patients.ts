@@ -55,6 +55,7 @@ router.get("/patients", async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   try {
     const { search, page = 1, limit = 20 } = params.data;
+    const place = typeof req.query.place === "string" ? req.query.place : undefined;
     const offset = (page - 1) * limit;
     const caller = await getCallerInfo(req.headers.authorization);
     const isUnitRestricted = caller && UNIT_RESTRICTED_ROLES.includes(caller.role);
@@ -66,6 +67,7 @@ router.get("/patients", async (req, res): Promise<void> => {
 
     let query = supabase.from("patients").select("*", { count: "exact" });
     if (isUnitRestricted && caller.unitId !== null) query = query.eq("unit_id", caller.unitId);
+    if (place) query = query.eq("address", place);
     if (search) query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%`);
     query = query.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
 

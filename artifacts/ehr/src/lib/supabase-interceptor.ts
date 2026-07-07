@@ -114,11 +114,13 @@ async function handleGetMe(): Promise<Response> {
 async function handleGetPatients(params: URLSearchParams): Promise<Response> {
   const search = params.get("search");
   const status = params.get("status");
+  const place = params.get("place");
   const limit = parseInt(params.get("limit") ?? "50", 10);
   const offset = parseInt(params.get("offset") ?? "0", 10);
 
   let query = supabase.from("patients").select("*", { count: "exact" });
   if (status) query = query.eq("status", status);
+  if (place) query = query.eq("address", place);
   if (search)
     query = query.or(
       `name_en.ilike.%${search}%,name_ar.ilike.%${search}%,mrn.ilike.%${search}%`,

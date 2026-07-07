@@ -30,6 +30,8 @@ const translations: Translations = {
   "nav.logout": { en: "Logout", ar: "تسجيل الخروج" },
   "nav.units": { en: "Units", ar: "الوحدات" },
   "nav.myPatients": { en: "My Patients", ar: "المرضى" },
+  "nav.nursery": { en: "Nursery", ar: "الحضانة" },
+  "nav.picu": { en: "PICU", ar: "وحدة العناية المركزة" },
 
   // Notifications
   "notif.title": { en: "Notifications", ar: "الإشعارات" },
