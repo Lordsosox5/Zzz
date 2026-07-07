@@ -14,7 +14,12 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH ?? "/";
+// Tauri CLI injects TAURI_ENV_PLATFORM during `tauri build`.
+// Desktop apps load assets from disk (no web server), so Vite must emit
+// relative paths ("./assets/…") instead of absolute paths ("/assets/…").
+// In the Replit web environment BASE_PATH is provided explicitly.
+const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM;
+const basePath = isTauriBuild ? "./" : (process.env.BASE_PATH ?? "/");
 
 export default defineConfig({
   base: basePath,
