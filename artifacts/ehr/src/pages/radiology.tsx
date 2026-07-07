@@ -23,42 +23,59 @@ import { useToast } from "@/hooks/use-toast";
 import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 import { RadiologyReportViewDialog, type RadiologyOrderForReport } from "@/components/radiology-report-view-dialog";
 
-const REPORT_TEMPLATE = `CLINICAL INDICATION:
-[Enter clinical indication / reason for study]
+interface ReportSections {
+  indication: string;
+  technique: string;
+  findings: string;
+  impression: string;
+  recommendations: string;
+  completedAt: string;
+}
 
-TECHNIQUE:
-[Describe imaging technique, sequences, contrast used]
+const BLANK_SECTIONS: ReportSections = {
+  indication: "",
+  technique: "",
+  findings: "",
+  impression: "",
+  recommendations: "",
+  completedAt: new Date().toISOString().slice(0, 16),
+};
 
-FINDINGS:
-[Describe all relevant positive and negative findings systematically]
-
-IMPRESSION:
-[Summarize key findings and provide a differential diagnosis or conclusion]
-
-RECOMMENDATIONS:
-[Optional: follow-up imaging, clinical correlation, or further workup]`;
+function sectionsToText(s: ReportSections): string {
+  const parts: string[] = [];
+  if (s.indication.trim())     parts.push(`CLINICAL INDICATION:\n${s.indication.trim()}`);
+  if (s.technique.trim())      parts.push(`TECHNIQUE:\n${s.technique.trim()}`);
+  if (s.findings.trim())       parts.push(`FINDINGS:\n${s.findings.trim()}`);
+  if (s.impression.trim())     parts.push(`IMPRESSION:\n${s.impression.trim()}`);
+  if (s.recommendations.trim()) parts.push(`RECOMMENDATIONS:\n${s.recommendations.trim()}`);
+  return parts.join("\n\n");
+}
 
 /* ── Enter Radiology Report Dialog ── */
 function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { orderId: number; studyDescription: string; onSuccess: () => void }) {
-  const { t, isRtl } = useTranslation();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const updateMutation = useUpdateRadiologyOrder();
-  const [form, setForm] = useState({ report: REPORT_TEMPLATE, completedAt: new Date().toISOString().slice(0, 16) });
+  const [form, setForm] = useState<ReportSections>({ ...BLANK_SECTIONS, completedAt: new Date().toISOString().slice(0, 16) });
+
+  const set = (key: keyof ReportSections) => (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) =>
+    setForm(p => ({ ...p, [key]: e.target.value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.report.trim()) {
+    const reportText = sectionsToText(form);
+    if (!reportText.trim()) {
       toast({ variant: "destructive", title: t("generic.error"), description: t("generic.requiredField") });
       return;
     }
     updateMutation.mutate(
-      { id: orderId, data: { status: "reported", report: form.report, completedAt: new Date(form.completedAt).toISOString() } },
+      { id: orderId, data: { status: "reported", report: reportText, completedAt: new Date(form.completedAt).toISOString() } },
       {
         onSuccess: () => {
           toast({ title: t("generic.success"), description: t("generic.addSuccess") });
           setOpen(false);
-          setForm({ report: REPORT_TEMPLATE, completedAt: new Date().toISOString().slice(0, 16) });
+          setForm({ ...BLANK_SECTIONS, completedAt: new Date().toISOString().slice(0, 16) });
           onSuccess();
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("generic.addError") }),
@@ -73,38 +90,98 @@ function EnterRadiologyReportDialog({ orderId, studyDescription, onSuccess }: { 
           <FileText className="h-3.5 w-3.5" /> {t("radiology.enterReport")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            {t("radiology.reportTitle")}: <span className="font-normal text-muted-foreground">{studyDescription}</span>
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-primary shrink-0" />
+            {t("radiology.reportTitle")}
+            <span className="font-normal text-muted-foreground truncate">— {studyDescription}</span>
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="rounded-lg border bg-muted/30 px-4 py-3 text-xs text-muted-foreground flex items-start gap-2">
-            <FileText className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>Fill in each section of the structured report below. Replace bracketed placeholders with actual findings.</span>
+
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+            {/* Clinical Indication */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Clinical Indication <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={form.indication}
+                onChange={set("indication")}
+                placeholder="Reason for study / clinical history…"
+                className="min-h-[72px] resize-none text-sm"
+              />
+            </div>
+
+            {/* Technique */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Technique
+              </Label>
+              <Textarea
+                value={form.technique}
+                onChange={set("technique")}
+                placeholder="Imaging technique, sequences, contrast used…"
+                className="min-h-[72px] resize-none text-sm"
+              />
+            </div>
+
+            {/* Findings */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Findings <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={form.findings}
+                onChange={set("findings")}
+                placeholder="Describe all relevant positive and negative findings systematically…"
+                className="min-h-[120px] resize-none text-sm"
+              />
+            </div>
+
+            {/* Impression */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Impression <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={form.impression}
+                onChange={set("impression")}
+                placeholder="Summary of key findings, differential diagnosis or conclusion…"
+                className="min-h-[88px] resize-none text-sm"
+              />
+            </div>
+
+            {/* Recommendations */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Recommendations
+              </Label>
+              <Textarea
+                value={form.recommendations}
+                onChange={set("recommendations")}
+                placeholder="Follow-up imaging, clinical correlation, or further workup (optional)…"
+                className="min-h-[60px] resize-none text-sm"
+              />
+            </div>
+
+            {/* Reported At */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                {t("radiology.reportedAt")}
+              </Label>
+              <Input type="datetime-local" value={form.completedAt} onChange={set("completedAt")} className="text-sm" />
+            </div>
+
           </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">{t("radiology.reportText")} *</Label>
-            <Textarea
-              required
-              value={form.report}
-              onChange={e => setForm(p => ({ ...p, report: e.target.value }))}
-              className="min-h-[340px] font-mono text-sm leading-relaxed resize-y"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">{t("radiology.reportedAt")}</Label>
-            <Input type="datetime-local" value={form.completedAt} onChange={e => setForm(p => ({ ...p, completedAt: e.target.value }))} />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
+
+          <div className="flex justify-end gap-2 px-6 py-4 border-t shrink-0">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("generic.cancel")}</Button>
             <Button type="submit" disabled={updateMutation.isPending} className="gap-1.5">
-              {updateMutation.isPending
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Save className="h-4 w-4" />}
-              {t("radiology.statusReported")} &amp; {t("generic.save")}
+              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {t("generic.save")} — {t("radiology.statusReported")}
             </Button>
           </div>
         </form>
