@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Loader2, Baby, BedDouble, UserRound, CalendarDays } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getToken } from "@/lib/auth";
+import { PatientStatusBadge } from "@/components/patient-status-badge";
 
 type WardType = "nursery" | "picu";
 
@@ -27,13 +28,6 @@ type Patient = {
 const GENDER_BADGE: Record<string, string> = {
   male:   "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   female: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  admitted:    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-  discharged:  "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-  transferred: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  outpatient:  "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
 };
 
 function calcAge(dob: string): string {
@@ -223,18 +217,7 @@ export default function WardPatients({ ward }: { ward: WardType }) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge
-                        variant="secondary"
-                        className={`text-[11px] capitalize ${STATUS_BADGE[patient.status] ?? "bg-muted text-muted-foreground"}`}
-                      >
-                        {isRtl
-                          ? patient.status === "admitted" ? "داخلي"
-                          : patient.status === "discharged" ? "خرج"
-                          : patient.status === "transferred" ? "محوّل"
-                          : patient.status === "outpatient" ? "خارجي"
-                          : patient.status
-                          : patient.status}
-                      </Badge>
+                      <PatientStatusBadge status={patient.status} size="sm" />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">

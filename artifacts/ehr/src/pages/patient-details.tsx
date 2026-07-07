@@ -52,6 +52,8 @@ import {
   CartesianGrid, Tooltip, Legend,
 } from "recharts";
 
+import { PatientStatusBadge } from "@/components/patient-status-badge";
+
 /* ── Helpers ── */
 function StatusBadge({ status }: { status: string }) {
   const variant =
@@ -1155,8 +1157,9 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   <><span>•</span><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">{patient.bloodGroup}</Badge></>
                 )}
               </div>
-              {/* Unit indicator */}
-              <div className="flex items-center gap-2 mt-2">
+              {/* Status + Unit indicator */}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <PatientStatusBadge status={patient.status ?? "admitted"} />
                 {canTransfer ? (
                   <AssignUnitDropdown
                     patientId={patientId}

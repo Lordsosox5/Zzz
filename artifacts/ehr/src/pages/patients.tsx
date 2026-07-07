@@ -36,6 +36,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Search, UserPlus, Loader2, Building2, Trash2, FileSpreadsheet, Filter, CalendarRange, Stethoscope, Users } from "lucide-react";
+import { PatientStatusBadge } from "@/components/patient-status-badge";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
@@ -577,12 +578,11 @@ export default function Patients() {
                         : patient.gender}
                     </TableCell>
                     <TableCell className="px-4">
-                      <div className="flex flex-col gap-1">
-                        <Badge variant={patient.status === "active" ? "default" : "secondary"}>
-                          {patient.status === "active" ? "في المستشفى" : "خرج"}
-                        </Badge>
+                      <div className="flex flex-col gap-1.5">
+                        <PatientStatusBadge status={patient.status} size="sm" />
                         {(patient as any).place && (
-                          <span className="text-[11px] font-medium text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                             {(patient as any).place === "picu" ? "PICU"
                               : (patient as any).place === "phdu" ? "PHDU"
                               : (patient as any).place === "nursery" ? (isRtl ? "الحضانة" : "Nursery")

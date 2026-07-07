@@ -87,6 +87,7 @@ const translations: Translations = {
   "patient.statusAdmitted": { en: "Admitted", ar: "مقيم" },
   "patient.statusOutpatient": { en: "Outpatient", ar: "خارجي" },
   "patient.statusDischarged": { en: "Discharged", ar: "خُرِّج" },
+  "patient.statusTransferred": { en: "Transferred", ar: "محوّل" },
 
   // Login
   "login.title": { en: "Sign In", ar: "تسجيل الدخول" },
