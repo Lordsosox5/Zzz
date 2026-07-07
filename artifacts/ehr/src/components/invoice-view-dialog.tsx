@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { printHtml } from "@/lib/print-html";
 import { type Invoice } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -54,9 +55,7 @@ export function InvoiceViewDialog({
     const printContent = printRef.current;
     if (!printContent) return;
     const dir = isRtl ? "rtl" : "ltr";
-    const printWindow = window.open("", "_blank", "width=800,height=600");
-    if (!printWindow) return;
-    printWindow.document.write(`<!DOCTYPE html>
+    printHtml(`<!DOCTYPE html>
 <html dir="${dir}" lang="${language}">
 <head>
   <meta charset="UTF-8" />
@@ -182,9 +181,6 @@ export function InvoiceViewDialog({
   </div>
 </body>
 </html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 400);
   };
 
   return (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { openOrNavigate } from "@/lib/tauri";
 import {
   useGetPatientSummary, getGetPatientSummaryQueryKey,
   useListLabOrders, useListRadiologyOrders,
@@ -1194,7 +1195,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             <Button asChild variant="secondary"><Link href="/appointments"><Calendar className="mr-2 h-4 w-4" />{t("patient.newAppointment")}</Link></Button>
             <Button
               variant="outline"
-              onClick={() => window.open(`/patients/${patientId}/print`, "_blank")}
+              onClick={() => openOrNavigate(`/patients/${patientId}/print`)}
               className="gap-2"
             >
               <Printer className="h-4 w-4" />
@@ -1728,7 +1729,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                           <TableCell className="text-end">
                             <Button
                               size="sm" variant="outline" className="gap-1"
-                              onClick={() => window.open(`/patients/${patientId}/discharge-print/${ds.id}`, "_blank")}
+                              onClick={() => openOrNavigate(`/patients/${patientId}/discharge-print/${ds.id}`)}
                             >
                               <Printer className="h-3 w-3" /> {t("discharge.printLetter")}
                             </Button>

@@ -9,6 +9,7 @@ import {
   CheckCircle2, Clock, FlaskConical,
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { printHtml } from "@/lib/print-html";
 
 export type RadiologyOrderForReport = {
   id: number;
@@ -94,13 +95,11 @@ export function RadiologyReportViewDialog({
   const handlePrint = () => {
     const el = document.getElementById(`rad-report-${order.id}`);
     if (!el) return;
-    const win = window.open("", "_blank");
-    if (!win) return;
     const dir = language === "ar" ? "rtl" : "ltr";
     const font = language === "ar"
       ? "'Tajawal', 'Segoe UI', Arial, sans-serif"
       : "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
-    win.document.write(`<!DOCTYPE html>
+    printHtml(`<!DOCTYPE html>
 <html dir="${dir}" lang="${language}">
 <head>
   <meta charset="UTF-8" />
@@ -163,8 +162,6 @@ export function RadiologyReportViewDialog({
 <body>
 ${el.innerHTML}
 </body></html>`);
-    win.document.close();
-    setTimeout(() => { win.focus(); win.print(); }, 400);
   };
 
   return (

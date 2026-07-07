@@ -12,6 +12,7 @@ import {
   type LabTest,
 } from "@/lib/lab-tests";
 import { useTranslation } from "@/lib/i18n";
+import { printHtml } from "@/lib/print-html";
 
 export type OrderForReport = {
   id: number;
@@ -112,8 +113,6 @@ export function LabResultViewDialog({
     t("lab.routineLabel");
 
   const handlePrint = () => {
-    const win = window.open("", "_blank");
-    if (!win) return;
     const dir = language === "ar" ? "rtl" : "ltr";
     const isAr = language === "ar";
     const fontFamily = isAr
@@ -201,7 +200,7 @@ export function LabResultViewDialog({
         </svg>
       </div>` : "";
 
-    win.document.write(`<!DOCTYPE html>
+    printHtml(`<!DOCTYPE html>
 <html dir="${dir}" lang="${language}">
 <head>
   <meta charset="utf-8">
@@ -521,8 +520,6 @@ export function LabResultViewDialog({
 
 </div><!-- /page -->
 </body></html>`);
-    win.document.close();
-    setTimeout(() => win.print(), 700);
   };
 
   const resultedDate = order.resultedAt
