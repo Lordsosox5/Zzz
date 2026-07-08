@@ -18,12 +18,12 @@ import {
   Users, Calendar, FlaskConical, Receipt, Pill,
   TrendingUp, TrendingDown, Minus, Download, RefreshCw,
   AlertTriangle, CheckCircle, Clock, FileBarChart,
-  Activity, Brain, BarChart3,
+  Activity, Brain, BarChart3, LayoutGrid,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { generateReportPDF } from "@/lib/report-pdf";
+import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
 
-type ReportType = "patients" | "appointments" | "lab" | "revenue" | "prescriptions";
+type ReportType = "overall" | "patients" | "appointments" | "lab" | "revenue" | "prescriptions";
 type Period = "today" | "week" | "month" | "quarter" | "half" | "year";
 
 const PERIODS: { value: Period; labelEn: string; labelAr: string }[] = [
@@ -36,6 +36,7 @@ const PERIODS: { value: Period; labelEn: string; labelAr: string }[] = [
 ];
 
 const REPORT_TYPES: { value: ReportType; icon: React.ElementType; labelEn: string; labelAr: string; color: string }[] = [
+  { value: "overall",       icon: LayoutGrid,   labelEn: "Overall",       labelAr: "الكل",             color: "#0ea5e9" },
   { value: "patients",      icon: Users,        labelEn: "Patients",      labelAr: "المرضى",          color: "#3b82f6" },
   { value: "appointments",  icon: Calendar,     labelEn: "Appointments",  labelAr: "المواعيد",         color: "#8b5cf6" },
   { value: "lab",           icon: FlaskConical, labelEn: "Lab Orders",    labelAr: "طلبات المختبر",    color: "#f59e0b" },
@@ -302,6 +303,16 @@ export default function Reports() {
   const reportLabel = REPORT_TYPES.find(r => r.value === reportType)?.[language === "ar" ? "labelAr" : "labelEn"] ?? reportType;
 
   function exportToExcel() {
+    if (reportType === "overall") {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(patients),      "Patients");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appointments),  "Appointments");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(labOrders),     "Lab Orders");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoices),      "Revenue");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prescriptions), "Prescriptions");
+      XLSX.writeFile(wb, `Overall-Hospital-${period}-report.xlsx`);
+      return;
+    }
     let data: any[] = [];
     let sheetName = reportLabel;
     switch (reportType) {
@@ -322,6 +333,148 @@ export default function Reports() {
     const en = language !== "ar";
 
     switch (reportType) {
+      case "overall": {
+        const admitted   = patients.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
+        const discharged = patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length;
+        const totalRev   = invoices.reduce((s, i) => s + Number(i.totalAmount ?? i.total_amount ?? 0), 0);
+        const totalPaid  = invoices.reduce((s, i) => s + Number(i.paidAmount ?? i.paid_amount ?? 0), 0);
+        const compAppts  = appointments.filter(a => a.status === "completed").length;
+        const dispRx     = prescriptions.filter(r => r.status === "dispensed").length;
+        const labDone    = labOrders.filter(l => l.status === "resulted" || l.status === "reviewed").length;
+        const collRate   = totalRev > 0 ? `${((totalPaid / totalRev) * 100).toFixed(1)}%` : "0%";
+
+        const patTrend   = groupByTime(patients, "createdAt", groupBy);
+        const apptTrend  = groupByTime(appointments, "scheduledAt", groupBy);
+        const labTrend   = groupByTime(labOrders, "createdAt", groupBy);
+        const revTrend   = groupByTime(invoices, "createdAt", groupBy);
+        const rxTrend    = groupByTime(prescriptions, "createdAt", groupBy);
+
+        const compApptRate = appointments.length > 0 ? `${((compAppts / appointments.length) * 100).toFixed(1)}%` : "0%";
+        const dispRxRate   = prescriptions.length > 0 ? `${((dispRx / prescriptions.length) * 100).toFixed(1)}%` : "0%";
+        const labRate      = labOrders.length > 0 ? `${((labDone / labOrders.length) * 100).toFixed(1)}%` : "0%";
+        const cancAppts    = appointments.filter(a => a.status === "cancelled").length;
+        const cancApptRate = appointments.length > 0 ? `${((cancAppts / appointments.length) * 100).toFixed(1)}%` : "0%";
+        const rxPending    = prescriptions.filter(r => r.status === "pending").length;
+        const labPending   = labOrders.filter(l => l.status === "pending").length;
+        const labCritical  = labOrders.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length;
+        const rxCancelled  = prescriptions.filter(r => r.status === "cancelled").length;
+
+        generateOverallReportPDF({
+          period: periodLabel,
+          dateRange,
+          language,
+          execKpis: [
+            { label: en ? "Patients"     : "المرضى",         value: patients.length },
+            { label: en ? "Appointments" : "المواعيد",        value: appointments.length },
+            { label: en ? "Lab Orders"   : "طلبات المختبر",   value: labOrders.length },
+            { label: en ? "Revenue (SAR)": "الإيرادات",       value: `SAR ${totalRev.toLocaleString()}`, sub: collRate },
+            { label: en ? "Prescriptions": "الوصفات",         value: prescriptions.length },
+          ],
+          sections: [
+            {
+              title: en ? "Patients" : "المرضى",
+              color: [59, 130, 246],
+              kpis: [
+                { label: en ? "Period Total" : "إجمالي الفترة", value: patients.length },
+                { label: en ? "Admitted"     : "مقبولون",        value: admitted },
+                { label: en ? "Discharged"   : "مخرجون",         value: discharged },
+                { label: en ? "System Total" : "إجمالي النظام",  value: allPatients.length },
+              ],
+              trendData: patTrend,
+              trendLabel: en ? "Registrations" : "التسجيلات",
+              tableColumns: en ? ["File #", "Name", "Gender", "Status"] : ["رقم الملف", "الاسم", "الجنس", "الحالة"],
+              tableRows: patients.slice(0, 50).map(p => ({
+                "File #": p.fileNumber ?? "—", Name: p.nameEn ?? "—",
+                "رقم الملف": p.fileNumber ?? "—", "الاسم": p.nameEn ?? "—",
+                Gender: p.gender ?? "—", "الجنس": p.gender ?? "—",
+                Status: p.status ?? "—", "الحالة": p.status ?? "—",
+              })),
+              interpretation: buildPatientInterp(patients, allPatients, admitted, discharged, patTrend, periodLabel, language),
+            },
+            {
+              title: en ? "Appointments" : "المواعيد",
+              color: [139, 92, 246],
+              kpis: [
+                { label: en ? "Total"     : "الإجمالي",  value: appointments.length },
+                { label: en ? "Completed" : "مكتملة",    value: compAppts,  sub: compApptRate },
+                { label: en ? "Scheduled" : "مجدولة",    value: appointments.filter(a => a.status === "scheduled").length },
+                { label: en ? "Cancelled" : "ملغاة",     value: cancAppts,  sub: cancApptRate },
+              ],
+              trendData: apptTrend,
+              trendLabel: en ? "Appointments" : "المواعيد",
+              tableColumns: en ? ["Patient", "Type", "Status"] : ["المريض", "النوع", "الحالة"],
+              tableRows: appointments.slice(0, 50).map(a => ({
+                Patient: a.patientName ?? "—", "المريض": a.patientName ?? "—",
+                Type: a.type ?? "—", "النوع": a.type ?? "—",
+                Status: a.status ?? "—", "الحالة": a.status ?? "—",
+              })),
+              interpretation: buildApptInterp(appointments, compAppts, cancAppts, compApptRate, cancApptRate, periodLabel, language),
+            },
+            {
+              title: en ? "Lab Orders" : "طلبات المختبر",
+              color: [245, 158, 11],
+              kpis: [
+                { label: en ? "Total"   : "الإجمالي",   value: labOrders.length },
+                { label: en ? "Resulted": "مكتملة",      value: labDone,    sub: labRate },
+                { label: en ? "Pending" : "معلقة",       value: labPending },
+                { label: en ? "Urgent"  : "عاجلة",       value: labCritical },
+              ],
+              trendData: labTrend,
+              trendLabel: en ? "Lab Orders" : "طلبات المختبر",
+              tableColumns: en ? ["Patient", "Test", "Priority", "Status"] : ["المريض", "الفحص", "الأولوية", "الحالة"],
+              tableRows: labOrders.slice(0, 50).map(l => ({
+                Patient: l.patientName ?? "—", "المريض": l.patientName ?? "—",
+                Test: l.testName ?? "—", "الفحص": l.testName ?? "—",
+                Priority: l.priority ?? "normal", "الأولوية": l.priority ?? "normal",
+                Status: l.status ?? "—", "الحالة": l.status ?? "—",
+              })),
+              interpretation: buildLabInterp(labOrders, labDone, labPending, labCritical, labRate, periodLabel, language),
+            },
+            {
+              title: en ? "Revenue" : "الإيرادات",
+              color: [16, 185, 129],
+              kpis: [
+                { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SAR ${totalRev.toLocaleString()}` },
+                { label: en ? "Collected"     : "المحصّل",          value: `SAR ${totalPaid.toLocaleString()}`, sub: collRate },
+                { label: en ? "Outstanding"   : "المتأخرات",        value: `SAR ${(totalRev - totalPaid).toLocaleString()}` },
+                { label: en ? "Invoices"      : "الفواتير",         value: invoices.length },
+              ],
+              trendData: revTrend,
+              trendLabel: en ? "Revenue" : "الإيرادات",
+              tableColumns: en ? ["Patient", "Total", "Paid", "Status"] : ["المريض", "المبلغ", "المدفوع", "الحالة"],
+              tableRows: invoices.slice(0, 50).map(i => ({
+                Patient: i.patientName ?? "—", "المريض": i.patientName ?? "—",
+                Total: Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
+                "المبلغ": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
+                Paid: Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
+                "المدفوع": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
+                Status: i.status ?? "—", "الحالة": i.status ?? "—",
+              })),
+              interpretation: buildRevenueInterp(invoices, totalRev, totalPaid, totalRev - totalPaid, collRate, revTrend, periodLabel, language),
+            },
+            {
+              title: en ? "Prescriptions" : "الوصفات الطبية",
+              color: [239, 68, 68],
+              kpis: [
+                { label: en ? "Total"     : "الإجمالي", value: prescriptions.length },
+                { label: en ? "Dispensed" : "مصروفة",   value: dispRx,     sub: dispRxRate },
+                { label: en ? "Pending"   : "معلقة",    value: rxPending },
+                { label: en ? "Cancelled" : "ملغاة",    value: rxCancelled },
+              ],
+              trendData: rxTrend,
+              trendLabel: en ? "Prescriptions" : "الوصفات",
+              tableColumns: en ? ["Patient", "Doctor", "Status"] : ["المريض", "الطبيب", "الحالة"],
+              tableRows: prescriptions.slice(0, 50).map(r => ({
+                Patient: r.patientName ?? "—", "المريض": r.patientName ?? "—",
+                Doctor: r.doctorName ?? "—", "الطبيب": r.doctorName ?? "—",
+                Status: r.status ?? "—", "الحالة": r.status ?? "—",
+              })),
+              interpretation: buildRxInterp(prescriptions, dispRx, rxPending, rxCancelled, dispRxRate, periodLabel, language),
+            },
+          ],
+        });
+        break;
+      }
       case "patients": {
         const admitted   = patients.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
         const discharged = patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length;
@@ -560,6 +713,14 @@ export default function Reports() {
       </div>
 
       {/* Report Sections */}
+      {reportType === "overall" && (
+        <OverallReport
+          patients={patients} allPatients={allPatients as any[]}
+          appointments={appointments} labOrders={labOrders}
+          invoices={invoices} prescriptions={prescriptions}
+          groupBy={groupBy} periodLabel={periodLabel} language={language}
+        />
+      )}
       {reportType === "patients" && (
         <PatientReport patients={patients} allPatients={allPatients as any[]} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
       )}
@@ -575,6 +736,225 @@ export default function Reports() {
       {reportType === "prescriptions" && (
         <PrescriptionReport prescriptions={prescriptions} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════ OVERALL REPORT ═══════════════════════════════════════ */
+function OverallReport({ patients, allPatients, appointments, labOrders, invoices, prescriptions, groupBy, periodLabel, language }:
+  { patients: any[]; allPatients: any[]; appointments: any[]; labOrders: any[]; invoices: any[]; prescriptions: any[]; groupBy: any; periodLabel: string; language: string }) {
+
+  const en = language !== "ar";
+  const totalRev  = invoices.reduce((s, i) => s + Number(i.totalAmount ?? i.total_amount ?? 0), 0);
+  const totalPaid = invoices.reduce((s, i) => s + Number(i.paidAmount ?? i.paid_amount ?? 0), 0);
+  const collRate  = totalRev > 0 ? `${((totalPaid / totalRev) * 100).toFixed(1)}%` : "0%";
+  const compAppts = appointments.filter(a => a.status === "completed").length;
+  const compRate  = appointments.length > 0 ? `${((compAppts / appointments.length) * 100).toFixed(1)}%` : "0%";
+  const labDone   = labOrders.filter(l => l.status === "resulted" || l.status === "reviewed").length;
+  const labRate   = labOrders.length > 0 ? `${((labDone / labOrders.length) * 100).toFixed(1)}%` : "0%";
+  const dispRx    = prescriptions.filter(r => r.status === "dispensed").length;
+  const dispRate  = prescriptions.length > 0 ? `${((dispRx / prescriptions.length) * 100).toFixed(1)}%` : "0%";
+  const admitted  = patients.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
+
+  const sections = [
+    {
+      titleEn: "Patients", titleAr: "المرضى",
+      icon: Users, color: "#3b82f6",
+      kpis: [
+        { label: en ? "Period Total"  : "إجمالي الفترة",  value: patients.length },
+        { label: en ? "System Total"  : "إجمالي النظام",   value: allPatients.length },
+        { label: en ? "Admitted"      : "مقبولون",         value: admitted },
+      ],
+      trendData: groupByTime(patients, "createdAt", groupBy),
+      interp: buildPatientInterp(patients, allPatients, admitted,
+        patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length,
+        groupByTime(patients, "createdAt", groupBy), periodLabel, language)[0],
+    },
+    {
+      titleEn: "Appointments", titleAr: "المواعيد",
+      icon: Calendar, color: "#8b5cf6",
+      kpis: [
+        { label: en ? "Total"     : "الإجمالي", value: appointments.length },
+        { label: en ? "Completed" : "مكتملة",   value: compAppts, sub: compRate },
+        { label: en ? "Cancelled" : "ملغاة",    value: appointments.filter(a => a.status === "cancelled").length },
+      ],
+      trendData: groupByTime(appointments, "scheduledAt", groupBy),
+      interp: buildApptInterp(appointments, compAppts, appointments.filter(a => a.status === "cancelled").length, compRate,
+        appointments.length > 0 ? `${((appointments.filter(a => a.status === "cancelled").length / appointments.length) * 100).toFixed(1)}%` : "0%",
+        periodLabel, language)[0],
+    },
+    {
+      titleEn: "Lab Orders", titleAr: "طلبات المختبر",
+      icon: FlaskConical, color: "#f59e0b",
+      kpis: [
+        { label: en ? "Total"   : "الإجمالي", value: labOrders.length },
+        { label: en ? "Resulted": "مكتملة",   value: labDone, sub: labRate },
+        { label: en ? "Pending" : "معلقة",    value: labOrders.filter(l => l.status === "pending").length },
+      ],
+      trendData: groupByTime(labOrders, "createdAt", groupBy),
+      interp: buildLabInterp(labOrders, labDone, labOrders.filter(l => l.status === "pending").length,
+        labOrders.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length,
+        labRate, periodLabel, language)[0],
+    },
+    {
+      titleEn: "Revenue", titleAr: "الإيرادات",
+      icon: Receipt, color: "#10b981",
+      kpis: [
+        { label: en ? "Total Revenue": "إجمالي الإيرادات", value: `SAR ${totalRev.toLocaleString()}` },
+        { label: en ? "Collected"    : "المحصّل",          value: `SAR ${totalPaid.toLocaleString()}`, sub: collRate },
+        { label: en ? "Outstanding"  : "المتأخرات",        value: `SAR ${(totalRev - totalPaid).toLocaleString()}` },
+      ],
+      trendData: groupByTime(invoices, "createdAt", groupBy),
+      interp: buildRevenueInterp(invoices, totalRev, totalPaid, totalRev - totalPaid, collRate,
+        groupByTime(invoices, "createdAt", groupBy), periodLabel, language)[0],
+    },
+    {
+      titleEn: "Prescriptions", titleAr: "الوصفات الطبية",
+      icon: Pill, color: "#ef4444",
+      kpis: [
+        { label: en ? "Total"     : "الإجمالي", value: prescriptions.length },
+        { label: en ? "Dispensed" : "مصروفة",   value: dispRx, sub: dispRate },
+        { label: en ? "Pending"   : "معلقة",    value: prescriptions.filter(r => r.status === "pending").length },
+      ],
+      trendData: groupByTime(prescriptions, "createdAt", groupBy),
+      interp: buildRxInterp(prescriptions, dispRx,
+        prescriptions.filter(r => r.status === "pending").length,
+        prescriptions.filter(r => r.status === "cancelled").length,
+        dispRate, periodLabel, language)[0],
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Executive KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {sections.map(s => {
+          const Icon = s.icon;
+          return (
+            <Card key={s.titleEn} className="relative overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: `${s.color}18` }}>
+                    <Icon className="h-4 w-4" style={{ color: s.color }} />
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {en ? s.titleEn : s.titleAr}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {s.kpis.map((kpi, ki) => (
+                    <div key={ki} className={`flex items-center justify-between ${ki === 0 ? "" : "opacity-70"}`}>
+                      <span className="text-[10px] text-muted-foreground truncate">{kpi.label}</span>
+                      <span className={`font-bold ${ki === 0 ? "text-base" : "text-xs"} text-foreground`}>{kpi.value}</span>
+                    </div>
+                  ))}
+                  {s.kpis[1]?.sub && (
+                    <div className="text-[10px] font-medium mt-0.5" style={{ color: s.color }}>{s.kpis[1].sub}</div>
+                  )}
+                </div>
+              </CardContent>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(to right, ${s.color}80, transparent)` }} />
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Combined trend chart */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            {en ? "Combined Hospital Activity" : "النشاط الكلي للمستشفى"}
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {en ? "All modules aggregated by period" : "جميع الأقسام مجمعة حسب الفترة"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(() => {
+            const combinedMap: Record<string, number> = {};
+            sections.forEach(s => s.trendData.forEach(d => {
+              combinedMap[d.name] = (combinedMap[d.name] ?? 0) + d.count;
+            }));
+            const combined = Object.entries(combinedMap).map(([name, count]) => ({ name, count }));
+            return combined.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={combined}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" name={en ? "Events" : "أحداث"} fill="#0ea5e9" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                {en ? "No data for selected period" : "لا توجد بيانات للفترة المحددة"}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
+      {/* Per-module mini cards with analysis */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {sections.map(s => {
+          const Icon = s.icon;
+          return (
+            <Card key={s.titleEn} className="border" style={{ borderLeftColor: s.color, borderLeftWidth: 3 }}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Icon className="h-4 w-4" style={{ color: s.color }} />
+                  {en ? s.titleEn : s.titleAr}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex gap-4 mb-3">
+                  {s.kpis.map((kpi, ki) => (
+                    <div key={ki} className="flex flex-col">
+                      <span className="text-[10px] text-muted-foreground uppercase">{kpi.label}</span>
+                      <span className="text-lg font-bold text-foreground">{kpi.value}</span>
+                      {kpi.sub && <span className="text-[10px]" style={{ color: s.color }}>{kpi.sub}</span>}
+                    </div>
+                  ))}
+                </div>
+                {s.trendData.length > 1 && (
+                  <ResponsiveContainer width="100%" height={70}>
+                    <BarChart data={s.trendData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                      <Bar dataKey="count" fill={s.color} radius={[2, 2, 0, 0]} />
+                      <XAxis dataKey="name" tick={{ fontSize: 8 }} axisLine={false} tickLine={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+                {s.interp && (
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed border-t pt-2 border-border">
+                    {s.interp}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Overall interpretation */}
+      <InterpretationPanel language={language} lines={
+        en ? [
+          `Period "${periodLabel}" summary across all hospital departments.`,
+          `Patient flow: ${patients.length} registered (${admitted} admitted, ${patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length} discharged).`,
+          `Appointment efficiency: ${compAppts}/${appointments.length} completed (${compRate}) — ${Number(compRate.replace("%","")) >= 80 ? "Excellent." : "Needs review."}`,
+          `Lab turnaround: ${labDone}/${labOrders.length} resulted (${labRate}).`,
+          `Revenue collected: SAR ${totalPaid.toLocaleString()} / SAR ${totalRev.toLocaleString()} (${collRate}).`,
+          `Pharmacy dispensing: ${dispRx}/${prescriptions.length} dispensed (${dispRate}).`,
+        ] : [
+          `ملخص فترة "${periodLabel}" عبر جميع أقسام المستشفى.`,
+          `تدفق المرضى: ${patients.length} مسجّل (${admitted} مقبول، ${patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length} مخرج).`,
+          `كفاءة المواعيد: ${compAppts}/${appointments.length} مكتملة (${compRate}) — ${Number(compRate.replace("%","")) >= 80 ? "ممتاز." : "يحتاج مراجعة."}`,
+          `معدل المختبر: ${labDone}/${labOrders.length} مكتملة (${labRate}).`,
+          `الإيرادات المحصّلة: ${totalPaid.toLocaleString()} / ${totalRev.toLocaleString()} ر.س (${collRate}).`,
+          `صرف الوصفات: ${dispRx}/${prescriptions.length} مصروفة (${dispRate}).`,
+        ]
+      } />
     </div>
   );
 }
