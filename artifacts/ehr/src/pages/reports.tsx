@@ -241,9 +241,9 @@ function buildRevenueInterp(invoices: any[], totalRev: number, totalPaid: number
     trend.length > 1 ? `أعلى فاتورة في الفترة: ${peakRev.toLocaleString()} ر.س.` : "بيانات محدودة — مدّد الفترة لتحليل أعمق.",
   ];
   return [
-    `During "${periodLabel}", total revenue reached SAR ${totalRev.toLocaleString()} across ${invoices.length} invoice(s).`,
-    `Collected: SAR ${totalPaid.toLocaleString()} — Collection rate: ${collRate} — ${Number(collRate) >= 90 ? "Excellent financial performance." : Number(collRate) >= 70 ? "Good, with room for improvement." : "Below benchmark — review collection policies."}`,
-    totalUnpaid > 0 ? `Outstanding: SAR ${totalUnpaid.toLocaleString()} — accounts receivable follow-up recommended.` : "No outstanding balances — excellent billing performance.",
+    `During "${periodLabel}", total revenue reached SDG ${totalRev.toLocaleString()} across ${invoices.length} invoice(s).`,
+    `Collected: SDG ${totalPaid.toLocaleString()} — Collection rate: ${collRate} — ${Number(collRate) >= 90 ? "Excellent financial performance." : Number(collRate) >= 70 ? "Good, with room for improvement." : "Below benchmark — review collection policies."}`,
+    totalUnpaid > 0 ? `Outstanding: SDG ${totalUnpaid.toLocaleString()} — accounts receivable follow-up recommended.` : "No outstanding balances — excellent billing performance.",
     trend.length > 1 ? `Peak invoices in period: ${peakRev}.` : "Limited data — extend period for deeper trend analysis.",
   ];
 }
@@ -329,7 +329,7 @@ export default function Reports() {
     XLSX.writeFile(wb, `${sheetName}-${period}-report.xlsx`);
   }
 
-  function exportToPDF() {
+  async function exportToPDF() {
     const dateRange = `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`;
     const en = language !== "ar";
 
@@ -360,7 +360,7 @@ export default function Reports() {
         const labCritical  = labOrders.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length;
         const rxCancelled  = prescriptions.filter(r => r.status === "cancelled").length;
 
-        generateOverallReportPDF({
+        await generateOverallReportPDF({
           period: periodLabel,
           dateRange,
           language,
@@ -368,7 +368,7 @@ export default function Reports() {
             { label: en ? "Patients"     : "المرضى",         value: patients.length },
             { label: en ? "Appointments" : "المواعيد",        value: appointments.length },
             { label: en ? "Lab Orders"   : "طلبات المختبر",   value: labOrders.length },
-            { label: en ? "Revenue (SAR)": "الإيرادات",       value: `SAR ${totalRev.toLocaleString()}`, sub: collRate },
+            { label: en ? "Revenue (SDG)": "الإيرادات",       value: `SDG ${totalRev.toLocaleString()}`, sub: collRate },
             { label: en ? "Prescriptions": "الوصفات",         value: prescriptions.length },
           ],
           sections: [
@@ -435,9 +435,9 @@ export default function Reports() {
               title: en ? "Revenue" : "الإيرادات",
               color: [16, 185, 129],
               kpis: [
-                { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SAR ${totalRev.toLocaleString()}` },
-                { label: en ? "Collected"     : "المحصّل",          value: `SAR ${totalPaid.toLocaleString()}`, sub: collRate },
-                { label: en ? "Outstanding"   : "المتأخرات",        value: `SAR ${(totalRev - totalPaid).toLocaleString()}` },
+                { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SDG ${totalRev.toLocaleString()}` },
+                { label: en ? "Collected"     : "المحصّل",          value: `SDG ${totalPaid.toLocaleString()}`, sub: collRate },
+                { label: en ? "Outstanding"   : "المتأخرات",        value: `SDG ${(totalRev - totalPaid).toLocaleString()}` },
                 { label: en ? "Invoices"      : "الفواتير",         value: invoices.length },
               ],
               trendData: revTrend,
@@ -482,7 +482,7 @@ export default function Reports() {
         const dispRate   = patients.length > 0 ? `${((admitted / patients.length) * 100).toFixed(1)}%` : "0%";
         const trend      = groupByTime(patients, "createdAt", groupBy);
         const interp     = buildPatientInterp(patients, allPatients, admitted, discharged, trend, periodLabel, language);
-        generateReportPDF({
+        await generateReportPDF({
           reportType: en ? "Patients" : "المرضى",
           period: periodLabel, dateRange, language,
           kpis: [
@@ -513,7 +513,7 @@ export default function Reports() {
         const cancRate   = appointments.length > 0 ? `${((cancelled / appointments.length) * 100).toFixed(1)}%` : "0%";
         const trend      = groupByTime(appointments, "scheduledAt", groupBy);
         const interp     = buildApptInterp(appointments, completed, cancelled, compRate, cancRate, periodLabel, language);
-        generateReportPDF({
+        await generateReportPDF({
           reportType: en ? "Appointments" : "المواعيد",
           period: periodLabel, dateRange, language,
           kpis: [
@@ -544,7 +544,7 @@ export default function Reports() {
         const turnRate = labOrders.length > 0 ? `${((resulted / labOrders.length) * 100).toFixed(1)}%` : "0%";
         const trend    = groupByTime(labOrders, "createdAt", groupBy);
         const interp   = buildLabInterp(labOrders, resulted, pending, critical, turnRate, periodLabel, language);
-        generateReportPDF({
+        await generateReportPDF({
           reportType: en ? "Lab Orders" : "طلبات المختبر",
           period: periodLabel, dateRange, language,
           kpis: [
@@ -576,23 +576,23 @@ export default function Reports() {
         const paid       = invoices.filter(i => i.status === "paid").length;
         const trend      = groupByTime(invoices, "createdAt", groupBy);
         const interp     = buildRevenueInterp(invoices, totalRev, totalPaid, totalUnpaid, collRate, trend, periodLabel, language);
-        generateReportPDF({
+        await generateReportPDF({
           reportType: en ? "Revenue" : "الإيرادات",
           period: periodLabel, dateRange, language,
           kpis: [
-            { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SAR ${totalRev.toLocaleString()}` },
-            { label: en ? "Collected"     : "المحصّل",          value: `SAR ${totalPaid.toLocaleString()}`, sub: collRate },
-            { label: en ? "Outstanding"   : "المتأخرات",        value: `SAR ${totalUnpaid.toLocaleString()}` },
+            { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SDG ${totalRev.toLocaleString()}` },
+            { label: en ? "Collected"     : "المحصّل",          value: `SDG ${totalPaid.toLocaleString()}`, sub: collRate },
+            { label: en ? "Outstanding"   : "المتأخرات",        value: `SDG ${totalUnpaid.toLocaleString()}` },
             { label: en ? "Invoices"      : "الفواتير",         value: invoices.length, sub: `${paid} ${en ? "paid" : "مدفوع"}` },
           ],
           trendData: trend,
           trendLabel: en ? "Revenue Over Period (invoice count)" : "الإيرادات خلال الفترة (عدد الفواتير)",
-          tableColumns: en ? ["Patient", "Total (SAR)", "Paid (SAR)", "Status", "Date"] : ["المريض", "المبلغ", "المدفوع", "الحالة", "التاريخ"],
+          tableColumns: en ? ["Patient", "Total (SDG)", "Paid (SDG)", "Status", "Date"] : ["المريض", "المبلغ", "المدفوع", "الحالة", "التاريخ"],
           tableRows: invoices.slice(0, 100).map(i => ({
             Patient: i.patientName ?? "—", "المريض": i.patientName ?? "—",
-            "Total (SAR)": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
+            "Total (SDG)": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
             "المبلغ": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
-            "Paid (SAR)": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
+            "Paid (SDG)": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
             "المدفوع": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
             Status: i.status ?? "—", "الحالة": i.status ?? "—",
             Date: i.createdAt ? new Date(i.createdAt).toLocaleDateString() : "—",
@@ -609,7 +609,7 @@ export default function Reports() {
         const dispRate   = prescriptions.length > 0 ? `${((dispensed / prescriptions.length) * 100).toFixed(1)}%` : "0%";
         const trend      = groupByTime(prescriptions, "createdAt", groupBy);
         const interp     = buildRxInterp(prescriptions, dispensed, pending, cancelled, dispRate, periodLabel, language);
-        generateReportPDF({
+        await generateReportPDF({
           reportType: en ? "Prescriptions" : "الوصفات الطبية",
           period: periodLabel, dateRange, language,
           kpis: [
@@ -801,9 +801,9 @@ function OverallReport({ patients, allPatients, appointments, labOrders, invoice
       titleEn: "Revenue", titleAr: "الإيرادات",
       icon: Receipt, color: "#10b981",
       kpis: [
-        { label: en ? "Total Revenue": "إجمالي الإيرادات", value: `SAR ${totalRev.toLocaleString()}` },
-        { label: en ? "Collected"    : "المحصّل",          value: `SAR ${totalPaid.toLocaleString()}`, sub: collRate },
-        { label: en ? "Outstanding"  : "المتأخرات",        value: `SAR ${(totalRev - totalPaid).toLocaleString()}` },
+        { label: en ? "Total Revenue": "إجمالي الإيرادات", value: `SDG ${totalRev.toLocaleString()}` },
+        { label: en ? "Collected"    : "المحصّل",          value: `SDG ${totalPaid.toLocaleString()}`, sub: collRate },
+        { label: en ? "Outstanding"  : "المتأخرات",        value: `SDG ${(totalRev - totalPaid).toLocaleString()}` },
       ],
       trendData: groupByTime(invoices, "createdAt", groupBy),
       interp: buildRevenueInterp(invoices, totalRev, totalPaid, totalRev - totalPaid, collRate,
@@ -945,7 +945,7 @@ function OverallReport({ patients, allPatients, appointments, labOrders, invoice
           `Patient flow: ${patients.length} registered (${admitted} admitted, ${patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length} discharged).`,
           `Appointment efficiency: ${compAppts}/${appointments.length} completed (${compRate}) — ${Number(compRate.replace("%","")) >= 80 ? "Excellent." : "Needs review."}`,
           `Lab turnaround: ${labDone}/${labOrders.length} resulted (${labRate}).`,
-          `Revenue collected: SAR ${totalPaid.toLocaleString()} / SAR ${totalRev.toLocaleString()} (${collRate}).`,
+          `Revenue collected: SDG ${totalPaid.toLocaleString()} / SDG ${totalRev.toLocaleString()} (${collRate}).`,
           `Pharmacy dispensing: ${dispRx}/${prescriptions.length} dispensed (${dispRate}).`,
         ] : [
           `ملخص فترة "${periodLabel}" عبر جميع أقسام المستشفى.`,
@@ -1316,22 +1316,22 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
       ? `أعلى إيراد في الفترة: ${Math.max(...revTrend.map(r => r.revenue)).toLocaleString()} ر.س.`
       : "بيانات محدودة — الرجاء تمديد الفترة لتحليل أعمق.",
   ] : [
-    `During "${periodLabel}", total revenue reached SAR ${totalRevenue.toLocaleString()} across ${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}.`,
-    `Collected: SAR ${totalPaid.toLocaleString()} — Collection rate: ${collectionRate}% — ${Number(collectionRate) >= 90 ? "Excellent financial performance." : Number(collectionRate) >= 70 ? "Good, with room for improvement." : "Below benchmark — review collection policies."}`,
+    `During "${periodLabel}", total revenue reached SDG ${totalRevenue.toLocaleString()} across ${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}.`,
+    `Collected: SDG ${totalPaid.toLocaleString()} — Collection rate: ${collectionRate}% — ${Number(collectionRate) >= 90 ? "Excellent financial performance." : Number(collectionRate) >= 70 ? "Good, with room for improvement." : "Below benchmark — review collection policies."}`,
     totalUnpaid > 0
-      ? `Outstanding: SAR ${totalUnpaid.toLocaleString()} across ${unpaid + partial} invoice${(unpaid + partial) !== 1 ? "s" : ""} — follow-up with accounts receivable recommended.`
+      ? `Outstanding: SDG ${totalUnpaid.toLocaleString()} across ${unpaid + partial} invoice${(unpaid + partial) !== 1 ? "s" : ""} — follow-up with accounts receivable recommended.`
       : "No outstanding balances this period — excellent billing performance.",
     revTrend.length > 1
-      ? `Peak revenue in period: SAR ${Math.max(...revTrend.map(r => r.revenue)).toLocaleString()}.`
+      ? `Peak revenue in period: SDG ${Math.max(...revTrend.map(r => r.revenue)).toLocaleString()}.`
       : "Limited data — extend period for deeper trend analysis.",
   ];
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label={language === "ar" ? "إجمالي الإيرادات" : "Total Revenue"} value={`SAR ${totalRevenue.toLocaleString()}`} icon={Receipt} color="#10b981" />
-        <KpiCard label={language === "ar" ? "المحصّل" : "Collected"} value={`SAR ${totalPaid.toLocaleString()}`} sub={`${collectionRate}%`} icon={CheckCircle} color="#3b82f6" trend={Number(collectionRate) >= 80 ? "up" : "down"} />
-        <KpiCard label={language === "ar" ? "المتأخرات" : "Outstanding"} value={`SAR ${totalUnpaid.toLocaleString()}`} icon={AlertTriangle} color="#ef4444" trend={totalUnpaid > 0 ? "down" : "up"} />
+        <KpiCard label={language === "ar" ? "إجمالي الإيرادات" : "Total Revenue"} value={`SDG ${totalRevenue.toLocaleString()}`} icon={Receipt} color="#10b981" />
+        <KpiCard label={language === "ar" ? "المحصّل" : "Collected"} value={`SDG ${totalPaid.toLocaleString()}`} sub={`${collectionRate}%`} icon={CheckCircle} color="#3b82f6" trend={Number(collectionRate) >= 80 ? "up" : "down"} />
+        <KpiCard label={language === "ar" ? "المتأخرات" : "Outstanding"} value={`SDG ${totalUnpaid.toLocaleString()}`} icon={AlertTriangle} color="#ef4444" trend={totalUnpaid > 0 ? "down" : "up"} />
         <KpiCard label={language === "ar" ? "الفواتير" : "Invoices"} value={invoices.length} sub={`${paid} ${language === "ar" ? "مدفوع" : "paid"}`} icon={BarChart3} color="#8b5cf6" />
       </div>
 
@@ -1346,7 +1346,7 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => [`SAR ${Number(v).toLocaleString()}`, language === "ar" ? "الإيراد" : "Revenue"]} />
+                <Tooltip formatter={(v) => [`SDG ${Number(v).toLocaleString()}`, language === "ar" ? "الإيراد" : "Revenue"]} />
                 <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -1380,8 +1380,8 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
 
       <ReportTable data={invoices.slice(0, 50)} columns={[
         { key: "patientName", label: language === "ar" ? "المريض" : "Patient" },
-        { key: "totalAmount", label: language === "ar" ? "المبلغ" : "Total", render: (v) => `SAR ${Number(v ?? 0).toLocaleString()}` },
-        { key: "paidAmount", label: language === "ar" ? "المدفوع" : "Paid", render: (v) => `SAR ${Number(v ?? 0).toLocaleString()}` },
+        { key: "totalAmount", label: language === "ar" ? "المبلغ" : "Total", render: (v) => `SDG ${Number(v ?? 0).toLocaleString()}` },
+        { key: "paidAmount", label: language === "ar" ? "المدفوع" : "Paid", render: (v) => `SDG ${Number(v ?? 0).toLocaleString()}` },
         { key: "status", label: language === "ar" ? "الحالة" : "Status", render: (v) => <StatusBadge status={v} /> },
         { key: "createdAt", label: language === "ar" ? "التاريخ" : "Date", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
       ]} language={language} />
