@@ -78,7 +78,9 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "xlsx": "^0.18.5",
-    "@supabase/supabase-js": "^2.49.4"
+    "@supabase/supabase-js": "^2.49.4",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "xlsx": "^0.18.5"
   }
 }

@@ -21,6 +21,7 @@ import {
   Activity, Brain, BarChart3,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { generateReportPDF } from "@/lib/report-pdf";
 
 type ReportType = "patients" | "appointments" | "lab" | "revenue" | "prescriptions";
 type Period = "today" | "week" | "month" | "quarter" | "half" | "year";
@@ -180,6 +181,87 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function buildPatientInterp(patients: any[], allPatients: any[], admitted: number, discharged: number, trend: any[], periodLabel: string, language: string): string[] {
+  const avgPerDay = trend.length > 1 ? (patients.length / Math.max(1, trend.length)).toFixed(1) : String(patients.length);
+  const genderDist = countBy(patients, "gender");
+  const genderStr = Object.entries(genderDist).map(([k, v]) => `${k}: ${v}`).join(", ");
+  if (language === "ar") return [
+    `في فترة "${periodLabel}" سُجّل ${patients.length} مريض جديد من إجمالي ${allPatients.length} في النظام.`,
+    admitted > 0 ? `منهم ${admitted} مريضاً في حالة "مقبول" (${patients.length > 0 ? ((admitted / patients.length) * 100).toFixed(1) : 0}% من حالات الفترة).` : "لا توجد حالات قيد الإدخال خلال هذه الفترة.",
+    discharged > 0 ? `أُخرج ${discharged} مريضاً — يعكس معدل صرف إيجابياً.` : "لم يُسجَّل أي خروج في هذه الفترة.",
+    trend.length > 1 ? `متوسط الدخول اليومي: ${avgPerDay} مريض — راقب القدرة الاستيعابية عند الذروة.` : "فترة قصيرة — يُوصى بعرض تقرير أسبوعي لصورة أوضح.",
+    genderStr ? `توزيع الجنس: ${genderStr}.` : "بيانات الجنس غير متوفرة.",
+  ];
+  return [
+    `During "${periodLabel}", ${patients.length} new patient(s) registered out of ${allPatients.length} total in system.`,
+    admitted > 0 ? `${admitted} patient(s) currently admitted (${patients.length > 0 ? ((admitted / patients.length) * 100).toFixed(1) : 0}% of period cases), indicating active inpatient demand.` : "No active admissions recorded this period.",
+    discharged > 0 ? `${discharged} patient(s) discharged — healthy patient turnover.` : "No discharges recorded this period.",
+    trend.length > 1 ? `Average admission rate: ${avgPerDay} patient(s) per time unit — monitor bed capacity if trend continues.` : "Short period; consider weekly/monthly view for trend analysis.",
+    genderStr ? `Gender distribution: ${genderStr}.` : "Gender data unavailable for selected period.",
+  ];
+}
+
+function buildApptInterp(appointments: any[], completed: number, cancelled: number, compRate: string, cancRate: string, periodLabel: string, language: string): string[] {
+  if (language === "ar") return [
+    `في فترة "${periodLabel}" جُدولت ${appointments.length} موعداً.`,
+    completed > 0 ? `معدل الإتمام: ${compRate} — ${Number(compRate) >= 80 ? "ممتاز." : Number(compRate) >= 60 ? "مقبول، راجع أسباب الإلغاء." : "يحتاج تحسيناً عاجلاً."}` : "لم تُسجَّل مواعيد مكتملة.",
+    cancelled > 0 ? `${cancelled} موعد ملغى (${cancRate}) — ${Number(cancRate) > 20 ? "نسبة مرتفعة تستدعي التحليل." : "ضمن الحدود المقبولة."}` : "لا إلغاءات — نتيجة ممتازة.",
+    "يُنصح بمراجعة التوزيع الأسبوعي للمواعيد لتحسين كفاءة الجدولة.",
+  ];
+  return [
+    `During "${periodLabel}", ${appointments.length} appointment(s) were scheduled.`,
+    completed > 0 ? `Completion rate: ${compRate} — ${Number(compRate) >= 80 ? "Excellent operational efficiency." : Number(compRate) >= 60 ? "Acceptable; review cancellation causes." : "Below benchmark — urgent scheduling review needed."}` : "No completed appointments recorded.",
+    cancelled > 0 ? `${cancelled} appointment(s) cancelled (${cancRate}) — ${Number(cancRate) > 20 ? "High cancellation rate requiring root-cause analysis." : "Within acceptable limits."}` : "Zero cancellations — outstanding result.",
+    "Consider reviewing weekly appointment distribution to optimize scheduling efficiency.",
+  ];
+}
+
+function buildLabInterp(labOrders: any[], resulted: number, pending: number, critical: number, turnRate: string, periodLabel: string, language: string): string[] {
+  if (language === "ar") return [
+    `في فترة "${periodLabel}" أُنشئ ${labOrders.length} طلب مختبر.`,
+    resulted > 0 ? `معدل إتمام الفحوصات: ${turnRate} — ${Number(turnRate) >= 85 ? "ممتاز." : Number(turnRate) >= 60 ? "مقبول، تابع الطلبات المعلقة." : "يستدعي مراجعة سير العمل."}` : "لم تكتمل نتائج بعد.",
+    critical > 0 ? `${critical} حالة عاجلة أو حرجة — تستوجب المراجعة الطبية الفورية.` : "لا حالات حرجة — مطمئن.",
+    pending > 0 ? `${pending} طلب معلق — يُوصى بمتابعة فورية.` : "لا طلبات معلقة — كفاءة عالية.",
+  ];
+  return [
+    `During "${periodLabel}", ${labOrders.length} lab order(s) were created.`,
+    resulted > 0 ? `Result completion rate: ${turnRate} — ${Number(turnRate) >= 85 ? "Excellent lab turnaround." : Number(turnRate) >= 60 ? "Acceptable; follow up on pending orders." : "Below target — workflow review required."}` : "No results completed yet.",
+    critical > 0 ? `${critical} urgent/critical order(s) require immediate clinical review.` : "No critical orders — reassuring finding.",
+    pending > 0 ? `${pending} order(s) still pending — immediate follow-up recommended.` : "Zero pending orders — highly efficient lab workflow.",
+  ];
+}
+
+function buildRevenueInterp(invoices: any[], totalRev: number, totalPaid: number, totalUnpaid: number, collRate: string, trend: any[], periodLabel: string, language: string): string[] {
+  const peakRev = trend.length > 0 ? Math.max(...trend.map(r => r.count)) : 0;
+  if (language === "ar") return [
+    `في فترة "${periodLabel}" بلغت الإيرادات ${totalRev.toLocaleString()} ر.س من ${invoices.length} فاتورة.`,
+    `المحصّل: ${totalPaid.toLocaleString()} ر.س — معدل التحصيل: ${collRate} — ${Number(collRate) >= 90 ? "أداء مالي ممتاز." : Number(collRate) >= 70 ? "جيد، مجال للتحسين." : "يستدعي مراجعة سياسات التحصيل."}`,
+    totalUnpaid > 0 ? `المتأخرات: ${totalUnpaid.toLocaleString()} ر.س — يُوصى بمتابعة الحسابات المستحقة.` : "لا مستحقات غير مسددة — أداء فوترة ممتاز.",
+    trend.length > 1 ? `أعلى فاتورة في الفترة: ${peakRev.toLocaleString()} ر.س.` : "بيانات محدودة — مدّد الفترة لتحليل أعمق.",
+  ];
+  return [
+    `During "${periodLabel}", total revenue reached SAR ${totalRev.toLocaleString()} across ${invoices.length} invoice(s).`,
+    `Collected: SAR ${totalPaid.toLocaleString()} — Collection rate: ${collRate} — ${Number(collRate) >= 90 ? "Excellent financial performance." : Number(collRate) >= 70 ? "Good, with room for improvement." : "Below benchmark — review collection policies."}`,
+    totalUnpaid > 0 ? `Outstanding: SAR ${totalUnpaid.toLocaleString()} — accounts receivable follow-up recommended.` : "No outstanding balances — excellent billing performance.",
+    trend.length > 1 ? `Peak invoices in period: ${peakRev}.` : "Limited data — extend period for deeper trend analysis.",
+  ];
+}
+
+function buildRxInterp(prescriptions: any[], dispensed: number, pending: number, cancelled: number, dispRate: string, periodLabel: string, language: string): string[] {
+  if (language === "ar") return [
+    `في فترة "${periodLabel}" أُصدرت ${prescriptions.length} وصفة طبية.`,
+    dispensed > 0 ? `معدل الصرف: ${dispRate} — ${Number(dispRate) >= 85 ? "ممتاز." : Number(dispRate) >= 65 ? "جيد، تابع المعلقة." : "يستدعي مراجعة نظام الصرف."}` : "لم تُصرف وصفات بعد.",
+    pending > 0 ? `${pending} وصفة معلقة تحتاج اهتمام الصيدلية.` : "لا وصفات معلقة — أداء الصيدلية ممتاز.",
+    cancelled > 0 ? `${cancelled} وصفة ملغاة — راجع أسباب الإلغاء للتحسين.` : "لا إلغاءات في هذه الفترة.",
+  ];
+  return [
+    `During "${periodLabel}", ${prescriptions.length} prescription(s) were issued.`,
+    dispensed > 0 ? `Dispensing rate: ${dispRate} — ${Number(dispRate) >= 85 ? "Excellent pharmacy performance." : Number(dispRate) >= 65 ? "Good; monitor pending prescriptions." : "Below target — dispensing workflow review needed."}` : "No prescriptions dispensed yet.",
+    pending > 0 ? `${pending} prescription(s) pending pharmacy action.` : "Zero pending prescriptions — outstanding pharmacy efficiency.",
+    cancelled > 0 ? `${cancelled} prescription(s) cancelled — review reasons for continuous improvement.` : "No cancellations this period.",
+  ];
+}
+
 export default function Reports() {
   const { language } = useTranslation();
   const isRtl = language === "ar";
@@ -235,6 +317,170 @@ export default function Reports() {
     XLSX.writeFile(wb, `${sheetName}-${period}-report.xlsx`);
   }
 
+  function exportToPDF() {
+    const dateRange = `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`;
+    const en = language !== "ar";
+
+    switch (reportType) {
+      case "patients": {
+        const admitted   = patients.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
+        const discharged = patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length;
+        const dispRate   = patients.length > 0 ? `${((admitted / patients.length) * 100).toFixed(1)}%` : "0%";
+        const trend      = groupByTime(patients, "createdAt", groupBy);
+        const interp     = buildPatientInterp(patients, allPatients, admitted, discharged, trend, periodLabel, language);
+        generateReportPDF({
+          reportType: en ? "Patients" : "المرضى",
+          period: periodLabel, dateRange, language,
+          kpis: [
+            { label: en ? "Period Total"    : "إجمالي الفترة",  value: patients.length },
+            { label: en ? "Admitted"        : "مقبولون",        value: admitted, sub: dispRate },
+            { label: en ? "Discharged"      : "مخرجون",         value: discharged },
+            { label: en ? "System Total"    : "إجمالي النظام",  value: allPatients.length, sub: en ? "All time" : "جميع الأوقات" },
+          ],
+          trendData: trend,
+          trendLabel: en ? "Patient Registrations Over Period" : "دخول المرضى خلال الفترة",
+          tableColumns: en ? ["File #", "Name", "Gender", "Status", "Date"] : ["رقم الملف", "الاسم", "الجنس", "الحالة", "التاريخ"],
+          tableRows: patients.slice(0, 100).map(p => ({
+            "File #": p.fileNumber ?? "—", Name: p.nameEn ?? "—", "رقم الملف": p.fileNumber ?? "—",
+            "الاسم": p.nameEn ?? "—", Gender: p.gender ?? "—", "الجنس": p.gender ?? "—",
+            Status: p.status ?? "—", "الحالة": p.status ?? "—",
+            Date: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—",
+            "التاريخ": p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—",
+          })),
+          interpretation: interp,
+        });
+        break;
+      }
+      case "appointments": {
+        const completed  = appointments.filter(a => a.status === "completed").length;
+        const scheduled  = appointments.filter(a => a.status === "scheduled").length;
+        const cancelled  = appointments.filter(a => a.status === "cancelled").length;
+        const compRate   = appointments.length > 0 ? `${((completed / appointments.length) * 100).toFixed(1)}%` : "0%";
+        const cancRate   = appointments.length > 0 ? `${((cancelled / appointments.length) * 100).toFixed(1)}%` : "0%";
+        const trend      = groupByTime(appointments, "scheduledAt", groupBy);
+        const interp     = buildApptInterp(appointments, completed, cancelled, compRate, cancRate, periodLabel, language);
+        generateReportPDF({
+          reportType: en ? "Appointments" : "المواعيد",
+          period: periodLabel, dateRange, language,
+          kpis: [
+            { label: en ? "Total"      : "الإجمالي",  value: appointments.length },
+            { label: en ? "Completed"  : "مكتملة",    value: completed, sub: compRate },
+            { label: en ? "Scheduled"  : "مجدولة",    value: scheduled },
+            { label: en ? "Cancelled"  : "ملغاة",     value: cancelled, sub: cancRate },
+          ],
+          trendData: trend,
+          trendLabel: en ? "Appointments Over Period" : "المواعيد خلال الفترة",
+          tableColumns: en ? ["Patient", "Type", "Status", "Doctor", "Scheduled"] : ["المريض", "النوع", "الحالة", "الطبيب", "الموعد"],
+          tableRows: appointments.slice(0, 100).map(a => ({
+            Patient: a.patientName ?? "—", "المريض": a.patientName ?? "—",
+            Type: a.type ?? "—", "النوع": a.type ?? "—",
+            Status: a.status ?? "—", "الحالة": a.status ?? "—",
+            Doctor: a.doctorName ?? "—", "الطبيب": a.doctorName ?? "—",
+            Scheduled: a.scheduledAt ? new Date(a.scheduledAt).toLocaleString() : "—",
+            "الموعد": a.scheduledAt ? new Date(a.scheduledAt).toLocaleString() : "—",
+          })),
+          interpretation: interp,
+        });
+        break;
+      }
+      case "lab": {
+        const resulted = labOrders.filter(l => l.status === "resulted" || l.status === "reviewed").length;
+        const pending  = labOrders.filter(l => l.status === "pending").length;
+        const critical = labOrders.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length;
+        const turnRate = labOrders.length > 0 ? `${((resulted / labOrders.length) * 100).toFixed(1)}%` : "0%";
+        const trend    = groupByTime(labOrders, "createdAt", groupBy);
+        const interp   = buildLabInterp(labOrders, resulted, pending, critical, turnRate, periodLabel, language);
+        generateReportPDF({
+          reportType: en ? "Lab Orders" : "طلبات المختبر",
+          period: periodLabel, dateRange, language,
+          kpis: [
+            { label: en ? "Total Orders" : "إجمالي الطلبات", value: labOrders.length },
+            { label: en ? "Resulted"     : "مكتملة",         value: resulted, sub: turnRate },
+            { label: en ? "Pending"      : "معلقة",          value: pending },
+            { label: en ? "Urgent"       : "عاجلة",          value: critical },
+          ],
+          trendData: trend,
+          trendLabel: en ? "Lab Orders Over Period" : "طلبات المختبر خلال الفترة",
+          tableColumns: en ? ["Patient", "Test", "Priority", "Status", "Date"] : ["المريض", "الفحص", "الأولوية", "الحالة", "التاريخ"],
+          tableRows: labOrders.slice(0, 100).map(l => ({
+            Patient: l.patientName ?? "—", "المريض": l.patientName ?? "—",
+            Test: l.testName ?? "—", "الفحص": l.testName ?? "—",
+            Priority: l.priority ?? "normal", "الأولوية": l.priority ?? "normal",
+            Status: l.status ?? "—", "الحالة": l.status ?? "—",
+            Date: l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—",
+            "التاريخ": l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—",
+          })),
+          interpretation: interp,
+        });
+        break;
+      }
+      case "revenue": {
+        const totalRev   = invoices.reduce((s, i) => s + Number(i.totalAmount ?? i.total_amount ?? 0), 0);
+        const totalPaid  = invoices.reduce((s, i) => s + Number(i.paidAmount ?? i.paid_amount ?? 0), 0);
+        const totalUnpaid = totalRev - totalPaid;
+        const collRate   = totalRev > 0 ? `${((totalPaid / totalRev) * 100).toFixed(1)}%` : "0%";
+        const paid       = invoices.filter(i => i.status === "paid").length;
+        const trend      = groupByTime(invoices, "createdAt", groupBy);
+        const interp     = buildRevenueInterp(invoices, totalRev, totalPaid, totalUnpaid, collRate, trend, periodLabel, language);
+        generateReportPDF({
+          reportType: en ? "Revenue" : "الإيرادات",
+          period: periodLabel, dateRange, language,
+          kpis: [
+            { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SAR ${totalRev.toLocaleString()}` },
+            { label: en ? "Collected"     : "المحصّل",          value: `SAR ${totalPaid.toLocaleString()}`, sub: collRate },
+            { label: en ? "Outstanding"   : "المتأخرات",        value: `SAR ${totalUnpaid.toLocaleString()}` },
+            { label: en ? "Invoices"      : "الفواتير",         value: invoices.length, sub: `${paid} ${en ? "paid" : "مدفوع"}` },
+          ],
+          trendData: trend,
+          trendLabel: en ? "Revenue Over Period (invoice count)" : "الإيرادات خلال الفترة (عدد الفواتير)",
+          tableColumns: en ? ["Patient", "Total (SAR)", "Paid (SAR)", "Status", "Date"] : ["المريض", "المبلغ", "المدفوع", "الحالة", "التاريخ"],
+          tableRows: invoices.slice(0, 100).map(i => ({
+            Patient: i.patientName ?? "—", "المريض": i.patientName ?? "—",
+            "Total (SAR)": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
+            "المبلغ": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
+            "Paid (SAR)": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
+            "المدفوع": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
+            Status: i.status ?? "—", "الحالة": i.status ?? "—",
+            Date: i.createdAt ? new Date(i.createdAt).toLocaleDateString() : "—",
+            "التاريخ": i.createdAt ? new Date(i.createdAt).toLocaleDateString() : "—",
+          })),
+          interpretation: interp,
+        });
+        break;
+      }
+      case "prescriptions": {
+        const dispensed  = prescriptions.filter(r => r.status === "dispensed").length;
+        const pending    = prescriptions.filter(r => r.status === "pending").length;
+        const cancelled  = prescriptions.filter(r => r.status === "cancelled").length;
+        const dispRate   = prescriptions.length > 0 ? `${((dispensed / prescriptions.length) * 100).toFixed(1)}%` : "0%";
+        const trend      = groupByTime(prescriptions, "createdAt", groupBy);
+        const interp     = buildRxInterp(prescriptions, dispensed, pending, cancelled, dispRate, periodLabel, language);
+        generateReportPDF({
+          reportType: en ? "Prescriptions" : "الوصفات الطبية",
+          period: periodLabel, dateRange, language,
+          kpis: [
+            { label: en ? "Total"      : "الإجمالي",  value: prescriptions.length },
+            { label: en ? "Dispensed"  : "مصروفة",    value: dispensed, sub: dispRate },
+            { label: en ? "Pending"    : "معلقة",     value: pending },
+            { label: en ? "Cancelled"  : "ملغاة",     value: cancelled },
+          ],
+          trendData: trend,
+          trendLabel: en ? "Prescriptions Over Period" : "الوصفات خلال الفترة",
+          tableColumns: en ? ["Patient", "Doctor", "Status", "Date"] : ["المريض", "الطبيب", "الحالة", "التاريخ"],
+          tableRows: prescriptions.slice(0, 100).map(r => ({
+            Patient: r.patientName ?? "—", "المريض": r.patientName ?? "—",
+            Doctor: r.doctorName ?? "—", "الطبيب": r.doctorName ?? "—",
+            Status: r.status ?? "—", "الحالة": r.status ?? "—",
+            Date: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—",
+            "التاريخ": r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—",
+          })),
+          interpretation: interp,
+        });
+        break;
+      }
+    }
+  }
+
   const currentReport = REPORT_TYPES.find(r => r.value === reportType)!;
 
   return (
@@ -258,9 +504,13 @@ export default function Reports() {
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
             {language === "ar" ? "تحديث" : "Refresh"}
           </Button>
-          <Button size="sm" onClick={exportToExcel} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-1.5">
             <Download className="h-3.5 w-3.5" />
-            {language === "ar" ? "تصدير Excel" : "Export Excel"}
+            {language === "ar" ? "Excel" : "Excel"}
+          </Button>
+          <Button size="sm" onClick={exportToPDF} className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white border-0">
+            <Download className="h-3.5 w-3.5" />
+            {language === "ar" ? "تصدير PDF" : "Export PDF"}
           </Button>
         </div>
       </div>
