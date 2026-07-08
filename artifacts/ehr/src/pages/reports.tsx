@@ -299,8 +299,9 @@ export default function Reports() {
   const invoices     = useMemo(() => (allInvoices as any[]).filter(i => inRange(i.createdAt ?? i.created_at)), [allInvoices, start, end]);
   const prescriptions = useMemo(() => (allRx as any[]).filter(r => inRange(r.createdAt ?? r.created_at)), [allRx, start, end]);
 
-  const periodLabel = PERIODS.find(p => p.value === period)?.[language === "ar" ? "labelAr" : "labelEn"] ?? period;
-  const reportLabel = REPORT_TYPES.find(r => r.value === reportType)?.[language === "ar" ? "labelAr" : "labelEn"] ?? reportType;
+  const periodLabel   = PERIODS.find(p => p.value === period)?.[language === "ar" ? "labelAr" : "labelEn"] ?? period;
+  const periodLabelEn = PERIODS.find(p => p.value === period)?.labelEn ?? period;
+  const reportLabel   = REPORT_TYPES.find(r => r.value === reportType)?.[language === "ar" ? "labelAr" : "labelEn"] ?? reportType;
 
   function exportToExcel() {
     if (reportType === "overall") {
