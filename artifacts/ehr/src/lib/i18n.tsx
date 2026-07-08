@@ -32,6 +32,7 @@ const translations: Translations = {
   "nav.myPatients": { en: "My Patients", ar: "المرضى" },
   "nav.nursery": { en: "Nursery", ar: "الحضانة" },
   "nav.picu": { en: "PICU", ar: "وحدة العناية المركزة" },
+  "nav.reports": { en: "Reports", ar: "التقارير" },
 
   // Notifications
   "notif.title": { en: "Notifications", ar: "الإشعارات" },

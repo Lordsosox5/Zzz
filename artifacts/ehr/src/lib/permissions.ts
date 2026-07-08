@@ -116,7 +116,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View patient demographics (read-only)", ar: "عرض بيانات المريض (للقراءة فقط)" },
       { en: "Generate financial reports", ar: "إنشاء التقارير المالية" },
     ],
-    allowedNav: ["/dashboard", "/billing"],
+    allowedNav: ["/dashboard", "/billing", "/reports"],
   },
   house_officer: {
     label: { en: "House Officer", ar: "طبيب مقيم" },
@@ -189,7 +189,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View patient demographics and statistics", ar: "عرض البيانات الديموغرافية للمرضى والإحصاءات" },
       { en: "Access aggregated clinical reports", ar: "الوصول إلى التقارير السريرية المجمّعة" },
     ],
-    allowedNav: ["/dashboard", "/patients"],
+    allowedNav: ["/dashboard", "/patients", "/reports"],
   },
 };
 
