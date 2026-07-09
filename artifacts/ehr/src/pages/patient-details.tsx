@@ -37,7 +37,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   User, Calendar, Activity, FlaskConical, AlertTriangle,
   Loader2, Save, Plus, PackageCheck, Stethoscope, FileText, Printer,
-  Building2, Pencil, ClipboardList, Receipt, Search, ChevronsUpDown, Check,
+  Building2, Pencil, ClipboardList, Receipt, Search, ChevronsUpDown, Check, MapPin,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -458,6 +458,7 @@ function EditPatientDialog({
     admissionDate: patient.admissionDate ? patient.admissionDate.slice(0, 10) : "",
     dischargeDate: patient.dischargeDate ? patient.dischargeDate.slice(0, 10) : "",
     status: patient.status ?? "admitted",
+    place: (patient as any).place ?? "",
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -484,6 +485,7 @@ function EditPatientDialog({
     if (form.admissionDate)  data.admissionDate  = new Date(form.admissionDate).toISOString();
     if (form.dischargeDate)  data.dischargeDate  = new Date(form.dischargeDate).toISOString();
     if (form.status)         data.status         = form.status;
+    data.place = form.place || null;
 
     updatePatient.mutate(
       { id: patient.id, data },
@@ -627,7 +629,7 @@ function EditPatientDialog({
             </div>
           </div>
 
-          {/* Dates */}
+          {/* Dates & Place */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b pb-1.5 mb-3">{t("patient.admissionDate")} / {t("patient.dischargeDate")}</p>
             <div className="grid grid-cols-2 gap-4">
@@ -638,6 +640,21 @@ function EditPatientDialog({
               <div className="space-y-1.5">
                 <Label>{t("patient.dischargeDate")}</Label>
                 <Input type="date" value={form.dischargeDate} onChange={set("dischargeDate")} />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>{t("patient.placeInHospital")}</Label>
+                <Select value={form.place} onValueChange={v => setForm(p => ({ ...p, place: v === "none" ? "" : v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("patient.placeNone")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("patient.placeNone")}</SelectItem>
+                    <SelectItem value="picu">{t("patient.placePicu")}</SelectItem>
+                    <SelectItem value="phdu">{t("patient.placePhdu")}</SelectItem>
+                    <SelectItem value="nursery">{t("patient.placeNursery")}</SelectItem>
+                    <SelectItem value="general_ward">{t("patient.placeGeneralWard")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -1158,9 +1175,24 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
                   <><span>•</span><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">{patient.bloodGroup}</Badge></>
                 )}
               </div>
-              {/* Status + Unit indicator */}
+              {/* Status + Unit + Place indicator */}
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <PatientStatusBadge status={patient.status ?? "admitted"} />
+                {(patient as any).place && (() => {
+                  const placeKey = (patient as any).place;
+                  const placeLabel =
+                    placeKey === "picu" ? t("patient.placePicu") :
+                    placeKey === "phdu" ? t("patient.placePhdu") :
+                    placeKey === "nursery" ? t("patient.placeNursery") :
+                    placeKey === "general_ward" ? t("patient.placeGeneralWard") :
+                    placeKey;
+                  return (
+                    <Badge variant="outline" className="gap-1.5 text-xs font-medium text-blue-600 border-blue-300 bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:bg-blue-950/30">
+                      <MapPin className="h-3 w-3" />
+                      {placeLabel}
+                    </Badge>
+                  );
+                })()}
                 {canTransfer ? (
                   <AssignUnitDropdown
                     patientId={patientId}
