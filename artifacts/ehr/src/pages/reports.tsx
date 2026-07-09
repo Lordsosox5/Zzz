@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import {
@@ -57,6 +57,29 @@ const REPORT_TYPES: { value: ReportType; icon: React.ElementType; labelEn: strin
 ];
 
 const CHART_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#06b6d4", "#84cc16"];
+
+const AXIS_STYLE = { fontSize: 10, fill: "hsl(var(--muted-foreground))" } as const;
+const GRID_PROPS = { strokeDasharray: "3 3" as const, stroke: "hsl(var(--border))", vertical: false as const };
+
+function ChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border bg-background/95 backdrop-blur-sm px-3 py-2 shadow-xl text-xs min-w-[120px]">
+      {label != null && (
+        <p className="font-semibold text-foreground mb-1.5 pb-1 border-b border-border">{label}</p>
+      )}
+      {payload.map((p: any, i: number) => (
+        <div key={i} className="flex items-center justify-between gap-3 mt-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.stroke ?? p.fill ?? p.color }} />
+            <span className="text-muted-foreground">{p.name}</span>
+          </div>
+          <span className="font-bold text-foreground">{typeof p.value === "number" ? p.value.toLocaleString() : p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function getPeriodRange(period: Period): { start: Date; end: Date; groupBy: "hour" | "day" | "week" | "month" } {
   const now = new Date();
@@ -1301,10 +1324,10 @@ function OverallReport({ patients, allPatients, appointments, labOrders, invoice
             return combined.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={combined}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid {...GRID_PROPS} />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Bar dataKey="count" name={en ? "Events" : "أحداث"} fill="#0ea5e9" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -1469,10 +1492,10 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name={language === "ar" ? "مريض" : "Patients"} />
               </BarChart>
             </ResponsiveContainer>
@@ -1493,7 +1516,7 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
                   <Pie data={pieStatus} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
                     {pieStatus.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -1516,10 +1539,10 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={ageGroups} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]} name={language === "ar" ? "مريض" : "Patients"}>
                   {ageGroups.map((_, i) => (
                     <Cell key={i} fill={["#60a5fa","#818cf8","#34d399","#fbbf24","#f87171","#a78bfa"][i % 6]} />
@@ -1605,10 +1628,10 @@ function AppointmentReport({ appointments, period, groupBy, periodLabel, languag
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name={language === "ar" ? "موعد" : "Appointments"} />
               </BarChart>
             </ResponsiveContainer>
@@ -1629,7 +1652,7 @@ function AppointmentReport({ appointments, period, groupBy, periodLabel, languag
                   <Pie data={statusData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
                     {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -1705,10 +1728,10 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} />
               </BarChart>
             </ResponsiveContainer>
@@ -1729,7 +1752,7 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
                   <Pie data={pieStatus} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
                     {pieStatus.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -1753,10 +1776,10 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={topTests} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" horizontal={false} />
+                  <CartesianGrid {...GRID_PROPS} horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={110} />
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Bar dataKey="count" fill="#f59e0b" radius={[0, 4, 4, 0]} name={language === "ar" ? "طلبات" : "Orders"} />
                 </BarChart>
               </ResponsiveContainer>
@@ -1845,9 +1868,9 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={revTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v) => [`SDG ${Number(v).toLocaleString()}`, language === "ar" ? "الإيراد" : "Revenue"]} />
                 <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
@@ -1869,7 +1892,7 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
                   <Pie data={pieStatus} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
                     {pieStatus.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -1943,10 +1966,10 @@ function PrescriptionReport({ prescriptions, period, groupBy, periodLabel, langu
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]} name={language === "ar" ? "وصفة" : "Prescriptions"} />
               </BarChart>
             </ResponsiveContainer>
@@ -1977,7 +2000,7 @@ function PrescriptionReport({ prescriptions, period, groupBy, periodLabel, langu
                       <Cell key={i} fill={["#10b981", "#f59e0b", "#ef4444"][i]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -2071,10 +2094,10 @@ function RadiologyReport({ radiologyOrders, period, groupBy, periodLabel, langua
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
+                <CartesianGrid {...GRID_PROPS} />
+                <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} />
               </BarChart>
             </ResponsiveContainer>
@@ -2096,7 +2119,7 @@ function RadiologyReport({ radiologyOrders, period, groupBy, periodLabel, langua
                   <Pie data={statusData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
                     {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -2118,10 +2141,10 @@ function RadiologyReport({ radiologyOrders, period, groupBy, periodLabel, langua
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={modalityData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip />
+                  <CartesianGrid {...GRID_PROPS} />
+                  <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
+                  <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلبات" : "Orders"}>
                     {modalityData.map((d, i) => (
                       <Cell key={i} fill={MODALITY_COLORS[d.name] ?? CHART_COLORS[i % CHART_COLORS.length]} />
@@ -2237,7 +2260,7 @@ function PharmacyReport({ drugs, period, periodLabel, language }:
                     labelLine={false} fontSize={9}>
                     {categoryData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -2261,7 +2284,7 @@ function PharmacyReport({ drugs, period, periodLabel, language }:
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={atRisk} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" horizontal={false} />
+                  <CartesianGrid {...GRID_PROPS} horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
                   <Tooltip formatter={(v, name) => [v, name === "stock" ? (language === "ar" ? "المتوفر" : "Stock") : (language === "ar" ? "الحد الأدنى" : "Min Level")]} />
