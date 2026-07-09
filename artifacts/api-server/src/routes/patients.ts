@@ -13,11 +13,8 @@ const router = Router();
 
 const UNIT_RESTRICTED_ROLES = ["house_officer", "medical_officer"];
 
-// Supabase patients table has no 'place' column; we store it in 'address'.
-// mapPatient re-exposes address as 'place' so the frontend receives the right field.
 function mapPatient(raw: Record<string, unknown>) {
-  const p = mapRow<Record<string, unknown>>(raw);
-  return { ...p, place: (p as any).address ?? null };
+  return mapRow<Record<string, unknown>>(raw);
 }
 
 let mrnCounter = 1000;
@@ -87,8 +84,8 @@ router.post("/patients", async (req, res): Promise<void> => {
   try {
     const mrn = generateMRN();
     const base = toSnake(parsed.data as Record<string, unknown>);
-    delete base.place; // no 'place' column in Supabase; stored in 'address' instead
-    const insertData = { ...base, mrn, unit_id: unitId ?? null, address: place };
+    delete base.place; // handled separately below
+    const insertData = { ...base, mrn, unit_id: unitId ?? null, place };
     const { data, error } = await supabase.from("patients").insert(insertData).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
     res.status(201).json(mapPatient(data));
@@ -117,8 +114,6 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
     const updates = toSnake(parsed.data as Record<string, unknown>);
-    // remap place → address (Supabase has no 'place' column)
-    if ("place" in updates) { updates.address = updates.place; delete updates.place; }
     const { data, error } = await supabase.from("patients").update(updates).eq("id", params.data.id).select().single();
     if (error) { res.status(500).json({ error: error.message }); return; }
     if (!data) { res.status(404).json({ error: "Patient not found" }); return; }
