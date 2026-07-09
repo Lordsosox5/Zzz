@@ -47,6 +47,9 @@ export default defineConfig({
         ]
       : []),
   ],
+  optimizeDeps: {
+    include: ["jspdf", "jspdf-autotable", "html2canvas", "xlsx"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
