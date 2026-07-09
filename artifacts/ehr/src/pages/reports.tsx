@@ -975,7 +975,7 @@ export default function Reports() {
             <Download className="h-3.5 w-3.5" />
             {language === "ar" ? "Excel" : "Excel"}
           </Button>
-          <Button size="sm" onClick={exportToPDF} className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white border-0">
+          <Button size="sm" onClick={handlePrint} className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white border-0">
             <Download className="h-3.5 w-3.5" />
             {language === "ar" ? "تصدير PDF" : "Export PDF"}
           </Button>
