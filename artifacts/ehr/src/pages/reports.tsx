@@ -8,6 +8,7 @@ import {
 import {
   useListPatients, useListAppointments, useListLabOrders,
   useListInvoices, useListPrescriptions, useListRadiologyOrders, useListDrugs,
+  useListDiagnoses,
 } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -323,15 +324,16 @@ export default function Reports() {
   const { data: allRx = [],       isLoading: loadRx,    refetch: refetchRx }    = useListPrescriptions({});
   const { data: allRadiology = [],isLoading: loadRad,   refetch: refetchRad }   = useListRadiologyOrders({});
   const { data: allDrugs = [],    isLoading: loadDrugs, refetch: refetchDrugs } = useListDrugs({});
+  const { data: allDiagnoses = [], isLoading: loadDiag, refetch: refetchDiag } = useListDiagnoses({});
 
   const allPatients: any[] = Array.isArray(patientResp)
     ? patientResp
     : ((patientResp as any)?.patients ?? []);
 
-  const isLoading = loadPat || loadAppt || loadLab || loadInv || loadRx || loadRad || loadDrugs;
+  const isLoading = loadPat || loadAppt || loadLab || loadInv || loadRx || loadRad || loadDrugs || loadDiag;
 
   function refetchAll() {
-    refetchPat(); refetchAppt(); refetchLab(); refetchInv(); refetchRx(); refetchRad(); refetchDrugs();
+    refetchPat(); refetchAppt(); refetchLab(); refetchInv(); refetchRx(); refetchRad(); refetchDrugs(); refetchDiag();
   }
 
   function inRange(dateStr: string | null | undefined) {
@@ -1408,7 +1410,7 @@ ${sec("\ud83d\udcb0", "\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0645\u
         />
       )}
       {reportType === "patients" && (
-        <PatientReport patients={patients} allPatients={allPatients as any[]} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
+        <PatientReport patients={patients} allPatients={allPatients as any[]} diagnoses={allDiagnoses as any[]} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
       )}
       {reportType === "appointments" && (
         <AppointmentReport appointments={appointments} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
@@ -1658,9 +1660,10 @@ function OverallReport({ patients, allPatients, appointments, labOrders, invoice
 }
 
 /* ═══════════════════════════════════════ PATIENT REPORT ═══════════════════════════════════════ */
-function PatientReport({ patients, allPatients, period, groupBy, periodLabel, language }:
-  { patients: any[]; allPatients: any[]; period: string; groupBy: any; periodLabel: string; language: string }) {
+function PatientReport({ patients, allPatients, diagnoses, period, groupBy, periodLabel, language }:
+  { patients: any[]; allPatients: any[]; diagnoses: any[]; period: string; groupBy: any; periodLabel: string; language: string }) {
 
+  const en = language !== "ar";
   const totalAll = allPatients.length;
   const admitted  = patients.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
   const discharged = patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length;
@@ -1670,7 +1673,10 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
   const statusDist = countBy(patients, "status");
   const genderDist = countBy(patients, "gender");
   const pieStatus = Object.entries(statusDist).map(([name, value]) => ({ name, value }));
-  const pieGender = Object.entries(genderDist).map(([name, value]) => ({ name, value }));
+  const pieGender = [
+    { name: en ? "Male" : "ذكر",   value: genderDist["male"]   ?? 0, fill: "#3b82f6" },
+    { name: en ? "Female" : "أنثى", value: genderDist["female"] ?? 0, fill: "#ec4899" },
+  ].filter(d => d.value > 0);
 
   const admitRate = patients.length > 0 ? ((admitted / patients.length) * 100).toFixed(1) : "0";
   const avgPerDay = period === "today" ? patients.length : (patients.length / Math.max(1, trend.length)).toFixed(1);
@@ -1704,6 +1710,24 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
       ? `Gender distribution: ${pieGender.map(g => `${g.name}: ${g.value}`).join(", ")}.`
       : "Gender data unavailable for the selected period.",
   ];
+
+  // Diagnoses distribution (admitted patients only — all time, not period-filtered)
+  const admittedPatientIds = useMemo(
+    () => new Set(allPatients.filter(p => (p.status ?? p.admissionStatus) === "admitted").map(p => p.id)),
+    [allPatients],
+  );
+  const topDiagnoses = useMemo(() => {
+    const map: Record<string, number> = {};
+    (diagnoses as any[]).forEach(d => {
+      if (!admittedPatientIds.has(d.patientId ?? d.patient_id)) return;
+      const label = d.icdCode ? `${d.icdCode} – ${d.description ?? d.diagnosisCode ?? ""}` : (d.description ?? d.diagnosisCode ?? "Unknown");
+      const key = label.slice(0, 60);
+      map[key] = (map[key] ?? 0) + 1;
+    });
+    const DIAG_COLORS = ["#3b82f6","#8b5cf6","#f59e0b","#10b981","#ef4444","#06b6d4","#a855f7","#ec4899","#84cc16","#f97316"];
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, value], i) => ({ name, value, fill: DIAG_COLORS[i % DIAG_COLORS.length] }));
+  }, [diagnoses, admittedPatientIds]);
 
   // Age group distribution (critical for paediatric hospital)
   const ageGroups = useMemo(() => {
