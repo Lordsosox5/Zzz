@@ -81,6 +81,7 @@
     "@fontsource/tajawal": "^5.2.7",
     "@supabase/supabase-js": "^2.49.4",
     "bidi-js": "^1.0.3",
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "xlsx": "^0.18.5"
