@@ -350,7 +350,7 @@ export default function Reports() {
     XLSX.writeFile(wb, `${sheetName}-${period}-report.xlsx`);
   }
 
-  function handlePrint() {
+  async function handlePrint() {
     const dateRange = `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`;
     const en = language !== "ar";
     const PALETTE = ["#3b82f6","#8b5cf6","#f59e0b","#10b981","#ef4444","#06b6d4","#a855f7","#ec4899","#84cc16","#f97316"];
