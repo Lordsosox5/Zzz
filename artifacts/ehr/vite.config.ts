@@ -5,36 +5,29 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const isBuild = process.argv.includes("build");
-const isTauri = process.env.VITE_TAURI === "true";
+
+// Detect Tauri environment via either:
+//   VITE_TAURI=true  — set manually when running tauri dev / tauri build
+//   TAURI_ENV_PLATFORM — injected automatically by the Tauri CLI during tauri build
+const isTauri =
+  process.env.VITE_TAURI === "true" || !!process.env.TAURI_ENV_PLATFORM;
 
 // PORT is only needed when running the dev/preview server, not during build
 const rawPort = process.env.PORT;
-if (!isBuild && !rawPort) {
+if (!isBuild && !isTauri && !rawPort) {
   throw new Error("PORT environment variable is required but was not provided.");
 }
-const port = rawPort ? Number(rawPort) : 3000;
-if (!isBuild && (Number.isNaN(port) || port <= 0)) {
+const port = rawPort ? Number(rawPort) : 5000;
+if (!isBuild && !isTauri && (Number.isNaN(port) || port <= 0)) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-<<<<<<< HEAD
-// Tauri CLI injects TAURI_ENV_PLATFORM during `tauri build`.
 // Desktop apps load assets from disk (no web server), so Vite must emit
 // relative paths ("./assets/…") instead of absolute paths ("/assets/…").
 // In the Replit web environment BASE_PATH is provided explicitly.
-const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM;
-const basePath = isTauriBuild ? "./" : (process.env.BASE_PATH ?? "/");
-=======
-// BASE_PATH: use "./" for Tauri desktop builds (file:// protocol needs relative paths),
-// "/" for web server, or the provided env var
 const basePath = isTauri
   ? "./"
   : (process.env.BASE_PATH ?? (isBuild ? "./" : "/"));
-
-if (!isBuild && !process.env.BASE_PATH) {
-  throw new Error("BASE_PATH environment variable is required but was not provided.");
-}
->>>>>>> 45cf88d490edafc3d1d600d2796ecc761c3dd869
 
 export default defineConfig({
   base: basePath,
