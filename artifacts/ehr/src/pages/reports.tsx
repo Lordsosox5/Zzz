@@ -802,14 +802,22 @@ export default function Reports() {
           ],
           trendData: trend,
           trendLabel: en ? "Patient Registrations Over Period" : "دخول المرضى خلال الفترة",
-          tableColumns: en ? ["File #", "Gender", "Status", "Date"] : ["رقم الملف", "الجنس", "الحالة", "التاريخ"],
-          tableRows: patients.slice(0, 100).map(p => ({
-            "File #": p.fileNumber ?? "—", "رقم الملف": p.fileNumber ?? "—",
-            Gender: p.gender ?? "—", "الجنس": p.gender ?? "—",
-            Status: p.status ?? "—", "الحالة": p.status ?? "—",
-            Date: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—",
-            "التاريخ": p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—",
-          })),
+          tableColumns: [],
+          tableRows: [],
+          distributions: [
+            { title: en ? "Status Breakdown" : "توزيع الحالة",
+              data: statusDist(patients, "status", {
+                admitted:   { label: en ? "Admitted"   : "مقبول",  color: "#8b5cf6" },
+                discharged: { label: en ? "Discharged" : "مخرج",   color: "#10b981" },
+                outpatient: { label: en ? "Outpatient" : "خارجي",  color: "#3b82f6" },
+                emergency:  { label: en ? "Emergency"  : "طوارئ",  color: "#ef4444" },
+              }) },
+            { title: en ? "Gender Distribution" : "توزيع الجنس",
+              data: statusDist(patients, "gender", {
+                male:   { label: en ? "Male"   : "ذكر",  color: "#3b82f6" },
+                female: { label: en ? "Female" : "أنثى", color: "#ec4899" },
+              }) },
+          ],
           interpretation: interp,
         });
         break;
@@ -833,14 +841,19 @@ export default function Reports() {
           ],
           trendData: trend,
           trendLabel: en ? "Appointments Over Period" : "المواعيد خلال الفترة",
-          tableColumns: en ? ["Type", "Status", "Doctor", "Scheduled"] : ["النوع", "الحالة", "الطبيب", "الموعد"],
-          tableRows: appointments.slice(0, 100).map(a => ({
-            Type: a.type ?? "—", "النوع": a.type ?? "—",
-            Status: a.status ?? "—", "الحالة": a.status ?? "—",
-            Doctor: a.doctorName ?? "—", "الطبيب": a.doctorName ?? "—",
-            Scheduled: a.scheduledAt ? new Date(a.scheduledAt).toLocaleString() : "—",
-            "الموعد": a.scheduledAt ? new Date(a.scheduledAt).toLocaleString() : "—",
-          })),
+          tableColumns: [],
+          tableRows: [],
+          distributions: [
+            { title: en ? "Status Breakdown" : "توزيع الحالة",
+              data: statusDist(appointments, "status", {
+                completed: { label: en ? "Completed" : "مكتمل",  color: "#10b981" },
+                scheduled: { label: en ? "Scheduled" : "مجدول",  color: "#3b82f6" },
+                cancelled: { label: en ? "Cancelled" : "ملغى",   color: "#ef4444" },
+                "no-show": { label: en ? "No-show"   : "غياب",   color: "#f59e0b" },
+              }) },
+            { title: en ? "Appointment Types" : "أنواع المواعيد",
+              data: freqDist(appointments, "type") },
+          ],
           interpretation: interp,
         });
         break;
@@ -863,14 +876,25 @@ export default function Reports() {
           ],
           trendData: trend,
           trendLabel: en ? "Lab Orders Over Period" : "طلبات المختبر خلال الفترة",
-          tableColumns: en ? ["Test", "Priority", "Status", "Date"] : ["الفحص", "الأولوية", "الحالة", "التاريخ"],
-          tableRows: labOrders.slice(0, 100).map(l => ({
-            Test: l.testName ?? "—", "الفحص": l.testName ?? "—",
-            Priority: l.priority ?? "normal", "الأولوية": l.priority ?? "normal",
-            Status: l.status ?? "—", "الحالة": l.status ?? "—",
-            Date: l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—",
-            "التاريخ": l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—",
-          })),
+          tableColumns: [],
+          tableRows: [],
+          distributions: [
+            { title: en ? "Status Breakdown" : "توزيع الحالة",
+              data: statusDist(labOrders, "status", {
+                resulted:      { label: en ? "Resulted"    : "مكتمل",   color: "#10b981" },
+                reviewed:      { label: en ? "Reviewed"    : "مراجَع",   color: "#3b82f6" },
+                pending:       { label: en ? "Pending"     : "معلق",    color: "#6b7280" },
+                "in-progress": { label: en ? "In Progress" : "جارٍ",    color: "#f59e0b" },
+              }) },
+            { title: en ? "Priority Distribution" : "توزيع الأولوية",
+              data: statusDist(labOrders, "priority", {
+                routine: { label: en ? "Routine" : "عادي", color: "#3b82f6" },
+                urgent:  { label: en ? "Urgent"  : "عاجل", color: "#f59e0b" },
+                stat:    { label: en ? "STAT"    : "فوري", color: "#ef4444" },
+              }) },
+            { title: en ? "Top Tests Requested" : "الفحوصات الأكثر طلباً",
+              data: freqDist(labOrders, "testName").slice(0, 6) },
+          ],
           interpretation: interp,
         });
         break;
@@ -893,17 +917,17 @@ export default function Reports() {
             { label: en ? "Invoices"      : "الفواتير",         value: invoices.length, sub: `${paid} ${en ? "paid" : "مدفوع"}` },
           ],
           trendData: trend,
-          trendLabel: en ? "Revenue Over Period (invoice count)" : "الإيرادات خلال الفترة (عدد الفواتير)",
-          tableColumns: en ? ["Total (SDG)", "Paid (SDG)", "Status", "Date"] : ["المبلغ", "المدفوع", "الحالة", "التاريخ"],
-          tableRows: invoices.slice(0, 100).map(i => ({
-            "Total (SDG)": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
-            "المبلغ": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
-            "Paid (SDG)": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
-            "المدفوع": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
-            Status: i.status ?? "—", "الحالة": i.status ?? "—",
-            Date: i.createdAt ? new Date(i.createdAt).toLocaleDateString() : "—",
-            "التاريخ": i.createdAt ? new Date(i.createdAt).toLocaleDateString() : "—",
-          })),
+          trendLabel: en ? "Invoices Issued Over Period" : "الفواتير الصادرة خلال الفترة",
+          tableColumns: [],
+          tableRows: [],
+          distributions: [
+            { title: en ? "Payment Status" : "حالة الدفع",
+              data: statusDist(invoices, "status", {
+                paid:    { label: en ? "Paid"    : "مدفوع", color: "#10b981" },
+                pending: { label: en ? "Pending" : "معلق",  color: "#f59e0b" },
+                partial: { label: en ? "Partial" : "جزئي", color: "#3b82f6" },
+              }) },
+          ],
           interpretation: interp,
         });
         break;
@@ -926,13 +950,18 @@ export default function Reports() {
           ],
           trendData: trend,
           trendLabel: en ? "Prescriptions Over Period" : "الوصفات خلال الفترة",
-          tableColumns: en ? ["Doctor", "Status", "Date"] : ["الطبيب", "الحالة", "التاريخ"],
-          tableRows: prescriptions.slice(0, 100).map(r => ({
-            Doctor: r.doctorName ?? "—", "الطبيب": r.doctorName ?? "—",
-            Status: r.status ?? "—", "الحالة": r.status ?? "—",
-            Date: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—",
-            "التاريخ": r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—",
-          })),
+          tableColumns: [],
+          tableRows: [],
+          distributions: [
+            { title: en ? "Status Breakdown" : "توزيع الحالة",
+              data: statusDist(prescriptions, "status", {
+                dispensed:  { label: en ? "Dispensed" : "مصروف",  color: "#10b981" },
+                pending:    { label: en ? "Pending"   : "معلق",   color: "#f59e0b" },
+                cancelled:  { label: en ? "Cancelled" : "ملغى",   color: "#ef4444" },
+              }) },
+            { title: en ? "Top Medications" : "الأدوية الأكثر وصفاً",
+              data: freqDist(prescriptions, "medicationName").slice(0, 6) },
+          ],
           interpretation: interp,
         });
         break;
