@@ -16,10 +16,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Users, Calendar, FlaskConical, Receipt, Pill,
   TrendingUp, TrendingDown, Minus, Download, RefreshCw, Printer,
   AlertTriangle, CheckCircle, Clock, FileBarChart,
   Activity, Brain, BarChart3, LayoutGrid, Scan, Package2, PackageOpen,
+  ChevronDown, FileSpreadsheet, FileText, Table2,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { printReport, type PrintSection, type PrintDist } from "@/lib/report-print";
@@ -321,21 +330,19 @@ export default function Reports() {
   const periodLabelEn = PERIODS.find(p => p.value === period)?.labelEn ?? period;
   const reportLabel   = REPORT_TYPES.find(r => r.value === reportType)?.[language === "ar" ? "labelAr" : "labelEn"] ?? reportType;
 
-  function exportToExcel() {
+  function getExportData(): { data: any[]; name: string }[] {
     if (reportType === "overall") {
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(patients),        "Patients");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appointments),    "Appointments");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(labOrders),       "Lab Orders");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(radiologyOrders), "Radiology");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoices),        "Revenue");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prescriptions),   "Prescriptions");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(drugs),           "Pharmacy Stock");
-      XLSX.writeFile(wb, `Overall-Hospital-${period}-report.xlsx`);
-      return;
+      return [
+        { data: patients,        name: "Patients" },
+        { data: appointments,    name: "Appointments" },
+        { data: labOrders,       name: "Lab Orders" },
+        { data: radiologyOrders, name: "Radiology" },
+        { data: invoices,        name: "Revenue" },
+        { data: prescriptions,   name: "Prescriptions" },
+        { data: drugs,           name: "Pharmacy Stock" },
+      ];
     }
     let data: any[] = [];
-    let sheetName = reportLabel;
     switch (reportType) {
       case "patients":      data = patients; break;
       case "appointments":  data = appointments; break;
@@ -345,10 +352,44 @@ export default function Reports() {
       case "prescriptions": data = prescriptions; break;
       case "pharmacy":      data = drugs; break;
     }
-    const ws = XLSX.utils.json_to_sheet(data);
+    return [{ data, name: reportLabel }];
+  }
+
+  function exportToExcel() {
+    const sheets = getExportData();
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    XLSX.writeFile(wb, `${sheetName}-${period}-report.xlsx`);
+    sheets.forEach(({ data, name }) =>
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), name.slice(0, 31))
+    );
+    const fname = reportType === "overall"
+      ? `Overall-Hospital-${period}-report.xlsx`
+      : `${reportLabel}-${period}-report.xlsx`;
+    XLSX.writeFile(wb, fname);
+  }
+
+  function exportToCSV() {
+    const sheets = getExportData();
+    if (sheets.length === 1) {
+      const ws = XLSX.utils.json_to_sheet(sheets[0].data);
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${sheets[0].name}-${period}-report.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } else {
+      sheets.forEach(({ data, name }) => {
+        const ws = XLSX.utils.json_to_sheet(data);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${name}-${period}-report.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+    }
   }
 
   async function handlePrint() {
@@ -992,14 +1033,42 @@ export default function Reports() {
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
             {language === "ar" ? "تحديث" : "Refresh"}
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            {language === "ar" ? "Excel" : "Excel"}
-          </Button>
-          <Button size="sm" onClick={handlePrint} className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white border-0">
-            <Download className="h-3.5 w-3.5" />
-            {language === "ar" ? "تصدير PDF" : "Export PDF"}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground border-0">
+                <Download className="h-3.5 w-3.5" />
+                {language === "ar" ? "تصدير" : "Export"}
+                <ChevronDown className="h-3 w-3 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                {language === "ar" ? "اختر صيغة التصدير" : "Choose export format"}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handlePrint} className="gap-2.5 cursor-pointer">
+                <FileText className="h-4 w-4 text-rose-500" />
+                <div>
+                  <div className="font-medium text-sm">{language === "ar" ? "تقرير PDF" : "PDF Report"}</div>
+                  <div className="text-xs text-muted-foreground">{language === "ar" ? "مخططات بيانية احترافية" : "Charts & professional layout"}</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel} className="gap-2.5 cursor-pointer">
+                <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                <div>
+                  <div className="font-medium text-sm">{language === "ar" ? "جدول Excel" : "Excel Spreadsheet"}</div>
+                  <div className="text-xs text-muted-foreground">{language === "ar" ? "بيانات كاملة قابلة للتعديل" : "Full data, editable (.xlsx)"}</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToCSV} className="gap-2.5 cursor-pointer">
+                <Table2 className="h-4 w-4 text-blue-500" />
+                <div>
+                  <div className="font-medium text-sm">{language === "ar" ? "ملف CSV" : "CSV File"}</div>
+                  <div className="text-xs text-muted-foreground">{language === "ar" ? "بيانات نصية للتكامل" : "Plain data for integrations"}</div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
