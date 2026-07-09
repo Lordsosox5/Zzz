@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import {
   useListPatients, useListAppointments, useListLabOrders,
-  useListInvoices, useListPrescriptions,
+  useListInvoices, useListPrescriptions, useListRadiologyOrders, useListDrugs,
 } from "@workspace/api-client-react";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,12 +18,12 @@ import {
   Users, Calendar, FlaskConical, Receipt, Pill,
   TrendingUp, TrendingDown, Minus, Download, RefreshCw,
   AlertTriangle, CheckCircle, Clock, FileBarChart,
-  Activity, Brain, BarChart3, LayoutGrid,
+  Activity, Brain, BarChart3, LayoutGrid, Scan, Package2, PackageOpen,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
 
-type ReportType = "overall" | "patients" | "appointments" | "lab" | "revenue" | "prescriptions";
+type ReportType = "overall" | "patients" | "appointments" | "lab" | "revenue" | "prescriptions" | "radiology" | "pharmacy";
 type Period = "today" | "week" | "month" | "quarter" | "half" | "year";
 
 const PERIODS: { value: Period; labelEn: string; labelAr: string }[] = [
@@ -37,11 +37,13 @@ const PERIODS: { value: Period; labelEn: string; labelAr: string }[] = [
 
 const REPORT_TYPES: { value: ReportType; icon: React.ElementType; labelEn: string; labelAr: string; color: string }[] = [
   { value: "overall",       icon: LayoutGrid,   labelEn: "Overall",       labelAr: "الكل",             color: "#0ea5e9" },
-  { value: "patients",      icon: Users,        labelEn: "Patients",      labelAr: "المرضى",          color: "#3b82f6" },
-  { value: "appointments",  icon: Calendar,     labelEn: "Appointments",  labelAr: "المواعيد",         color: "#8b5cf6" },
+  { value: "patients",      icon: Users,        labelEn: "Patients",      labelAr: "المرضى",           color: "#3b82f6" },
+  { value: "appointments",  icon: Calendar,     labelEn: "Appointments",  labelAr: "المواعيد",          color: "#8b5cf6" },
   { value: "lab",           icon: FlaskConical, labelEn: "Lab Orders",    labelAr: "طلبات المختبر",    color: "#f59e0b" },
-  { value: "revenue",       icon: Receipt,      labelEn: "Revenue",       labelAr: "الإيرادات",        color: "#10b981" },
+  { value: "radiology",     icon: Scan,         labelEn: "Radiology",     labelAr: "الأشعة",           color: "#06b6d4" },
+  { value: "revenue",       icon: Receipt,      labelEn: "Revenue",       labelAr: "الإيرادات",         color: "#10b981" },
   { value: "prescriptions", icon: Pill,         labelEn: "Prescriptions", labelAr: "الوصفات الطبية",   color: "#ef4444" },
+  { value: "pharmacy",      icon: Package2,     labelEn: "Pharmacy Stock", labelAr: "مخزون الصيدلية",  color: "#a855f7" },
 ];
 
 const CHART_COLORS = ["#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444", "#06b6d4", "#84cc16"];
@@ -271,20 +273,22 @@ export default function Reports() {
 
   const { start, end, groupBy } = useMemo(() => getPeriodRange(period), [period]);
 
-  const { data: patientResp,    isLoading: loadPat,  refetch: refetchPat }  = useListPatients({});
-  const { data: allAppts = [],  isLoading: loadAppt, refetch: refetchAppt } = useListAppointments({});
-  const { data: allLabs = [],   isLoading: loadLab,  refetch: refetchLab }  = useListLabOrders({});
-  const { data: allInvoices = [],isLoading: loadInv, refetch: refetchInv }  = useListInvoices({});
-  const { data: allRx = [],     isLoading: loadRx,   refetch: refetchRx }   = useListPrescriptions({});
+  const { data: patientResp,      isLoading: loadPat,   refetch: refetchPat }   = useListPatients({});
+  const { data: allAppts = [],    isLoading: loadAppt,  refetch: refetchAppt }  = useListAppointments({});
+  const { data: allLabs = [],     isLoading: loadLab,   refetch: refetchLab }   = useListLabOrders({});
+  const { data: allInvoices = [], isLoading: loadInv,   refetch: refetchInv }   = useListInvoices({});
+  const { data: allRx = [],       isLoading: loadRx,    refetch: refetchRx }    = useListPrescriptions({});
+  const { data: allRadiology = [],isLoading: loadRad,   refetch: refetchRad }   = useListRadiologyOrders({});
+  const { data: allDrugs = [],    isLoading: loadDrugs, refetch: refetchDrugs } = useListDrugs({});
 
   const allPatients: any[] = Array.isArray(patientResp)
     ? patientResp
     : ((patientResp as any)?.patients ?? []);
 
-  const isLoading = loadPat || loadAppt || loadLab || loadInv || loadRx;
+  const isLoading = loadPat || loadAppt || loadLab || loadInv || loadRx || loadRad || loadDrugs;
 
   function refetchAll() {
-    refetchPat(); refetchAppt(); refetchLab(); refetchInv(); refetchRx();
+    refetchPat(); refetchAppt(); refetchLab(); refetchInv(); refetchRx(); refetchRad(); refetchDrugs();
   }
 
   function inRange(dateStr: string | null | undefined) {
@@ -293,11 +297,24 @@ export default function Reports() {
     return d >= start && d <= end;
   }
 
-  const patients     = useMemo(() => (allPatients as any[]).filter(p => inRange(p.createdAt ?? p.created_at)), [allPatients, start, end]);
-  const appointments = useMemo(() => (allAppts as any[]).filter(a => inRange(a.scheduledAt ?? a.scheduled_at)), [allAppts, start, end]);
-  const labOrders    = useMemo(() => (allLabs as any[]).filter(l => inRange(l.createdAt ?? l.created_at)), [allLabs, start, end]);
-  const invoices     = useMemo(() => (allInvoices as any[]).filter(i => inRange(i.createdAt ?? i.created_at)), [allInvoices, start, end]);
+  const patients      = useMemo(() => (allPatients as any[]).filter(p => inRange(p.createdAt ?? p.created_at)), [allPatients, start, end]);
+  const appointments  = useMemo(() => (allAppts as any[]).filter(a => inRange(a.scheduledAt ?? a.scheduled_at)), [allAppts, start, end]);
+  const labOrders     = useMemo(() => (allLabs as any[]).filter(l => inRange(l.createdAt ?? l.created_at)), [allLabs, start, end]);
+  const invoices      = useMemo(() => (allInvoices as any[]).filter(i => inRange(i.createdAt ?? i.created_at)), [allInvoices, start, end]);
   const prescriptions = useMemo(() => (allRx as any[]).filter(r => inRange(r.createdAt ?? r.created_at)), [allRx, start, end]);
+  const radiologyOrders = useMemo(() => (allRadiology as any[]).filter(r => inRange(r.createdAt ?? r.created_at)), [allRadiology, start, end]);
+  const drugs = useMemo(() => (allDrugs as any[]), [allDrugs]);
+
+  const periodCounts: Record<ReportType, number> = useMemo(() => ({
+    overall:       patients.length + appointments.length + labOrders.length + invoices.length,
+    patients:      patients.length,
+    appointments:  appointments.length,
+    lab:           labOrders.length,
+    radiology:     radiologyOrders.length,
+    revenue:       invoices.length,
+    prescriptions: prescriptions.length,
+    pharmacy:      (allDrugs as any[]).length,
+  }), [patients, appointments, labOrders, invoices, prescriptions, radiologyOrders, allDrugs]);
 
   const periodLabel   = PERIODS.find(p => p.value === period)?.[language === "ar" ? "labelAr" : "labelEn"] ?? period;
   const periodLabelEn = PERIODS.find(p => p.value === period)?.labelEn ?? period;
@@ -306,11 +323,13 @@ export default function Reports() {
   function exportToExcel() {
     if (reportType === "overall") {
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(patients),      "Patients");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appointments),  "Appointments");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(labOrders),     "Lab Orders");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoices),      "Revenue");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prescriptions), "Prescriptions");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(patients),        "Patients");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appointments),    "Appointments");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(labOrders),       "Lab Orders");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(radiologyOrders), "Radiology");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoices),        "Revenue");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prescriptions),   "Prescriptions");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(drugs),           "Pharmacy Stock");
       XLSX.writeFile(wb, `Overall-Hospital-${period}-report.xlsx`);
       return;
     }
@@ -320,8 +339,10 @@ export default function Reports() {
       case "patients":      data = patients; break;
       case "appointments":  data = appointments; break;
       case "lab":           data = labOrders; break;
+      case "radiology":     data = radiologyOrders; break;
       case "revenue":       data = invoices; break;
       case "prescriptions": data = prescriptions; break;
+      case "pharmacy":      data = drugs; break;
     }
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -676,6 +697,7 @@ export default function Reports() {
           {REPORT_TYPES.map(r => {
             const Icon = r.icon;
             const active = reportType === r.value;
+            const count = periodCounts[r.value];
             return (
               <button
                 key={r.value}
@@ -688,6 +710,16 @@ export default function Reports() {
               >
                 <Icon className="h-3.5 w-3.5" style={active ? { color: r.color } : {}} />
                 {language === "ar" ? r.labelAr : r.labelEn}
+                {count > 0 && (
+                  <span
+                    className={`inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-bold ${
+                      active ? "text-white" : "bg-muted text-muted-foreground"
+                    }`}
+                    style={active ? { backgroundColor: r.color } : {}}
+                  >
+                    {count > 999 ? "999+" : count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -736,6 +768,12 @@ export default function Reports() {
       )}
       {reportType === "prescriptions" && (
         <PrescriptionReport prescriptions={prescriptions} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
+      )}
+      {reportType === "radiology" && (
+        <RadiologyReport radiologyOrders={radiologyOrders} period={period} groupBy={groupBy} periodLabel={periodLabel} language={language} />
+      )}
+      {reportType === "pharmacy" && (
+        <PharmacyReport drugs={drugs} period={period} periodLabel={periodLabel} language={language} />
       )}
     </div>
   );
@@ -1008,6 +1046,30 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
       : "Gender data unavailable for the selected period.",
   ];
 
+  // Age group distribution (critical for paediatric hospital)
+  const ageGroups = useMemo(() => {
+    const groups: Record<string, number> = {
+      "0–1 yr": 0, "1–4 yrs": 0, "5–9 yrs": 0, "10–14 yrs": 0, "15–18 yrs": 0, "18+ yrs": 0,
+    };
+    const arGroups: Record<string, number> = {
+      "0–1 سنة": 0, "1–4 سنوات": 0, "5–9 سنوات": 0, "10–14 سنة": 0, "15–18 سنة": 0, "18+ سنة": 0,
+    };
+    patients.forEach(p => {
+      const dob = p.dateOfBirth ?? p.date_of_birth;
+      if (!dob) return;
+      const ageMos = (Date.now() - new Date(dob).getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+      const ageYrs = ageMos / 12;
+      if (ageYrs < 1)       { groups["0–1 yr"]++;    arGroups["0–1 سنة"]++; }
+      else if (ageYrs < 5)  { groups["1–4 yrs"]++;   arGroups["1–4 سنوات"]++; }
+      else if (ageYrs < 10) { groups["5–9 yrs"]++;   arGroups["5–9 سنوات"]++; }
+      else if (ageYrs < 15) { groups["10–14 yrs"]++; arGroups["10–14 سنة"]++; }
+      else if (ageYrs < 19) { groups["15–18 yrs"]++; arGroups["15–18 سنة"]++; }
+      else                  { groups["18+ yrs"]++;    arGroups["18+ سنة"]++; }
+    });
+    const src = language === "ar" ? arGroups : groups;
+    return Object.entries(src).map(([name, count]) => ({ name, count })).filter(d => d.count > 0);
+  }, [patients, language]);
+
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1056,6 +1118,36 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
           </CardContent>
         </Card>
       </div>
+
+      {/* Age Group Distribution — critical for paediatric hospital */}
+      {ageGroups.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-500" />
+              {language === "ar" ? "توزيع الفئات العمرية (بيئة طب الأطفال)" : "Age Group Distribution (Paediatric Context)"}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {language === "ar" ? "توزيع المرضى حسب الفئة العمرية في الفترة المحددة" : "Patient spread across age bands for the selected period"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={ageGroups} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} name={language === "ar" ? "مريض" : "Patients"}>
+                  {ageGroups.map((_, i) => (
+                    <Cell key={i} fill={["#60a5fa","#818cf8","#34d399","#fbbf24","#f87171","#a78bfa"][i % 6]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       <InterpretationPanel lines={interpretation} language={language} />
 
@@ -1262,6 +1354,34 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
           </CardContent>
         </Card>
       </div>
+
+      {/* Top Tests chart */}
+      {labOrders.length > 0 && (() => {
+        const testCounts: Record<string, number> = {};
+        labOrders.forEach(l => { const t = l.testName ?? l.test_name ?? "Unknown"; testCounts[t] = (testCounts[t] ?? 0) + 1; });
+        const topTests = Object.entries(testCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name: name.length > 20 ? name.slice(0, 20) + "…" : name, count }));
+        return topTests.length > 1 ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FlaskConical className="h-4 w-4 text-amber-500" />
+                {language === "ar" ? "الفحوصات الأكثر طلباً" : "Most Requested Tests (Top 8)"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={topTests} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={110} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#f59e0b" radius={[0, 4, 4, 0]} name={language === "ar" ? "طلبات" : "Orders"} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        ) : null;
+      })()}
 
       <InterpretationPanel lines={interpretation} language={language} />
 
@@ -1491,6 +1611,333 @@ function PrescriptionReport({ prescriptions, period, groupBy, periodLabel, langu
         { key: "doctorName", label: language === "ar" ? "الطبيب" : "Doctor" },
         { key: "status", label: language === "ar" ? "الحالة" : "Status", render: (v) => <StatusBadge status={v} /> },
         { key: "createdAt", label: language === "ar" ? "التاريخ" : "Date", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      ]} language={language} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════ RADIOLOGY REPORT ═══════════════════════════════════════ */
+function RadiologyReport({ radiologyOrders, period, groupBy, periodLabel, language }:
+  { radiologyOrders: any[]; period: string; groupBy: any; periodLabel: string; language: string }) {
+
+  const reported  = radiologyOrders.filter(r => r.status === "reported").length;
+  const pending   = radiologyOrders.filter(r => r.status === "pending").length;
+  const inProg    = radiologyOrders.filter(r => r.status === "in_progress").length;
+  const turnRate  = radiologyOrders.length > 0 ? ((reported / radiologyOrders.length) * 100).toFixed(1) : "0";
+
+  const trend = groupByTime(radiologyOrders, "createdAt", groupBy);
+
+  // Modality distribution
+  const modalityMap: Record<string, number> = {};
+  radiologyOrders.forEach(r => {
+    const m = (r.modality ?? "Other").toUpperCase();
+    modalityMap[m] = (modalityMap[m] ?? 0) + 1;
+  });
+  const modalityData = Object.entries(modalityMap)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value }));
+
+  const MODALITY_COLORS: Record<string, string> = {
+    XRAY: "#3b82f6", CT: "#8b5cf6", MRI: "#06b6d4", ULTRASOUND: "#10b981",
+    "X-RAY": "#3b82f6", OTHER: "#6b7280",
+  };
+
+  const statusData = [
+    { name: language === "ar" ? "تم التقرير" : "Reported",    value: reported,  fill: "#10b981" },
+    { name: language === "ar" ? "قيد التنفيذ" : "In Progress", value: inProg,    fill: "#f59e0b" },
+    { name: language === "ar" ? "معلق" : "Pending",           value: pending,   fill: "#6b7280" },
+  ].filter(d => d.value > 0);
+
+  const interpretation = language === "ar" ? [
+    `في فترة "${periodLabel}" أُنشئ ${radiologyOrders.length} طلب أشعة.`,
+    reported > 0
+      ? `معدل إتمام التقارير: ${turnRate}% — ${Number(turnRate) >= 85 ? "ممتاز، يعكس سرعة الاستجابة الإشعاعية." : Number(turnRate) >= 60 ? "مقبول، يُنصح بمتابعة الطلبات المعلقة." : "يستدعي مراجعة سير العمل في قسم الأشعة."}`
+      : "لم تُكتمل تقارير في هذه الفترة حتى الآن.",
+    pending > 0
+      ? `${pending} طلب معلق في انتظار التقرير.`
+      : "لا طلبات معلقة — أداء قسم الأشعة ممتاز.",
+    modalityData.length > 0
+      ? `أكثر الفحوصات طلباً: ${modalityData[0]?.name ?? "—"} (${modalityData[0]?.value ?? 0} طلباً).`
+      : "توزيع الأجهزة غير متوفر.",
+  ] : [
+    `During "${periodLabel}", ${radiologyOrders.length} radiology order${radiologyOrders.length !== 1 ? "s were" : " was"} created.`,
+    reported > 0
+      ? `Reporting completion rate: ${turnRate}% — ${Number(turnRate) >= 85 ? "Excellent radiology turnaround." : Number(turnRate) >= 60 ? "Acceptable; follow up on pending orders." : "Below target — radiology workflow review required."}`
+      : "No reports completed this period yet.",
+    pending > 0
+      ? `${pending} order${pending !== 1 ? "s are" : " is"} pending radiologist report.`
+      : "Zero pending orders — outstanding radiology performance.",
+    modalityData.length > 0
+      ? `Most requested modality: ${modalityData[0]?.name ?? "—"} (${modalityData[0]?.value ?? 0} order${(modalityData[0]?.value ?? 0) !== 1 ? "s" : ""}).`
+      : "Modality distribution not available.",
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label={language === "ar" ? "إجمالي الطلبات" : "Total Orders"} value={radiologyOrders.length} icon={Scan} color="#06b6d4" />
+        <KpiCard label={language === "ar" ? "تم التقرير" : "Reported"} value={reported} sub={`${turnRate}%`} icon={CheckCircle} color="#10b981" trend={Number(turnRate) >= 80 ? "up" : "neutral"} />
+        <KpiCard label={language === "ar" ? "قيد التنفيذ" : "In Progress"} value={inProg} icon={Clock} color="#f59e0b" />
+        <KpiCard label={language === "ar" ? "معلق" : "Pending"} value={pending} icon={AlertTriangle} color="#6b7280" trend={pending > 5 ? "down" : "neutral"} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{language === "ar" ? "طلبات الأشعة خلال الفترة" : "Radiology Orders Over Period"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{language === "ar" ? "حالة الطلبات" : "Order Status"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {statusData.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                {language === "ar" ? "لا توجد بيانات" : "No data"}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={statusData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                    {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Modality distribution */}
+      {modalityData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Scan className="h-4 w-4 text-cyan-500" />
+              {language === "ar" ? "توزيع أجهزة الأشعة" : "Orders by Imaging Modality"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={modalityData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلبات" : "Orders"}>
+                    {modalityData.map((d, i) => (
+                      <Cell key={i} fill={MODALITY_COLORS[d.name] ?? CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col justify-center gap-3">
+                {modalityData.map((d, i) => (
+                  <div key={d.name} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: MODALITY_COLORS[d.name] ?? CHART_COLORS[i % CHART_COLORS.length] }} />
+                      <span className="text-foreground font-medium">{d.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-foreground">{d.value}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({radiologyOrders.length > 0 ? ((d.value / radiologyOrders.length) * 100).toFixed(0) : 0}%)
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <InterpretationPanel lines={interpretation} language={language} />
+
+      <ReportTable data={radiologyOrders.slice(0, 50)} columns={[
+        { key: "patientName", label: language === "ar" ? "المريض" : "Patient" },
+        { key: "modality",    label: language === "ar" ? "الجهاز" : "Modality" },
+        { key: "orderType",   label: language === "ar" ? "النوع" : "Type" },
+        { key: "status",      label: language === "ar" ? "الحالة" : "Status", render: (v) => <StatusBadge status={v} /> },
+        { key: "createdAt",   label: language === "ar" ? "التاريخ" : "Date",  render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      ]} language={language} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════ PHARMACY / INVENTORY REPORT ═══════════════════════════════════════ */
+function PharmacyReport({ drugs, period, periodLabel, language }:
+  { drugs: any[]; period: string; periodLabel: string; language: string }) {
+
+  const total       = drugs.length;
+  const lowStock    = drugs.filter(d => Number(d.stockQuantity ?? d.stock_quantity ?? 0) <= Number(d.minStockLevel ?? d.min_stock_level ?? d.minimumStock ?? 10) && Number(d.stockQuantity ?? d.stock_quantity ?? 0) > 0);
+  const outOfStock  = drugs.filter(d => Number(d.stockQuantity ?? d.stock_quantity ?? 0) === 0);
+  const controlled  = drugs.filter(d => d.isControlled ?? d.is_controlled);
+  const adequate    = total - lowStock.length - outOfStock.length;
+
+  // Category distribution
+  const catMap: Record<string, number> = {};
+  drugs.forEach(d => { const c = d.category ?? d.drugCategory ?? "Other"; catMap[c] = (catMap[c] ?? 0) + 1; });
+  const categoryData = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+
+  // Stock level chart — top 10 low/zero stock
+  const atRisk = [...outOfStock, ...lowStock].slice(0, 10).map(d => ({
+    name: (d.name ?? d.drugName ?? "Drug").slice(0, 18),
+    stock: Number(d.stockQuantity ?? d.stock_quantity ?? 0),
+    min: Number(d.minStockLevel ?? d.min_stock_level ?? d.minimumStock ?? 10),
+  }));
+
+  const interpretation = language === "ar" ? [
+    `المخزون الكلي: ${total} دواء في النظام.`,
+    outOfStock.length > 0
+      ? `⚠️ ${outOfStock.length} دواء نفد من المخزون — يتطلب إعادة طلب فورية.`
+      : "لا أدوية نافدة من المخزون — ممتاز.",
+    lowStock.length > 0
+      ? `${lowStock.length} دواء تحت مستوى الحد الأدنى — يُوصى بالطلب قريباً.`
+      : "جميع الأدوية ضمن مستويات المخزون المقبولة.",
+    controlled.length > 0
+      ? `${controlled.length} مادة خاضعة للرقابة تستوجب المتابعة الدقيقة وفق اللوائح.`
+      : "لا مواد خاضعة للرقابة.",
+  ] : [
+    `Total inventory: ${total} drug${total !== 1 ? "s" : ""} in the system.`,
+    outOfStock.length > 0
+      ? `⚠️ ${outOfStock.length} drug${outOfStock.length !== 1 ? "s are" : " is"} out of stock — immediate reorder required.`
+      : "No drugs are out of stock — excellent inventory management.",
+    lowStock.length > 0
+      ? `${lowStock.length} drug${lowStock.length !== 1 ? "s are" : " is"} below minimum stock level — order soon.`
+      : "All drugs are within acceptable stock levels.",
+    controlled.length > 0
+      ? `${controlled.length} controlled substance${controlled.length !== 1 ? "s" : ""} require strict regulatory tracking.`
+      : "No controlled substances flagged.",
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label={language === "ar" ? "إجمالي الأدوية" : "Total Drugs"} value={total} icon={Package2} color="#a855f7" />
+        <KpiCard label={language === "ar" ? "مخزون كافٍ" : "Adequate Stock"} value={adequate} icon={CheckCircle} color="#10b981" trend={adequate > 0 ? "up" : "neutral"} />
+        <KpiCard label={language === "ar" ? "مخزون منخفض" : "Low Stock"} value={lowStock.length} icon={AlertTriangle} color="#f59e0b" trend={lowStock.length > 5 ? "down" : "neutral"} />
+        <KpiCard label={language === "ar" ? "نافد" : "Out of Stock"} value={outOfStock.length} icon={PackageOpen} color="#ef4444" trend={outOfStock.length > 0 ? "down" : "up"} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Category pie */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{language === "ar" ? "توزيع الأصناف" : "Drugs by Category"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {categoryData.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                {language === "ar" ? "لا توجد بيانات" : "No data"}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={categoryData} cx="50%" cy="50%" outerRadius={75} dataKey="value"
+                    label={({ name, percent }) => `${name.slice(0, 10)} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false} fontSize={9}>
+                    {categoryData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* At-risk stock bar */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              {language === "ar" ? "أدوية تحت الحد الأدنى / نافدة" : "Low / Out-of-Stock Drugs (Top 10)"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {atRisk.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                <CheckCircle className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
+                <span>{language === "ar" ? "جميع الأدوية بمستوى مخزون مقبول" : "All drugs have adequate stock levels"}</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={atRisk} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
+                  <Tooltip formatter={(v, name) => [v, name === "stock" ? (language === "ar" ? "المتوفر" : "Stock") : (language === "ar" ? "الحد الأدنى" : "Min Level")]} />
+                  <Bar dataKey="min"   fill="#f59e0b22" stroke="#f59e0b" strokeWidth={1} name="min"   radius={[0, 2, 2, 0]} />
+                  <Bar dataKey="stock" radius={[0, 4, 4, 0]} name="stock">
+                    {atRisk.map((d, i) => (
+                      <Cell key={i} fill={d.stock === 0 ? "#ef4444" : "#f59e0b"} />
+                    ))}
+                  </Bar>
+                  <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => v === "stock" ? (language === "ar" ? "المتوفر" : "Current Stock") : (language === "ar" ? "الحد الأدنى" : "Min Level")} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Controlled substances callout */}
+      {controlled.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-700/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              {language === "ar" ? `مواد خاضعة للرقابة (${controlled.length})` : `Controlled Substances (${controlled.length})`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {controlled.map((d: any) => (
+                <span key={d.id} className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  {d.name ?? d.drugName ?? "Drug"}
+                  {Number(d.stockQuantity ?? d.stock_quantity ?? 0) === 0 && (
+                    <span className="ml-1 text-red-600 dark:text-red-400 font-bold">● {language === "ar" ? "نافد" : "OOS"}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <InterpretationPanel lines={interpretation} language={language} />
+
+      <ReportTable data={drugs.slice(0, 60)} columns={[
+        { key: "name",          label: language === "ar" ? "الدواء" : "Drug Name" },
+        { key: "category",      label: language === "ar" ? "الصنف" : "Category" },
+        { key: "stockQuantity", label: language === "ar" ? "المتوفر" : "Stock",
+          render: (v, row) => {
+            const qty = Number(v ?? 0);
+            const min = Number(row.minStockLevel ?? row.min_stock_level ?? row.minimumStock ?? 10);
+            const color = qty === 0 ? "text-red-600 font-bold" : qty <= min ? "text-amber-600 font-semibold" : "text-emerald-600";
+            return <span className={color}>{qty}</span>;
+          }
+        },
+        { key: "minStockLevel", label: language === "ar" ? "الحد الأدنى" : "Min Level" },
+        { key: "isControlled",  label: language === "ar" ? "خاضع للرقابة" : "Controlled",
+          render: (v) => v ? <StatusBadge status="critical" /> : <span className="text-muted-foreground text-xs">—</span>
+        },
       ]} language={language} />
     </div>
   );

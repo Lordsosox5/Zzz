@@ -434,7 +434,7 @@ importers:
         specifier: ^5.2.7
         version: 5.2.7
       '@supabase/supabase-js':
-        specifier: ^2.49.4
+        specifier: ^2.108.2
         version: 2.108.2
       bidi-js:
         specifier: ^1.0.3
