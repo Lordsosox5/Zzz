@@ -33,6 +33,15 @@ const translations: Translations = {
   "nav.nursery": { en: "Nursery", ar: "الحضانة" },
   "nav.picu": { en: "PICU", ar: "وحدة العناية المركزة" },
   "nav.reports": { en: "Reports", ar: "التقارير" },
+  "nav.wardCensus": { en: "Ward Census", ar: "إحصاء الأجنحة" },
+  "ward.title": { en: "Ward Census", ar: "إحصاء الأجنحة" },
+  "ward.subtitle": { en: "All admitted patients grouped by hospital place", ar: "جميع المرضى الداخليين مجمّعين حسب مكان الجناح" },
+  "ward.totalAdmitted": { en: "Total Admitted", ar: "إجمالي المرضى" },
+  "ward.noPatients": { en: "No patients in this ward", ar: "لا يوجد مرضى في هذا الجناح" },
+  "ward.unassigned": { en: "Unassigned", ar: "غير محدد" },
+  "ward.age": { en: "Age", ar: "العمر" },
+  "ward.guardian": { en: "Guardian", ar: "ولي الأمر" },
+  "ward.admission": { en: "Admission", ar: "تاريخ الدخول" },
 
   // Notifications
   "notif.title": { en: "Notifications", ar: "الإشعارات" },
