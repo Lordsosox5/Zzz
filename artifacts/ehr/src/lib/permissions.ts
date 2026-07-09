@@ -40,7 +40,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Manage appointments", ar: "إدارة المواعيد" },
       { en: "Record vaccinations and growth data", ar: "تسجيل التطعيمات وبيانات النمو" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units", "/nursery", "/picu"],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units", "/nursery", "/picu", "/ward-census"],
   },
   pediatric_specialist: {
     label: { en: "Pediatric Specialist", ar: "أخصائي طب الأطفال" },
@@ -54,7 +54,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View lab results for their patients", ar: "عرض نتائج المختبر لمرضاهم" },
       { en: "Manage appointments", ar: "إدارة المواعيد" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/nursery", "/picu"],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/nursery", "/picu", "/ward-census"],
   },
   nurse: {
     label: { en: "Nursing Staff", ar: "الكوادر التمريضية" },
@@ -67,7 +67,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Assist with appointments scheduling", ar: "المساعدة في جدولة المواعيد" },
       { en: "View upcoming appointments", ar: "عرض المواعيد القادمة" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/vaccinations", "/growth", "/nursery", "/picu"],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/vaccinations", "/growth", "/nursery", "/picu", "/ward-census"],
   },
   emergency_physician: {
     label: { en: "Emergency Physician", ar: "طبيب طوارئ" },
@@ -80,7 +80,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Order urgent lab and radiology tests", ar: "طلب الفحوصات المخبرية والأشعة العاجلة" },
       { en: "Manage emergency appointments and admissions", ar: "إدارة مواعيد الطوارئ والدخول" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/nursery", "/picu"],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/nursery", "/picu", "/ward-census"],
   },
   pharmacist: {
     label: { en: "Pharmacist", ar: "صيدلاني" },
@@ -116,7 +116,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View patient demographics (read-only)", ar: "عرض بيانات المريض (للقراءة فقط)" },
       { en: "Generate financial reports", ar: "إنشاء التقارير المالية" },
     ],
-    allowedNav: ["/dashboard", "/billing"],
+    allowedNav: ["/dashboard", "/billing", "/reports"],
   },
   house_officer: {
     label: { en: "House Officer", ar: "طبيب مقيم" },
@@ -156,7 +156,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "Order and review lab and radiology investigations", ar: "طلب ومراجعة الفحوصات المخبرية والأشعة" },
       { en: "Manage on-call admissions under supervision", ar: "إدارة دخول مرضى النداء تحت الإشراف" },
     ],
-    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units", "/nursery", "/picu"],
+    allowedNav: ["/dashboard", "/patients", "/appointments", "/clinical-notes", "/prescriptions", "/lab", "/radiology", "/vaccinations", "/growth", "/units", "/nursery", "/picu", "/ward-census"],
   },
   accounts_manager: {
     label: { en: "Accounts Manager", ar: "مدير الحسابات" },
@@ -189,7 +189,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleDefinition> = {
       { en: "View patient demographics and statistics", ar: "عرض البيانات الديموغرافية للمرضى والإحصاءات" },
       { en: "Access aggregated clinical reports", ar: "الوصول إلى التقارير السريرية المجمّعة" },
     ],
-    allowedNav: ["/dashboard", "/patients"],
+    allowedNav: ["/dashboard", "/patients", "/reports"],
   },
 };
 

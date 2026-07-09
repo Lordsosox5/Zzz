@@ -9,6 +9,7 @@ import {
   FlaskConical, Activity, HeartPulse, Receipt, UserRound,
   ShieldAlert, Settings, LogOut, Bell, Moon, Sun, Languages, TrendingUp, Building2,
   X, FlaskRound, UserPlus, CalendarPlus, PackageOpen, CheckCheck, Baby, BedDouble,
+  FileBarChart, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,8 @@ const ALL_NAV_ITEMS = [
   { href: "/units",          icon: Building2,       labelKey: "nav.units" },
   { href: "/nursery",        icon: Baby,            labelKey: "nav.nursery" },
   { href: "/picu",           icon: BedDouble,       labelKey: "nav.picu" },
+  { href: "/ward-census",    icon: MapPin,          labelKey: "nav.wardCensus" },
+  { href: "/reports",        icon: FileBarChart,    labelKey: "nav.reports" },
 ];
 
 const ROLE_BADGE_COLORS: Record<string, string> = {
