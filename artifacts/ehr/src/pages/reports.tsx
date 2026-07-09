@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
+import { getToken, getUser } from "@/lib/auth";
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -412,6 +413,273 @@ export default function Reports() {
         a.click();
         URL.revokeObjectURL(a.href);
       });
+    }
+  }
+
+  const [statPdfLoading, setStatPdfLoading] = useState(false);
+
+  async function handleStatisticalPdfReport() {
+    setStatPdfLoading(true);
+    try {
+      const token = getToken();
+      const user  = getUser();
+      const h = { Authorization: `Bearer ${token}` };
+
+      // Fetch additional data not loaded by existing hooks
+      const [diagsRaw, vaccsRaw, growthRaw] = await Promise.all([
+        fetch(`/api/diagnoses`,     { headers: h }).then(r => r.json()).catch(() => []),
+        fetch(`/api/vaccinations`,  { headers: h }).then(r => r.json()).catch(() => []),
+        fetch(`/api/growth-records`,{ headers: h }).then(r => r.json()).catch(() => []),
+      ]);
+
+      // Use period-filtered data already in scope from hooks
+      const pats  = patients       as any[];
+      const appts = appointments   as any[];
+      const labs  = labOrders      as any[];
+      const rads  = radiologyOrders as any[];
+      const rxs   = prescriptions  as any[];
+      const invs  = invoices       as any[];
+
+      const pidSet = new Set(pats.map(p => p.id));
+      const diags  = (Array.isArray(diagsRaw) ? diagsRaw : []).filter((d: any) => pidSet.has(d.patientId));
+      const vaccs  = (Array.isArray(vaccsRaw) ? vaccsRaw : []).filter((v: any) => pidSet.has(v.patientId));
+      const growth = (Array.isArray(growthRaw) ? growthRaw : []).filter((g: any) => pidSet.has(g.patientId));
+
+      if (!pats.length && !labs.length && !appts.length) {
+        return;
+      }
+
+      // ── Statistics helpers ─────────────────────────────────────────────
+      const freq = (arr: any[], keyFn: (x: any) => string): Record<string, number> => {
+        const m: Record<string, number> = {};
+        arr.forEach(x => { const k = keyFn(x) || "Unknown"; m[k] = (m[k] || 0) + 1; });
+        return m;
+      };
+      const topN = (m: Record<string, number>, n: number) =>
+        Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n);
+      const pct  = (n: number, tot: number) => tot ? (n / tot * 100).toFixed(1) : "0.0";
+
+      const total   = pats.length;
+      const active  = pats.filter(p => p.status === "active" || p.status === "admitted").length;
+      const disch   = total - active;
+
+      const genderMap = freq(pats, p => p.gender === "male" ? "Male" : p.gender === "female" ? "Female" : "Other");
+      const ageGroups: Record<string, number> = { "< 1 yr": 0, "1–5 yrs": 0, "5–12 yrs": 0, "12–18 yrs": 0 };
+      pats.forEach(p => {
+        if (!p.dateOfBirth) return;
+        const a = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / 31557600000);
+        if (a < 1) ageGroups["< 1 yr"]++;
+        else if (a < 5) ageGroups["1–5 yrs"]++;
+        else if (a < 12) ageGroups["5–12 yrs"]++;
+        else ageGroups["12–18 yrs"]++;
+      });
+      const bloodMap     = freq(pats, p => p.bloodGroup ?? p.bloodType ?? "");
+      const natMap       = freq(pats, p => p.nationality ?? "");
+      const diagMap      = freq(diags, d => [d.code, d.description ?? d.name].filter(Boolean).join(" — ") || "Unknown");
+      const labStatMap   = freq(labs,  o => o.status ?? "Unknown");
+      const labCatMap    = freq(labs,  o => o.category ?? "Unknown");
+      const radModMap    = freq(rads,  o => o.modality ?? "Unknown");
+      const radStatMap   = freq(rads,  o => o.status ?? "Unknown");
+      const rxStatMap    = freq(rxs,   r => r.status ?? "Unknown");
+      const rxDrugMap    = freq(rxs,   r => r.drugName ?? r.medicationName ?? "Unknown");
+      const apptStatMap  = freq(appts, a => a.status ?? "Unknown");
+      const apptTypeMap  = freq(appts, a => a.type ?? "Unknown");
+      const vaccMap      = freq(vaccs, v => v.vaccineName ?? v.name ?? "Unknown");
+      const invStatMap   = freq(invs,  i => i.status ?? "Unknown");
+
+      const growthNum     = growth.filter((g: any) => g.weight && g.height);
+      const avgW          = growthNum.length ? (growthNum.reduce((s: number, g: any) => s + parseFloat(g.weight), 0) / growthNum.length).toFixed(1) : "—";
+      const avgH          = growthNum.length ? (growthNum.reduce((s: number, g: any) => s + parseFloat(g.height), 0) / growthNum.length).toFixed(1) : "—";
+      const totalBilled   = invs.reduce((s: number, i: any) => s + parseFloat(i.totalAmount ?? i.total ?? 0), 0);
+      const totalCollected= invs.reduce((s: number, i: any) => s + parseFloat(i.paidAmount  ?? i.paid  ?? 0), 0);
+      const outstanding   = totalBilled - totalCollected;
+      const collRate      = totalBilled > 0 ? (totalCollected / totalBilled * 100).toFixed(1) : "0.0";
+
+      // ── HTML helpers ──────────────────────────────────────────────────
+      const COLORS = ["#1d4ed8","#0d9488","#16a34a","#ea580c","#7c3aed","#dc2626","#0284c7","#ca8a04","#db2777","#65a30d","#0891b2","#9333ea"];
+
+      const bar = (items: [string, number][], tot: number, ci = 0) =>
+        items.length === 0
+          ? `<p style="color:#94a3b8;font-size:10px;margin:4px 0">No data for this period.</p>`
+          : items.map(([label, cnt], i) => {
+              const p = tot > 0 ? cnt / tot * 100 : 0;
+              const c = COLORS[(ci + i) % COLORS.length];
+              return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+                <span style="min-width:155px;max-width:155px;font-size:10px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label}">${label}</span>
+                <div style="flex:1;background:#f1f5f9;border-radius:3px;height:13px;overflow:hidden">
+                  <div style="width:${Math.max(p,.5)}%;background:${c};height:13px;border-radius:3px"></div>
+                </div>
+                <span style="min-width:72px;font-size:10px;font-weight:700;color:${c};text-align:right">${cnt}&nbsp;(${p.toFixed(1)}%)</span>
+              </div>`;
+            }).join("");
+
+      const kpi = (val: string|number, lbl: string, sub: string, c: string) =>
+        `<div style="flex:1;min-width:130px;background:${c}10;border:1.5px solid ${c}25;border-radius:10px;padding:14px 16px;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:${c};line-height:1.1">${val}</div>
+          <div style="font-size:10.5px;font-weight:600;color:#475569;margin-top:4px">${lbl}</div>
+          ${sub ? `<div style="font-size:9.5px;color:#94a3b8;margin-top:2px">${sub}</div>` : ""}
+        </div>`;
+
+      const h2s = (t: string, icon: string) =>
+        `<div style="display:flex;align-items:center;gap:9px;margin:28px 0 12px;padding-bottom:8px;border-bottom:2.5px solid #0f2855">
+          <span style="font-size:17px">${icon}</span>
+          <span style="font-size:14px;font-weight:800;color:#0f2855;text-transform:uppercase;letter-spacing:.08em">${t}</span>
+        </div>`;
+
+      const box = (title: string, body: string) =>
+        `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:13px 16px;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">${title}</div>
+          ${body}
+        </div>`;
+
+      const col2 = (a: string, b: string) =>
+        `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${a}${b}</div>`;
+
+      const reportDate = new Date().toLocaleDateString("en-GB", { day:"2-digit", month:"long", year:"numeric" });
+      const reportTime = new Date().toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+
+      const html = `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>AMH Statistical Report — ${periodLabelEn} — ${reportDate}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  @page { size: A4; margin: 16mm 14mm 18mm; }
+  @media print { .pb { page-break-before: always; } * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter',Arial,sans-serif; font-size:11px; color:#1e293b; background:#fff; }
+</style>
+</head><body>
+
+<div style="background:#0f2855;color:#fff;padding:20px 28px 18px;position:relative;overflow:hidden">
+  <div style="display:flex;align-items:flex-start;gap:14px">
+    <div style="width:42px;height:42px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">❤</div>
+    <div style="flex:1">
+      <div style="font-size:19px;font-weight:800">Almuzini Children Hospital</div>
+      <div style="font-size:10px;opacity:.7;margin-top:2px">مستشفى المزيني للأطفال &nbsp;·&nbsp; Pediatric Health Information System</div>
+    </div>
+    <div style="text-align:right;opacity:.85;flex-shrink:0">
+      <div style="font-size:13px;font-weight:800;letter-spacing:.04em">STATISTICAL REPORT</div>
+      <div style="font-size:9.5px;margin-top:3px">${reportDate} &nbsp;·&nbsp; ${reportTime}</div>
+      <div style="font-size:9.5px;margin-top:2px">Period: ${periodLabelEn} &nbsp;·&nbsp; By: ${user?.username ?? "System"}</div>
+    </div>
+  </div>
+  <div style="margin-top:8px;font-size:9.5px;opacity:.55">Period: ${start.toLocaleDateString()} – ${end.toLocaleDateString()} &nbsp;·&nbsp; ${total} patient(s) in scope</div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#3b82f6,#06b6d4,#10b981,#f59e0b,#ef4444,#8b5cf6)"></div>
+</div>
+
+<div style="padding:20px 28px">
+
+${h2s("Executive Summary", "📊")}
+<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:4px">
+  ${kpi(total, "Patients (Period)", `${pct(active, total)}% active`, "#0f2855")}
+  ${kpi(active, "Active / Admitted", "", "#16a34a")}
+  ${kpi(disch, "Discharged", "", "#64748b")}
+  ${kpi(diags.length, "Diagnosis Records", `${Object.keys(diagMap).length} unique`, "#7c3aed")}
+  ${kpi(labs.length, "Lab Orders", `${rads.length} radiology`, "#0d9488")}
+  ${kpi(rxs.length, "Prescriptions", `${Object.keys(rxDrugMap).length} drugs`, "#ea580c")}
+  ${kpi(appts.length, "Appointments", "", "#0284c7")}
+  ${kpi(vaccs.length, "Vaccine Doses", "", "#db2777")}
+</div>
+
+<div class="pb"></div>
+${h2s("Patient Demographics", "👤")}
+${col2(
+  box("Gender Distribution", bar(topN(genderMap, 5), total)),
+  box("Patient Status", bar([["Active / Admitted", active], ["Discharged", disch]], total, 2))
+)}
+${box("Age Group Distribution", bar(Object.entries(ageGroups).filter(([,v]) => v > 0), total, 4))}
+${col2(
+  box("Blood Group Distribution", bar(topN(bloodMap, 12).filter(([k]) => k && k !== "Unknown"), pats.filter(p => p.bloodGroup || p.bloodType).length, 1)),
+  box("Top Nationalities", bar(topN(natMap, 8).filter(([k]) => k && k !== "Unknown"), total, 6))
+)}
+
+<div class="pb"></div>
+${h2s("Diagnoses Analysis", "🩺")}
+${box(`Top Diagnoses — ${diags.length} records, ${Object.keys(diagMap).length} unique conditions`, bar(topN(diagMap, 20), diags.length))}
+
+<div class="pb"></div>
+${h2s("Laboratory", "🔬")}
+${col2(
+  box(`By Status — ${labs.length} orders`, bar(topN(labStatMap, 8), labs.length)),
+  box("Top Test Categories", bar(topN(labCatMap, 10), labs.length, 2))
+)}
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:13px 16px;margin-bottom:12px">
+  <div style="font-size:10px;font-weight:700;color:#0369a1;margin-bottom:6px">LAB METRICS</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
+    ${([["Total", labs.length, "#0284c7"],["Resulted", labs.filter((o:any)=>o.status==="resulted").length, "#16a34a"],["Pending", labs.filter((o:any)=>o.status==="pending").length, "#ca8a04"],["Critical", labs.filter((o:any)=>o.resultStatus==="critical"||o.status==="critical").length, "#dc2626"]] as [string,number,string][])
+      .map(([l,v,c])=>`<div style="background:${c}12;border-radius:8px;padding:10px 6px"><div style="font-size:20px;font-weight:800;color:${c}">${v}</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">${l}</div></div>`).join("")}
+  </div>
+</div>
+
+${h2s("Radiology", "🫁")}
+${col2(
+  box(`By Modality — ${rads.length} orders`, bar(topN(radModMap, 8), rads.length, 3)),
+  box("By Status", bar(topN(radStatMap, 8), rads.length, 5))
+)}
+
+<div class="pb"></div>
+${h2s("Prescriptions", "💊")}
+${col2(
+  box(`Status — ${rxs.length} total`, bar(topN(rxStatMap, 8), rxs.length)),
+  box("Metrics", `<div style="display:flex;flex-direction:column;gap:7px;font-size:10.5px;color:#475569">
+    ${([["Total prescriptions",rxs.length],["Unique drugs",Object.keys(rxDrugMap).length],["Patients with Rx",new Set(rxs.map((r:any)=>r.patientId)).size]] as [string,number][])
+      .map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9"><span>${l}</span><strong style="color:#0f2855">${v}</strong></div>`).join("")}
+  </div>`)
+)}
+${box("Top Prescribed Drugs", bar(topN(rxDrugMap, 15), rxs.length, 2))}
+
+<div class="pb"></div>
+${h2s("Appointments", "📅")}
+${col2(
+  box(`By Status — ${appts.length} total`, bar(topN(apptStatMap, 8), appts.length)),
+  box("By Type", bar(topN(apptTypeMap, 8), appts.length, 3))
+)}
+
+${h2s("Vaccinations", "💉")}
+<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:12px">
+  ${kpi(vaccs.length, "Total Doses", "", "#16a34a")}
+  ${kpi(new Set(vaccs.map((v:any)=>v.patientId)).size, "Patients Vaccinated", "", "#0d9488")}
+  ${kpi(Object.keys(vaccMap).length, "Vaccine Types", "", "#0284c7")}
+</div>
+${box("Most Administered Vaccines", bar(topN(vaccMap, 15), vaccs.length, 1))}
+
+${growth.length ? `
+${h2s("Growth & Anthropometrics", "📏")}
+<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px">
+  ${kpi(growth.length, "Measurements", "", "#0d9488")}
+  ${kpi(avgW + " kg", "Avg Weight", "", "#16a34a")}
+  ${kpi(avgH + " cm", "Avg Height", "", "#0284c7")}
+  ${kpi(new Set(growth.map((g:any)=>g.patientId)).size, "Patients Monitored", "", "#ea580c")}
+</div>` : ""}
+
+<div class="pb"></div>
+${h2s("Financial Summary", "💰")}
+<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px">
+  ${kpi(invs.length, "Total Invoices", "", "#0f2855")}
+  ${kpi("SAR " + totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Total Billed", "", "#ca8a04")}
+  ${kpi("SAR " + totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Collected", `${collRate}% rate`, "#16a34a")}
+  ${kpi("SAR " + outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Outstanding", outstanding > 0 ? "unpaid" : "fully settled", outstanding > 0 ? "#dc2626" : "#16a34a")}
+</div>
+${box(`Invoice Status — ${invs.length} invoices`, bar(topN(invStatMap, 8), invs.length))}
+
+</div>
+
+<div style="background:#0f2855;color:rgba(255,255,255,.65);padding:9px 28px;font-size:9px;display:flex;justify-content:space-between;align-items:center;margin-top:24px">
+  <span>❤ Almuzini Children Hospital &nbsp;·&nbsp; Pediatric EHR Statistical Report</span>
+  <span>${periodLabelEn} &nbsp;·&nbsp; ${total} patients &nbsp;·&nbsp; ${reportDate} ${reportTime} &nbsp;·&nbsp; CONFIDENTIAL</span>
+</div>
+
+<script>window.onload = () => { setTimeout(() => window.print(), 400); }</script>
+</body></html>`;
+
+      const win = window.open("", "_blank", "width=950,height=750");
+      if (!win) return;
+      win.document.write(html);
+      win.document.close();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStatPdfLoading(false);
     }
   }
 
@@ -1076,6 +1344,14 @@ export default function Reports() {
                   <div className="text-xs text-muted-foreground">{language === "ar" ? "مخططات بيانية احترافية" : "Charts & professional layout"}</div>
                 </div>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleStatisticalPdfReport} disabled={statPdfLoading} className="gap-2.5 cursor-pointer">
+                <FileBarChart className="h-4 w-4 text-indigo-500" />
+                <div>
+                  <div className="font-medium text-sm">{language === "ar" ? "تقرير إحصائي شامل" : "Statistical Summary PDF"}</div>
+                  <div className="text-xs text-muted-foreground">{language === "ar" ? "تفاصيل ديموغرافية وسريرية ومالية" : "Demographics, clinical & financial stats"}</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={exportToExcel} className="gap-2.5 cursor-pointer">
                 <FileSpreadsheet className="h-4 w-4 text-green-600" />
                 <div>
