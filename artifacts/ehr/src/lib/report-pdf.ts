@@ -201,7 +201,7 @@ function svgDonut(data: PdfDistItem[], isRtl: boolean): string {
     </div>`;
   }).join("");
 
-  return `<div style="display:flex;align-items:center;gap:12px;flex-direction:${isRtl?"row-reverse":"row"};">
+  return `<div style="display:flex;align-items:center;gap:12px;direction:${isRtl?"rtl":"ltr"};">
     <svg viewBox="0 0 104 104" width="90" height="90" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
       ${filterDef}
       <g filter="url(#${gid})">
@@ -310,7 +310,7 @@ function kpiCards(kpis: PdfKpi[], colors: string[], trendData: PdfTrendPoint[], 
 function sectionTitle(text: string, color: string, isRtl: boolean): string {
   const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};
                   margin-${isRtl?"left":"right"}:7px;flex-shrink:0;"></span>`;
-  return `<div style="display:flex;align-items:center;flex-direction:${isRtl?"row-reverse":"row"};
+  return `<div style="display:flex;align-items:center;direction:${isRtl?"rtl":"ltr"};
               margin:20px 0 10px;padding-bottom:7px;border-bottom:1.5px solid #e2e8f0;">
     ${dot}
     <span style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#64748b;">${text}</span>
@@ -341,7 +341,7 @@ function analysisBox(lines: string[], isRtl: boolean): string {
   const title = isRtl ? "التحليل والاستنتاجات المهنية" : "Professional Analysis & Insights";
   const items = lines.map(l => `
     <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:7px;
-                flex-direction:${isRtl?"row-reverse":"row"};">
+                direction:${isRtl?"rtl":"ltr"};">
       <div style="width:18px;height:18px;border-radius:50%;background:#dbeafe;display:flex;
                   align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
         <svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
@@ -356,7 +356,7 @@ function analysisBox(lines: string[], isRtl: boolean): string {
               padding:16px 18px;border:1px solid #bfdbfe;
               border-${isRtl?"right":"left"}:4px solid #2563eb;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;
-                flex-direction:${isRtl?"row-reverse":"row"};">
+                direction:${isRtl?"rtl":"ltr"};">
       <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
         <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 110 2 1 1 0 010-2zm0 3.5c.55 0 1 .45 1 1V11a1 1 0 01-2 0V8.5c0-.55.45-1 1-1z" fill="#1d4ed8"/>
       </svg>
@@ -388,9 +388,8 @@ function pageHeader(reportTitle: string, period: string, dateRange: string, isRt
 
       <!-- top bar: hospital identity -->
       <div style="padding:22px 30px 16px;display:flex;align-items:center;
-                  justify-content:space-between;flex-direction:${isRtl?"row-reverse":"row"};">
-        <div style="display:flex;align-items:center;gap:14px;
-                    flex-direction:${isRtl?"row-reverse":"row"};">
+                  justify-content:space-between;direction:${isRtl?"rtl":"ltr"};">
+        <div style="display:flex;align-items:center;gap:14px;direction:${isRtl?"rtl":"ltr"};">
           ${HOSPITAL_ICON}
           <div style="text-align:${isRtl?"right":"left"};">
             <div style="font-size:18px;font-weight:800;letter-spacing:${isRtl?"0":"-.2px"};">${hosp}</div>
@@ -410,7 +409,7 @@ function pageHeader(reportTitle: string, period: string, dateRange: string, isRt
                   border-bottom:1px solid rgba(255,255,255,0.08);">
         <div style="font-size:16px;font-weight:800;letter-spacing:${isRtl?"0":"-.1px"};
                     text-align:${isRtl?"right":"left"};">${reportTitle}</div>
-        <div style="display:flex;gap:20px;margin-top:6px;flex-direction:${isRtl?"row-reverse":"row"};">
+        <div style="display:flex;gap:20px;margin-top:6px;direction:${isRtl?"rtl":"ltr"};">
           <span style="font-size:9px;color:#93c5fd;">${pLbl}: <strong style="color:white;">${period}</strong></span>
           <span style="font-size:9px;color:#93c5fd;">${dLbl}: <strong style="color:white;">${dateRange}</strong></span>
         </div>
@@ -616,7 +615,7 @@ export async function generateOverallReportPDF(opts: OverallReportPdfOptions) {
       const kpiList = s.kpis.slice(0, 3).map((k, i2) => `
         <div style="display:flex;align-items:center;justify-content:space-between;
                     padding:5px 0;${i2 < 2 ? "border-bottom:1px dashed #f1f5f9;" : ""}
-                    flex-direction:${isRtl ? "row-reverse" : "row"};">
+                    direction:${isRtl ? "rtl" : "ltr"};">
           <span style="font-size:9px;color:#64748b;">${k.label}</span>
           <div>
             <span style="font-size:12px;font-weight:800;color:#0f172a;">${k.value}</span>
