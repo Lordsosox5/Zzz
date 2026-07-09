@@ -458,9 +458,6 @@ export async function generateReportPDF(opts: ReportPdfOptions) {
     : `${opts.reportType} Report — ${opts.period}`;
 
   const kpiSectionLabel = isRtl ? "مؤشرات الأداء الرئيسية" : "KEY PERFORMANCE INDICATORS";
-  const countLabel = isRtl
-    ? `سجلات الفترة (${opts.tableRows.length} نتيجة)`
-    : `Period Records (${opts.tableRows.length} entries)`;
 
   const body = `
     ${pageHeader(title, opts.period, opts.dateRange, isRtl, now)}
@@ -468,7 +465,6 @@ export async function generateReportPDF(opts: ReportPdfOptions) {
     ${kpiRow(opts.kpis)}
     ${opts.trendData.length > 1 ? barChart(opts.trendData, "#2563eb", opts.trendLabel) : ""}
     ${interpBox(opts.interpretation, isRtl)}
-    ${dataTable(opts.tableColumns, opts.tableRows, isRtl, countLabel)}
     ${footer(isRtl, now)}
   `;
 
