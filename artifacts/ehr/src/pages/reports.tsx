@@ -16,12 +16,12 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Calendar, FlaskConical, Receipt, Pill,
-  TrendingUp, TrendingDown, Minus, Download, RefreshCw,
+  TrendingUp, TrendingDown, Minus, Download, RefreshCw, Printer,
   AlertTriangle, CheckCircle, Clock, FileBarChart,
   Activity, Brain, BarChart3, LayoutGrid, Scan, Package2, PackageOpen,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
+import { printReport, type PrintSection, type PrintDist } from "@/lib/report-print";
 
 type ReportType = "overall" | "patients" | "appointments" | "lab" | "revenue" | "prescriptions" | "radiology" | "pharmacy";
 type Period = "today" | "week" | "month" | "quarter" | "half" | "year";
@@ -350,9 +350,301 @@ export default function Reports() {
     XLSX.writeFile(wb, `${sheetName}-${period}-report.xlsx`);
   }
 
-  async function exportToPDF() {
+  function handlePrint() {
     const dateRange = `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`;
     const en = language !== "ar";
+    const PALETTE = ["#3b82f6","#8b5cf6","#f59e0b","#10b981","#ef4444","#06b6d4","#a855f7","#ec4899","#84cc16","#f97316"];
+
+    function statusDist(arr: any[], field: string, map: Record<string, { label: string; color: string }>) {
+      const counts: Record<string, number> = {};
+      arr.forEach(item => { const v = String(item[field] ?? "unknown"); counts[v] = (counts[v] ?? 0) + 1; });
+      return Object.entries(map)
+        .map(([k, { label, color }]) => ({ label, count: counts[k] ?? 0, color }))
+        .filter(r => r.count > 0);
+    }
+
+    function freqDist(arr: any[], field: string): { label: string; count: number; color: string }[] {
+      const m: Record<string, number> = {};
+      arr.forEach(item => { const v = String(item[field] ?? "Other"); m[v] = (m[v] ?? 0) + 1; });
+      return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([label, count], i) => ({ label, count, color: PALETTE[i % PALETTE.length] }));
+    }
+
+    function buildPatientsSection(pats: any[]): PrintSection {
+      const admitted   = pats.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
+      const discharged = pats.filter(p => (p.status ?? p.admissionStatus) === "discharged").length;
+      const trend      = groupByTime(pats, "createdAt", groupBy);
+      const interp     = buildPatientInterp(pats, allPatients, admitted, discharged, trend, periodLabel, language);
+      return {
+        title: en ? "Patients" : "المرضى",
+        accent: "#3b82f6",
+        kpis: [
+          { label: en ? "Period Total"   : "إجمالي الفترة", value: pats.length,       color: "#3b82f6" },
+          { label: en ? "Admitted"       : "مقبولون",       value: admitted,          color: "#8b5cf6" },
+          { label: en ? "Discharged"     : "مخرجون",        value: discharged,        color: "#10b981" },
+          { label: en ? "All-Time Total" : "إجمالي النظام", value: allPatients.length,
+            sub: en ? "all time" : "جميع الأوقات",          color: "#6b7280" },
+        ],
+        trendData: trend,
+        trendLabel: en ? "Patient Registrations Over Period" : "تسجيلات المرضى خلال الفترة",
+        distributions: [
+          { title: en ? "Status Breakdown" : "توزيع الحالة",
+            rows: statusDist(pats, "status", {
+              admitted:   { label: en ? "Admitted"   : "مقبول",  color: "#8b5cf6" },
+              discharged: { label: en ? "Discharged" : "مخرج",   color: "#10b981" },
+              outpatient: { label: en ? "Outpatient" : "خارجي",  color: "#3b82f6" },
+              emergency:  { label: en ? "Emergency"  : "طوارئ",  color: "#ef4444" },
+            }),
+          },
+          { title: en ? "Gender Distribution" : "توزيع الجنس",
+            rows: statusDist(pats, "gender", {
+              male:   { label: en ? "Male"   : "ذكر",  color: "#3b82f6" },
+              female: { label: en ? "Female" : "أنثى", color: "#ec4899" },
+            }),
+          },
+        ],
+        analysis: interp,
+      };
+    }
+
+    function buildApptsSection(appts: any[]): PrintSection {
+      const completed = appts.filter(a => a.status === "completed").length;
+      const cancelled = appts.filter(a => a.status === "cancelled").length;
+      const compRate  = appts.length > 0 ? `${((completed / appts.length) * 100).toFixed(1)}%` : "0%";
+      const cancRate  = appts.length > 0 ? `${((cancelled / appts.length) * 100).toFixed(1)}%` : "0%";
+      const trend     = groupByTime(appts, "scheduledAt", groupBy);
+      const interp    = buildApptInterp(appts, completed, cancelled, compRate, cancRate, periodLabel, language);
+      return {
+        title: en ? "Appointments" : "المواعيد",
+        accent: "#8b5cf6",
+        kpis: [
+          { label: en ? "Total"     : "الإجمالي", value: appts.length, color: "#8b5cf6" },
+          { label: en ? "Completed" : "مكتملة",   value: completed, sub: compRate, color: "#10b981" },
+          { label: en ? "Scheduled" : "مجدولة",   value: appts.filter(a => a.status === "scheduled").length, color: "#3b82f6" },
+          { label: en ? "Cancelled" : "ملغاة",    value: cancelled, sub: cancRate, color: "#ef4444" },
+        ],
+        trendData: trend,
+        trendLabel: en ? "Appointments Over Period" : "المواعيد خلال الفترة",
+        distributions: [
+          { title: en ? "Status Breakdown" : "توزيع الحالة",
+            rows: statusDist(appts, "status", {
+              completed: { label: en ? "Completed" : "مكتمل",  color: "#10b981" },
+              scheduled: { label: en ? "Scheduled" : "مجدول",  color: "#3b82f6" },
+              cancelled: { label: en ? "Cancelled" : "ملغى",   color: "#ef4444" },
+              "no-show": { label: en ? "No-show"   : "غياب",   color: "#f59e0b" },
+            }),
+          },
+          { title: en ? "Appointment Types" : "أنواع المواعيد", rows: freqDist(appts, "type") },
+        ],
+        analysis: interp,
+      };
+    }
+
+    function buildLabSection(labs: any[]): PrintSection {
+      const resulted = labs.filter(l => l.status === "resulted" || l.status === "reviewed").length;
+      const pending  = labs.filter(l => l.status === "pending").length;
+      const critical = labs.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length;
+      const turnRate = labs.length > 0 ? `${((resulted / labs.length) * 100).toFixed(1)}%` : "0%";
+      const trend    = groupByTime(labs, "createdAt", groupBy);
+      const interp   = buildLabInterp(labs, resulted, pending, critical, turnRate, periodLabel, language);
+      const testCounts: Record<string, number> = {};
+      labs.forEach(l => { const t = l.testName ?? l.test_name ?? "Unknown"; testCounts[t] = (testCounts[t] ?? 0) + 1; });
+      const topTests = Object.entries(testCounts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+        .map(([label, count], i) => ({ label, count, color: PALETTE[i % PALETTE.length] }));
+      const dists: PrintDist[] = [
+        { title: en ? "Status Breakdown" : "توزيع الحالة",
+          rows: statusDist(labs, "status", {
+            resulted:     { label: en ? "Resulted"    : "مكتمل",        color: "#10b981" },
+            reviewed:     { label: en ? "Reviewed"    : "مراجَع",        color: "#3b82f6" },
+            pending:      { label: en ? "Pending"     : "معلق",          color: "#6b7280" },
+            "in-progress":{ label: en ? "In Progress" : "جارٍ",         color: "#f59e0b" },
+          }),
+        },
+        { title: en ? "Priority Breakdown" : "توزيع الأولوية",
+          rows: statusDist(labs, "priority", {
+            routine: { label: en ? "Routine" : "عادي", color: "#3b82f6" },
+            urgent:  { label: en ? "Urgent"  : "عاجل", color: "#f59e0b" },
+            stat:    { label: en ? "STAT"    : "فوري", color: "#ef4444" },
+          }),
+        },
+      ];
+      if (topTests.length > 1) dists.push({ title: en ? "Top Requested Tests" : "الفحوصات الأكثر طلباً", rows: topTests });
+      return {
+        title: en ? "Laboratory Orders" : "طلبات المختبر",
+        accent: "#f59e0b",
+        kpis: [
+          { label: en ? "Total Orders" : "إجمالي الطلبات", value: labs.length,              color: "#f59e0b" },
+          { label: en ? "Resulted"     : "مكتملة",         value: resulted, sub: turnRate, color: "#10b981" },
+          { label: en ? "Pending"      : "معلقة",          value: pending,                  color: "#6b7280" },
+          { label: en ? "Urgent/STAT"  : "عاجلة/فورية",   value: critical,                 color: "#ef4444" },
+        ],
+        trendData: trend,
+        trendLabel: en ? "Lab Orders Over Period" : "طلبات المختبر خلال الفترة",
+        distributions: dists,
+        analysis: interp,
+      };
+    }
+
+    function buildRadiologySection(rads: any[]): PrintSection {
+      const reported = rads.filter(r => r.status === "reported").length;
+      const pending  = rads.filter(r => r.status === "pending").length;
+      const inProg   = rads.filter(r => r.status === "in_progress").length;
+      const turnRate = rads.length > 0 ? `${((reported / rads.length) * 100).toFixed(1)}%` : "0%";
+      const trend    = groupByTime(rads, "createdAt", groupBy);
+      const MCOL: Record<string, string> = { XRAY:"#3b82f6",CT:"#8b5cf6",MRI:"#06b6d4",ULTRASOUND:"#10b981","X-RAY":"#3b82f6",OTHER:"#6b7280" };
+      const interp = en ? [
+        `${rads.length} radiology order${rads.length !== 1 ? "s" : ""} created during "${periodLabel}".`,
+        `Reporting completion: ${turnRate}${Number(turnRate) >= 85 ? " — excellent." : Number(turnRate) >= 60 ? " — acceptable." : " — below target, review workflow."}`,
+        pending > 0 ? `${pending} order${pending !== 1 ? "s" : ""} pending radiologist report.` : "Zero pending orders — excellent performance.",
+        inProg > 0 ? `${inProg} order${inProg !== 1 ? "s" : ""} currently in progress.` : "",
+      ].filter(Boolean) : [
+        `أُنشئ ${rads.length} طلب أشعة خلال فترة "${periodLabel}".`,
+        `معدل إكمال التقارير: ${turnRate}${Number(turnRate) >= 85 ? " — ممتاز." : Number(turnRate) >= 60 ? " — مقبول." : " — دون المستهدف، راجع سير العمل."}`,
+        pending > 0 ? `${pending} طلب معلق في انتظار تقرير الأشعة.` : "لا طلبات معلقة — أداء ممتاز.",
+        inProg > 0 ? `${inProg} طلب قيد التنفيذ حالياً.` : "",
+      ].filter(Boolean);
+      return {
+        title: en ? "Radiology Orders" : "طلبات الأشعة",
+        accent: "#06b6d4",
+        kpis: [
+          { label: en ? "Total Orders"  : "إجمالي الطلبات", value: rads.length,              color: "#06b6d4" },
+          { label: en ? "Reported"      : "مُبلَّغ عنه",    value: reported, sub: turnRate, color: "#10b981" },
+          { label: en ? "In Progress"   : "قيد التنفيذ",    value: inProg,                  color: "#f59e0b" },
+          { label: en ? "Pending"       : "معلق",           value: pending,                 color: "#6b7280" },
+        ],
+        trendData: trend,
+        trendLabel: en ? "Radiology Orders Over Period" : "طلبات الأشعة خلال الفترة",
+        distributions: [
+          { title: en ? "Modality Breakdown" : "توزيع أجهزة الأشعة",
+            rows: freqDist(rads.map(r => ({ ...r, modality: (r.modality ?? "Other").toUpperCase() })), "modality")
+              .map((r, i) => ({ ...r, color: MCOL[r.label] ?? PALETTE[i % PALETTE.length] })),
+          },
+          { title: en ? "Status Breakdown" : "توزيع الحالة",
+            rows: statusDist(rads, "status", {
+              reported:    { label: en ? "Reported"    : "مُبلَّغ عنه", color: "#10b981" },
+              in_progress: { label: en ? "In Progress" : "قيد التنفيذ", color: "#f59e0b" },
+              pending:     { label: en ? "Pending"     : "معلق",        color: "#6b7280" },
+            }),
+          },
+        ],
+        analysis: interp as string[],
+      };
+    }
+
+    function buildRevenueSection(invs: any[]): PrintSection {
+      const totalRev    = invs.reduce((s, i) => s + Number(i.totalAmount ?? i.total_amount ?? 0), 0);
+      const totalPaid   = invs.reduce((s, i) => s + Number(i.paidAmount ?? i.paid_amount ?? 0), 0);
+      const totalUnpaid = totalRev - totalPaid;
+      const collRate    = totalRev > 0 ? `${((totalPaid / totalRev) * 100).toFixed(1)}%` : "0%";
+      const trend       = groupByTime(invs, "createdAt", groupBy);
+      const interp      = buildRevenueInterp(invs, totalRev, totalPaid, totalUnpaid, collRate, trend, periodLabel, language);
+      return {
+        title: en ? "Revenue & Billing" : "الإيرادات والفواتير",
+        accent: "#10b981",
+        kpis: [
+          { label: en ? "Total Revenue"  : "إجمالي الإيرادات", value: `SDG ${totalRev.toLocaleString()}`,     color: "#10b981" },
+          { label: en ? "Collected"      : "المحصّل",           value: `SDG ${totalPaid.toLocaleString()}`,    sub: collRate, color: "#3b82f6" },
+          { label: en ? "Outstanding"    : "المتأخرات",         value: `SDG ${totalUnpaid.toLocaleString()}`,  color: "#f59e0b" },
+          { label: en ? "Total Invoices" : "عدد الفواتير",      value: invs.length,                            color: "#6b7280" },
+        ],
+        trendData: trend,
+        trendLabel: en ? "Invoices Issued Over Period" : "الفواتير الصادرة خلال الفترة",
+        distributions: [
+          { title: en ? "Payment Status" : "حالة الدفع",
+            rows: statusDist(invs, "status", {
+              paid:    { label: en ? "Paid"    : "مدفوع",  color: "#10b981" },
+              pending: { label: en ? "Pending" : "معلق",   color: "#f59e0b" },
+              partial: { label: en ? "Partial" : "جزئي",  color: "#3b82f6" },
+            }),
+          },
+        ],
+        analysis: interp,
+      };
+    }
+
+    function buildRxSection(rxs: any[]): PrintSection {
+      const dispensed = rxs.filter(r => r.status === "dispensed").length;
+      const pending   = rxs.filter(r => r.status === "pending").length;
+      const cancelled = rxs.filter(r => r.status === "cancelled").length;
+      const dispRate  = rxs.length > 0 ? `${((dispensed / rxs.length) * 100).toFixed(1)}%` : "0%";
+      const trend     = groupByTime(rxs, "createdAt", groupBy);
+      const interp    = buildRxInterp(rxs, dispensed, pending, cancelled, dispRate, periodLabel, language);
+      return {
+        title: en ? "Prescriptions" : "الوصفات الطبية",
+        accent: "#ef4444",
+        kpis: [
+          { label: en ? "Total"     : "الإجمالي", value: rxs.length,                color: "#ef4444" },
+          { label: en ? "Dispensed" : "مصروفة",   value: dispensed, sub: dispRate, color: "#10b981" },
+          { label: en ? "Pending"   : "معلقة",    value: pending,                  color: "#f59e0b" },
+          { label: en ? "Cancelled" : "ملغاة",    value: cancelled,                color: "#6b7280" },
+        ],
+        trendData: trend,
+        trendLabel: en ? "Prescriptions Over Period" : "الوصفات خلال الفترة",
+        distributions: [
+          { title: en ? "Status Breakdown" : "توزيع الحالة",
+            rows: statusDist(rxs, "status", {
+              dispensed: { label: en ? "Dispensed" : "مصروفة", color: "#10b981" },
+              pending:   { label: en ? "Pending"   : "معلقة",  color: "#f59e0b" },
+              cancelled: { label: en ? "Cancelled" : "ملغاة",  color: "#6b7280" },
+            }),
+          },
+        ],
+        analysis: interp,
+      };
+    }
+
+    function buildPharmacySection(drgs: any[]): PrintSection {
+      const lowStock   = drgs.filter(d => Number(d.stockQuantity ?? d.stock_quantity ?? 0) <= Number(d.minStockLevel ?? d.min_stock_level ?? 10) && Number(d.stockQuantity ?? d.stock_quantity ?? 0) > 0).length;
+      const outOfStock = drgs.filter(d => Number(d.stockQuantity ?? d.stock_quantity ?? 0) === 0).length;
+      const controlled = drgs.filter(d => d.isControlled ?? d.is_controlled).length;
+      const adequate   = drgs.length - lowStock - outOfStock;
+      const interp = en ? [
+        `Total inventory: ${drgs.length} drug${drgs.length !== 1 ? "s" : ""} in the system.`,
+        outOfStock > 0 ? `⚠ ${outOfStock} drug${outOfStock !== 1 ? "s are" : " is"} out of stock — immediate reorder required.` : "No drugs out of stock — excellent inventory management.",
+        lowStock > 0 ? `${lowStock} drug${lowStock !== 1 ? "s are" : " is"} below minimum stock level — schedule reorder soon.` : "All drugs within acceptable stock levels.",
+        controlled > 0 ? `${controlled} controlled substance${controlled !== 1 ? "s" : ""} require strict regulatory tracking and documentation.` : "No controlled substances flagged.",
+      ] : [
+        `إجمالي المخزون: ${drgs.length} دواء في النظام.`,
+        outOfStock > 0 ? `⚠ ${outOfStock} دواء نافد من المخزون — يلزم إعادة طلب فوري.` : "لا أدوية نافدة من المخزون — ممتاز.",
+        lowStock > 0 ? `${lowStock} دواء تحت الحد الأدنى للمخزون — يُوصى بالطلب قريباً.` : "جميع الأدوية بمستوى مخزون مقبول.",
+        controlled > 0 ? `${controlled} مادة خاضعة للرقابة تستوجب التوثيق الدقيق وفق اللوائح.` : "لا مواد خاضعة للرقابة.",
+      ];
+      const pharDists: PrintDist[] = [
+        { title: en ? "Stock Status" : "حالة المخزون",
+          rows: [
+            { label: en ? "Adequate"     : "كافٍ",           count: adequate,   color: "#10b981" },
+            { label: en ? "Low Stock"    : "منخفض",          count: lowStock,   color: "#f59e0b" },
+            { label: en ? "Out of Stock" : "نافد",           count: outOfStock, color: "#ef4444" },
+          ].filter(r => r.count > 0),
+        },
+        { title: en ? "Drug Categories" : "تصنيف الأدوية", rows: freqDist(drgs, "category") },
+      ];
+      if (controlled > 0) pharDists.push({
+        title: en ? "Controlled vs Non-controlled" : "الرقابة الدوائية",
+        rows: [
+          { label: en ? "Controlled"     : "خاضع للرقابة", count: controlled,               color: "#f59e0b" },
+          { label: en ? "Non-controlled" : "غير خاضع",     count: drgs.length - controlled, color: "#10b981" },
+        ],
+      });
+      return {
+        title: en ? "Pharmacy / Stock Inventory" : "الصيدلية والمخزون",
+        accent: "#a855f7",
+        kpis: [
+          { label: en ? "Total Drugs"  : "إجمالي الأدوية", value: drgs.length,  color: "#a855f7" },
+          { label: en ? "Adequate"     : "مخزون كافٍ",     value: adequate,     color: "#10b981" },
+          { label: en ? "Low Stock"    : "مخزون منخفض",    value: lowStock,     color: "#f59e0b" },
+          { label: en ? "Out of Stock" : "نافد",            value: outOfStock,   color: "#ef4444" },
+        ],
+        trendData: [],
+        trendLabel: "",
+        distributions: pharDists,
+        analysis: interp,
+      };
+    }
+
+    // ── Dispatch ────────────────────────────────────────────────────────
+    let sections: PrintSection[] = [];
+    let reportTitle = "";
 
     switch (reportType) {
       case "overall": {
