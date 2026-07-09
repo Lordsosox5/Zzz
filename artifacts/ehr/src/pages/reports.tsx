@@ -425,254 +425,434 @@ export default function Reports() {
       const user  = getUser();
       const h = { Authorization: `Bearer ${token}` };
 
-      // Fetch additional data not loaded by existing hooks
-      const [diagsRaw, vaccsRaw, growthRaw] = await Promise.all([
+      // Fetch all needed data in parallel
+      const [diagsRaw, vaccsRaw, growthRaw, unitsRaw, staffRaw] = await Promise.all([
         fetch(`/api/diagnoses`,     { headers: h }).then(r => r.json()).catch(() => []),
         fetch(`/api/vaccinations`,  { headers: h }).then(r => r.json()).catch(() => []),
         fetch(`/api/growth-records`,{ headers: h }).then(r => r.json()).catch(() => []),
+        fetch(`/api/units`,         { headers: h }).then(r => r.json()).catch(() => []),
+        fetch(`/api/staff`,         { headers: h }).then(r => r.json()).catch(() => []),
       ]);
 
       // Use period-filtered data already in scope from hooks
-      const pats  = patients       as any[];
-      const appts = appointments   as any[];
-      const labs  = labOrders      as any[];
+      const pats  = patients        as any[];
+      const appts = appointments    as any[];
+      const labs  = labOrders       as any[];
       const rads  = radiologyOrders as any[];
-      const rxs   = prescriptions  as any[];
-      const invs  = invoices       as any[];
+      const rxs   = prescriptions   as any[];
+      const invs  = invoices        as any[];
 
       const pidSet = new Set(pats.map(p => p.id));
       const diags  = (Array.isArray(diagsRaw) ? diagsRaw : []).filter((d: any) => pidSet.has(d.patientId));
       const vaccs  = (Array.isArray(vaccsRaw) ? vaccsRaw : []).filter((v: any) => pidSet.has(v.patientId));
-      const growth = (Array.isArray(growthRaw) ? growthRaw : []).filter((g: any) => pidSet.has(g.patientId));
+      const growth = (Array.isArray(growthRaw)? growthRaw : []).filter((g: any) => pidSet.has(g.patientId));
+      const units  = Array.isArray(unitsRaw) ? unitsRaw  : [];
+      const staff  = Array.isArray(staffRaw) ? staffRaw  : [];
 
-      if (!pats.length && !labs.length && !appts.length) {
-        return;
-      }
-
-      // ── Statistics helpers ─────────────────────────────────────────────
-      const freq = (arr: any[], keyFn: (x: any) => string): Record<string, number> => {
+      // ── helpers ───────────────────────────────────────────────────────
+      const freq = (arr: any[], fn: (x: any) => string): Record<string, number> => {
         const m: Record<string, number> = {};
-        arr.forEach(x => { const k = keyFn(x) || "Unknown"; m[k] = (m[k] || 0) + 1; });
+        arr.forEach(x => { const k = fn(x) || "Unknown"; m[k] = (m[k] || 0) + 1; });
         return m;
       };
       const topN = (m: Record<string, number>, n: number) =>
         Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n);
-      const pct  = (n: number, tot: number) => tot ? (n / tot * 100).toFixed(1) : "0.0";
+      const pctOf = (n: number, t: number) => t > 0 ? (n / t * 100).toFixed(1) : "0.0";
 
-      const total   = pats.length;
-      const active  = pats.filter(p => p.status === "active" || p.status === "admitted").length;
-      const disch   = total - active;
+      // ── demographics ──────────────────────────────────────────────────
+      const total  = pats.length;
+      const active = pats.filter(p => p.status === "active" || p.status === "admitted").length;
+      const disch  = total - active;
 
-      const genderMap = freq(pats, p => p.gender === "male" ? "Male" : p.gender === "female" ? "Female" : "Other");
-      const ageGroups: Record<string, number> = { "< 1 yr": 0, "1–5 yrs": 0, "5–12 yrs": 0, "12–18 yrs": 0 };
+      const ageGroups: Record<string, number> = { "< 1 yr": 0, "1\u20135 yrs": 0, "5\u201312 yrs": 0, "12\u201318 yrs": 0 };
       pats.forEach(p => {
         if (!p.dateOfBirth) return;
-        const a = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / 31557600000);
+        const a = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / 31_557_600_000);
         if (a < 1) ageGroups["< 1 yr"]++;
-        else if (a < 5) ageGroups["1–5 yrs"]++;
-        else if (a < 12) ageGroups["5–12 yrs"]++;
-        else ageGroups["12–18 yrs"]++;
+        else if (a < 5)  ageGroups["1\u20135 yrs"]++;
+        else if (a < 12) ageGroups["5\u201312 yrs"]++;
+        else             ageGroups["12\u201318 yrs"]++;
       });
-      const bloodMap     = freq(pats, p => p.bloodGroup ?? p.bloodType ?? "");
-      const natMap       = freq(pats, p => p.nationality ?? "");
-      const diagMap      = freq(diags, d => [d.code, d.description ?? d.name].filter(Boolean).join(" — ") || "Unknown");
-      const labStatMap   = freq(labs,  o => o.status ?? "Unknown");
-      const labCatMap    = freq(labs,  o => o.category ?? "Unknown");
-      const radModMap    = freq(rads,  o => o.modality ?? "Unknown");
-      const radStatMap   = freq(rads,  o => o.status ?? "Unknown");
-      const rxStatMap    = freq(rxs,   r => r.status ?? "Unknown");
-      const rxDrugMap    = freq(rxs,   r => r.drugName ?? r.medicationName ?? "Unknown");
-      const apptStatMap  = freq(appts, a => a.status ?? "Unknown");
-      const apptTypeMap  = freq(appts, a => a.type ?? "Unknown");
-      const vaccMap      = freq(vaccs, v => v.vaccineName ?? v.name ?? "Unknown");
-      const invStatMap   = freq(invs,  i => i.status ?? "Unknown");
 
-      const growthNum     = growth.filter((g: any) => g.weight && g.height);
-      const avgW          = growthNum.length ? (growthNum.reduce((s: number, g: any) => s + parseFloat(g.weight), 0) / growthNum.length).toFixed(1) : "—";
-      const avgH          = growthNum.length ? (growthNum.reduce((s: number, g: any) => s + parseFloat(g.height), 0) / growthNum.length).toFixed(1) : "—";
-      const totalBilled   = invs.reduce((s: number, i: any) => s + parseFloat(i.totalAmount ?? i.total ?? 0), 0);
-      const totalCollected= invs.reduce((s: number, i: any) => s + parseFloat(i.paidAmount  ?? i.paid  ?? 0), 0);
-      const outstanding   = totalBilled - totalCollected;
-      const collRate      = totalBilled > 0 ? (totalCollected / totalBilled * 100).toFixed(1) : "0.0";
+      // ── clinical ──────────────────────────────────────────────────────
+      const diagMap    = freq(diags, d => [d.code, d.description ?? d.name].filter(Boolean).join(" \u2014 ") || "Unknown");
+      const top5Diags  = topN(diagMap, 5);
 
-      // ── HTML helpers ──────────────────────────────────────────────────
-      const COLORS = ["#1d4ed8","#0d9488","#16a34a","#ea580c","#7c3aed","#dc2626","#0284c7","#ca8a04","#db2777","#65a30d","#0891b2","#9333ea"];
+      const labTestMap = freq(labs, o => o.testName ?? o.test ?? o.name ?? o.category ?? "Unknown");
+      const top5Labs   = topN(labTestMap, 5);
 
+      const drugMap    = freq(rxs, r => r.drugName ?? r.medicationName ?? r.drug ?? "Unknown");
+      const top5Drugs  = topN(drugMap, 5);
+
+      const apptStatMap = freq(appts, a => {
+        const s = a.status ?? "unknown";
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      });
+      const apptTypeMap = freq(appts, a => a.type ?? "Unknown");
+
+      // ── ward fullness ────────────────────────────────────────────────
+      const unitPatCounts: Record<number, number> = {};
+      (allPatients as any[])
+        .filter(p => p.status === "active" || p.status === "admitted")
+        .forEach(p => { if (p.unitId) unitPatCounts[p.unitId] = (unitPatCounts[p.unitId] || 0) + 1; });
+
+      const wardData = units
+        .filter((u: any) => u.status !== "inactive")
+        .map((u: any) => ({
+          name: u.nameEn ?? "Unit",
+          type: (u.type ?? "ward") as string,
+          occupied: unitPatCounts[u.id] ?? 0,
+          capacity: (u.capacity != null && u.capacity > 0) ? Number(u.capacity) : null,
+        }))
+        .filter((w: any) => w.occupied > 0 || w.capacity)
+        .sort((a: any, b: any) => {
+          const ua = a.capacity ? a.occupied / a.capacity : 0;
+          const ub = b.capacity ? b.occupied / b.capacity : 0;
+          return ub - ua;
+        });
+
+      const totalCapacity = wardData.reduce((s: number, w: any) => s + (w.capacity ?? 0), 0);
+      const totalOccupied = wardData.reduce((s: number, w: any) => s + w.occupied, 0);
+      const overallUtil   = totalCapacity > 0 ? Math.round(totalOccupied / totalCapacity * 100) : -1;
+
+      // ── staff ─────────────────────────────────────────────────────────
+      const activeStaff = staff.filter((s: any) => s.status === "active");
+      const ROLE_LABELS: Record<string, string> = {
+        super_admin: "Super Admin", pediatric_consultant: "Pediatric Consultant",
+        pediatric_specialist: "Pediatric Specialist", nurse: "Nurse",
+        emergency_physician: "Emergency Physician", pharmacist: "Pharmacist",
+        lab_technician: "Lab Technician", billing_officer: "Billing Officer",
+        house_officer: "House Officer", medical_officer: "Medical Officer",
+        data_analyser: "Data Analyst",
+      };
+      const roleMap = freq(activeStaff, s => ROLE_LABELS[s.role] ?? s.role ?? "Other");
+      const deptMap = freq(activeStaff, s => s.department ?? "General");
+
+      // ── financial ────────────────────────────────────────────────────
+      const invStatMap     = freq(invs, i => i.status ?? "Unknown");
+      const totalBilled    = invs.reduce((s: number, i: any) => s + parseFloat(i.totalAmount ?? i.total ?? 0), 0);
+      const totalCollected = invs.reduce((s: number, i: any) => s + parseFloat(i.paidAmount ?? i.paid ?? 0), 0);
+      const outstanding    = totalBilled - totalCollected;
+      const collRate       = totalBilled > 0 ? (totalCollected / totalBilled * 100).toFixed(1) : "0.0";
+
+      // ════════════════════════════════════════════════════════════════
+      //  HTML HELPERS
+      // ════════════════════════════════════════════════════════════════
+      const C = ["#1d4ed8","#0d9488","#16a34a","#ea580c","#7c3aed","#dc2626","#0284c7","#ca8a04","#db2777","#65a30d","#0891b2","#9333ea"];
+      const AGE_C = ["#1d4ed8","#0d9488","#16a34a","#ea580c"];
+
+      const kpi = (val: string|number, lbl: string, sub: string, c: string) =>
+        `<div style="flex:1;min-width:115px;background:${c}0f;border:1.5px solid ${c}28;border-radius:10px;padding:13px 14px;text-align:center">` +
+        `<div style="font-size:22px;font-weight:800;color:${c};line-height:1.15">${val}</div>` +
+        `<div style="font-size:10px;font-weight:600;color:#475569;margin-top:3px">${lbl}</div>` +
+        (sub ? `<div style="font-size:9px;color:#94a3b8;margin-top:2px">${sub}</div>` : "") +
+        `</div>`;
+
+      const sec = (icon: string, title: string) =>
+        `<div style="display:flex;align-items:center;gap:9px;margin:26px 0 13px;padding-bottom:8px;border-bottom:2.5px solid #0f2855">` +
+        `<span style="font-size:17px">${icon}</span>` +
+        `<span style="font-size:13.5px;font-weight:800;color:#0f2855;text-transform:uppercase;letter-spacing:.08em">${title}</span>` +
+        `</div>`;
+
+      // generic horizontal bar
       const bar = (items: [string, number][], tot: number, ci = 0) =>
         items.length === 0
           ? `<p style="color:#94a3b8;font-size:10px;margin:4px 0">No data for this period.</p>`
           : items.map(([label, cnt], i) => {
               const p = tot > 0 ? cnt / tot * 100 : 0;
-              const c = COLORS[(ci + i) % COLORS.length];
-              return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0">
-                <span style="min-width:155px;max-width:155px;font-size:10px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label}">${label}</span>
-                <div style="flex:1;background:#f1f5f9;border-radius:3px;height:13px;overflow:hidden">
-                  <div style="width:${Math.max(p,.5)}%;background:${c};height:13px;border-radius:3px"></div>
-                </div>
-                <span style="min-width:72px;font-size:10px;font-weight:700;color:${c};text-align:right">${cnt}&nbsp;(${p.toFixed(1)}%)</span>
-              </div>`;
+              const co = C[(ci + i) % C.length];
+              return `<div style="display:flex;align-items:center;gap:8px;margin:5px 0">` +
+                `<span style="min-width:130px;max-width:130px;font-size:10px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label}">${label}</span>` +
+                `<div style="flex:1;background:#f1f5f9;border-radius:3px;height:13px;overflow:hidden">` +
+                `<div style="width:${Math.max(p,.5).toFixed(1)}%;background:${co};height:13px;border-radius:3px"></div></div>` +
+                `<span style="min-width:90px;font-size:10px;font-weight:700;color:${co};text-align:right">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${p.toFixed(1)}%)</span></span>` +
+                `</div>`;
             }).join("");
 
-      const kpi = (val: string|number, lbl: string, sub: string, c: string) =>
-        `<div style="flex:1;min-width:130px;background:${c}10;border:1.5px solid ${c}25;border-radius:10px;padding:14px 16px;text-align:center">
-          <div style="font-size:24px;font-weight:800;color:${c};line-height:1.1">${val}</div>
-          <div style="font-size:10.5px;font-weight:600;color:#475569;margin-top:4px">${lbl}</div>
-          ${sub ? `<div style="font-size:9.5px;color:#94a3b8;margin-top:2px">${sub}</div>` : ""}
-        </div>`;
+      // ranked top-5 row
+      const ranked5 = (items: [string, number][], tot: number, ci = 0) => {
+        if (!items.length) return `<p style="color:#94a3b8;font-size:10px;padding:8px 0">No data for this period.</p>`;
+        const maxP = tot > 0 ? items[0][1] / tot * 100 : 0;
+        return items.map(([label, cnt], i) => {
+          const p = tot > 0 ? cnt / tot * 100 : 0;
+          const co = C[(ci + i) % C.length];
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">` +
+            `<span style="width:22px;height:22px;border-radius:50%;background:${co};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</span>` +
+            `<span style="flex:1;font-size:10.5px;color:#1e293b;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0" title="${label}">${label}</span>` +
+            `<div style="width:130px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:12px;overflow:hidden">` +
+            `<div style="width:${maxP > 0 ? (p / maxP * 100).toFixed(1) : 0}%;background:${co};height:12px;border-radius:4px"></div></div>` +
+            `<span style="width:95px;font-size:10px;font-weight:700;color:${co};text-align:right;flex-shrink:0">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${p.toFixed(1)}%)</span></span>` +
+            `</div>`;
+        }).join("");
+      };
 
-      const h2s = (t: string, icon: string) =>
-        `<div style="display:flex;align-items:center;gap:9px;margin:28px 0 12px;padding-bottom:8px;border-bottom:2.5px solid #0f2855">
-          <span style="font-size:17px">${icon}</span>
-          <span style="font-size:14px;font-weight:800;color:#0f2855;text-transform:uppercase;letter-spacing:.08em">${t}</span>
-        </div>`;
+      // ranked card wrapper
+      const top5Card = (title: string, sub: string, items: [string,number][], tot: number, ci = 0) =>
+        `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:15px 18px;margin-bottom:14px">` +
+        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">` +
+        `<span style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em">${title}</span>` +
+        `<span style="font-size:9px;color:#94a3b8">${sub}</span></div>` +
+        ranked5(items, tot, ci) +
+        (tot > 0 && items.length >= 5
+          ? `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #f1f5f9;font-size:9px;color:#94a3b8">` +
+            `Remaining ${Math.max(0, Object.keys(tot === diags.length ? diagMap : tot === labs.length ? labTestMap : drugMap).length - 5)} ` +
+            `items account for ${pctOf(tot - items.reduce((s:number,[,c]:[string,number])=>s+c, 0), tot)}% of total.</div>`
+          : "") +
+        `</div>`;
 
-      const box = (title: string, body: string) =>
-        `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:13px 16px;margin-bottom:12px">
-          <div style="font-size:10px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">${title}</div>
-          ${body}
-        </div>`;
+      // ward row
+      const wardRow = (name: string, type: string, occ: number, cap: number|null) => {
+        const hasCap = cap !== null;
+        const util   = hasCap ? Math.min(100, occ / cap! * 100) : null;
+        const bc     = util === null ? "#0284c7" : util >= 90 ? "#dc2626" : util >= 70 ? "#f59e0b" : "#16a34a";
+        const badge  = util === null ? "" : util >= 90
+          ? `<span style="background:#fee2e2;color:#dc2626;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-left:6px">HIGH</span>`
+          : util >= 70
+          ? `<span style="background:#fef3c7;color:#d97706;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-left:6px">MED</span>`
+          : `<span style="background:#dcfce7;color:#16a34a;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-left:6px">OK</span>`;
+        const utilStr = hasCap ? `${util!.toFixed(0)}%` : `${occ} pts`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">` +
+          `<div style="flex:1;min-width:0"><div style="font-size:10.5px;font-weight:600;color:#1e293b;display:flex;align-items:center">${name}${badge}</div>` +
+          `<div style="font-size:9px;color:#94a3b8;margin-top:1px;text-transform:capitalize">${type}</div></div>` +
+          `<div style="width:140px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:11px;overflow:hidden">` +
+          `<div style="width:${util !== null ? util.toFixed(1) : (occ > 0 ? "55" : "0")}%;background:${bc};height:11px;border-radius:4px"></div></div>` +
+          `<span style="width:85px;text-align:right;font-size:10px;font-weight:700;color:${bc};flex-shrink:0">${occ}${hasCap ? "/"+cap : ""}&nbsp;<span style="color:#94a3b8;font-weight:400">${utilStr}</span></span>` +
+          `</div>`;
+      };
+
+      // staff role row
+      const staffRow = (role: string, cnt: number, pctVal: string, co: string, maxP: number) =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9">` +
+        `<span style="flex:1;font-size:10.5px;color:#1e293b;font-weight:500">${role}</span>` +
+        `<div style="width:110px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:11px;overflow:hidden">` +
+        `<div style="width:${maxP > 0 ? (parseFloat(pctVal)/maxP*100).toFixed(1) : 0}%;background:${co};height:11px;border-radius:4px"></div></div>` +
+        `<span style="width:95px;font-size:10px;font-weight:700;color:${co};text-align:right;flex-shrink:0">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${pctVal}%)</span></span>` +
+        `</div>`;
 
       const col2 = (a: string, b: string) =>
+        `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">${a}${b}</div>`;
+
+      const mini2col = (a: string, b: string) =>
         `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${a}${b}</div>`;
 
       const reportDate = new Date().toLocaleDateString("en-GB", { day:"2-digit", month:"long", year:"numeric" });
       const reportTime = new Date().toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
 
-      const html = `<!DOCTYPE html><html lang="en"><head>
+      // pre-compute for staff
+      const staffRoles = topN(roleMap, 12);
+      const staffMax   = staffRoles.length > 0 ? parseFloat(pctOf(staffRoles[0][1], activeStaff.length)) : 0;
+
+      // appt breakdown for KPI row
+      const apptDone   = appts.filter((a:any) => a.status === "completed").length;
+      const apptSched  = appts.filter((a:any) => a.status === "scheduled").length;
+      const apptCancel = appts.filter((a:any) => a.status === "cancelled").length;
+      const apptNoshow = appts.filter((a:any) => a.status === "no-show").length;
+
+      // lab breakdown
+      const labDone   = labs.filter((o:any) => o.status === "resulted" || o.status === "reviewed").length;
+      const labPend   = labs.filter((o:any) => o.status === "pending").length;
+      const labCrit   = labs.filter((o:any) => o.resultStatus === "critical" || o.status === "critical" || o.isCritical).length;
+
+      // ════════════════════════════════════════════════════════════════
+      //  HTML DOCUMENT
+      // ════════════════════════════════════════════════════════════════
+      const html =
+`<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8">
-<title>AMH Statistical Report — ${periodLabelEn} — ${reportDate}</title>
+<title>AMH Statistical Report \u2014 ${periodLabelEn} \u2014 ${reportDate}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-  @page { size: A4; margin: 16mm 14mm 18mm; }
-  @media print { .pb { page-break-before: always; } * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; } }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:'Inter',Arial,sans-serif; font-size:11px; color:#1e293b; background:#fff; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  @page { size:A4 portrait; margin:14mm 14mm 15mm; }
+  @media print { .pb{page-break-before:always} *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important} }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',Arial,sans-serif;font-size:11px;color:#1e293b;background:#fff;line-height:1.4}
 </style>
 </head><body>
 
-<div style="background:#0f2855;color:#fff;padding:20px 28px 18px;position:relative;overflow:hidden">
-  <div style="display:flex;align-items:flex-start;gap:14px">
-    <div style="width:42px;height:42px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">❤</div>
+<!-- LETTERHEAD -->
+<div style="background:linear-gradient(135deg,#0c2044 0%,#163566 100%);color:#fff;padding:20px 28px 18px;position:relative;overflow:hidden">
+  <div style="position:absolute;top:-24px;right:-24px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.04)"></div>
+  <div style="display:flex;align-items:center;gap:14px;position:relative">
+    <div style="width:46px;height:46px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">\u2764</div>
     <div style="flex:1">
-      <div style="font-size:19px;font-weight:800">Almuzini Children Hospital</div>
-      <div style="font-size:10px;opacity:.7;margin-top:2px">مستشفى المزيني للأطفال &nbsp;·&nbsp; Pediatric Health Information System</div>
+      <div style="font-size:19px;font-weight:800;letter-spacing:.01em">Almuzini Children Hospital</div>
+      <div style="font-size:9.5px;opacity:.65;margin-top:2px">\u0645\u0633\u062a\u0634\u0641\u0649 \u0627\u0644\u0645\u0632\u064a\u0646\u064a \u0644\u0644\u0623\u0637\u0641\u0627\u0644 \u00b7 Pediatric Health Information System</div>
     </div>
-    <div style="text-align:right;opacity:.85;flex-shrink:0">
-      <div style="font-size:13px;font-weight:800;letter-spacing:.04em">STATISTICAL REPORT</div>
-      <div style="font-size:9.5px;margin-top:3px">${reportDate} &nbsp;·&nbsp; ${reportTime}</div>
-      <div style="font-size:9.5px;margin-top:2px">Period: ${periodLabelEn} &nbsp;·&nbsp; By: ${user?.username ?? "System"}</div>
+    <div style="text-align:right;opacity:.9;flex-shrink:0">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase">Statistical Report</div>
+      <div style="font-size:9px;margin-top:4px;opacity:.75">${reportDate} \u00b7 ${reportTime}</div>
+      <div style="font-size:9px;margin-top:2px;opacity:.75">Period: <strong>${periodLabelEn}</strong> \u00b7 By: ${user?.username ?? "System"}</div>
     </div>
   </div>
-  <div style="margin-top:8px;font-size:9.5px;opacity:.55">Period: ${start.toLocaleDateString()} – ${end.toLocaleDateString()} &nbsp;·&nbsp; ${total} patient(s) in scope</div>
-  <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#3b82f6,#06b6d4,#10b981,#f59e0b,#ef4444,#8b5cf6)"></div>
+  <div style="margin-top:12px;background:rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;font-size:9px;display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;position:relative">
+    <span style="opacity:.55;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Scope</span>
+    <span>${start.toLocaleDateString("en-GB")} \u2013 ${end.toLocaleDateString("en-GB")}</span>
+    <span style="opacity:.3">|</span><span><strong>${total}</strong> patients in period</span>
+    <span style="opacity:.3">|</span><span><strong>${appts.length}</strong> appointments</span>
+    <span style="opacity:.3">|</span><span><strong>${labs.length + rads.length}</strong> investigations</span>
+    <span style="opacity:.3">|</span><span><strong>${activeStaff.length}</strong> active staff</span>
+  </div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#60a5fa,#34d399,#fbbf24,#f87171,#a78bfa)"></div>
 </div>
 
 <div style="padding:20px 28px">
 
-${h2s("Executive Summary", "📊")}
-<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:4px">
-  ${kpi(total, "Patients (Period)", `${pct(active, total)}% active`, "#0f2855")}
-  ${kpi(active, "Active / Admitted", "", "#16a34a")}
-  ${kpi(disch, "Discharged", "", "#64748b")}
-  ${kpi(diags.length, "Diagnosis Records", `${Object.keys(diagMap).length} unique`, "#7c3aed")}
-  ${kpi(labs.length, "Lab Orders", `${rads.length} radiology`, "#0d9488")}
-  ${kpi(rxs.length, "Prescriptions", `${Object.keys(rxDrugMap).length} drugs`, "#ea580c")}
-  ${kpi(appts.length, "Appointments", "", "#0284c7")}
-  ${kpi(vaccs.length, "Vaccine Doses", "", "#db2777")}
+<!-- 1. EXECUTIVE KPIs -->
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+  ${kpi(total, "Patients (Period)", pctOf(active, total)+"% active", "#0f2855")}
+  ${kpi(active, "Active / Admitted", pctOf(disch, total)+"% discharged", "#16a34a")}
+  ${kpi(appts.length, "Appointments", pctOf(apptDone, appts.length)+"% completed", "#0284c7")}
+  ${kpi(labs.length, "Lab Orders", rads.length+" radiology", "#0d9488")}
+  ${kpi(rxs.length, "Prescriptions", Object.keys(drugMap).length+" unique drugs", "#ea580c")}
+  ${kpi(diags.length, "Diagnoses", Object.keys(diagMap).length+" unique", "#7c3aed")}
+  ${kpi(activeStaff.length, "Active Staff", Object.keys(roleMap).length+" roles", "#db2777")}
+  ${kpi("SAR "+totalBilled.toLocaleString("en",{maximumFractionDigits:0}), "Total Billed", collRate+"% collected", "#ca8a04")}
 </div>
 
+<!-- 2. TOP 5 DIAGNOSES -->
 <div class="pb"></div>
-${h2s("Patient Demographics", "👤")}
-${col2(
-  box("Gender Distribution", bar(topN(genderMap, 5), total)),
-  box("Patient Status", bar([["Active / Admitted", active], ["Discharged", disch]], total, 2))
-)}
-${box("Age Group Distribution", bar(Object.entries(ageGroups).filter(([,v]) => v > 0), total, 4))}
-${col2(
-  box("Blood Group Distribution", bar(topN(bloodMap, 12).filter(([k]) => k && k !== "Unknown"), pats.filter(p => p.bloodGroup || p.bloodType).length, 1)),
-  box("Top Nationalities", bar(topN(natMap, 8).filter(([k]) => k && k !== "Unknown"), total, 6))
-)}
+${sec("🩺", "Top 5 Diagnoses — Period")}
+${top5Card("Diagnosis (ICD code + description)", "Total: "+diags.length+" records \u00b7 "+Object.keys(diagMap).length+" unique conditions", top5Diags, diags.length, 0)}
 
-<div class="pb"></div>
-${h2s("Diagnoses Analysis", "🩺")}
-${box(`Top Diagnoses — ${diags.length} records, ${Object.keys(diagMap).length} unique conditions`, bar(topN(diagMap, 20), diags.length))}
-
-<div class="pb"></div>
-${h2s("Laboratory", "🔬")}
-${col2(
-  box(`By Status — ${labs.length} orders`, bar(topN(labStatMap, 8), labs.length)),
-  box("Top Test Categories", bar(topN(labCatMap, 10), labs.length, 2))
-)}
-<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:13px 16px;margin-bottom:12px">
-  <div style="font-size:10px;font-weight:700;color:#0369a1;margin-bottom:6px">LAB METRICS</div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
-    ${([["Total", labs.length, "#0284c7"],["Resulted", labs.filter((o:any)=>o.status==="resulted").length, "#16a34a"],["Pending", labs.filter((o:any)=>o.status==="pending").length, "#ca8a04"],["Critical", labs.filter((o:any)=>o.resultStatus==="critical"||o.status==="critical").length, "#dc2626"]] as [string,number,string][])
-      .map(([l,v,c])=>`<div style="background:${c}12;border-radius:8px;padding:10px 6px"><div style="font-size:20px;font-weight:800;color:${c}">${v}</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">${l}</div></div>`).join("")}
+<!-- 3. AGE GROUPS -->
+${sec("👶", "Patient Age Group Distribution")}
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:15px 18px;margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+    <span style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em">Age Group</span>
+    <span style="font-size:9px;color:#94a3b8">${total} patient(s) in scope</span>
   </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+    ${Object.entries(ageGroups).map(([lbl,cnt], i) => {
+      const pv = pctOf(cnt, total);
+      const co = AGE_C[i];
+      return `<div style="background:${co}0e;border:1.5px solid ${co}28;border-radius:8px;padding:12px;text-align:center">` +
+        `<div style="font-size:22px;font-weight:800;color:${co}">${cnt}</div>` +
+        `<div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${lbl}</div>` +
+        `<div style="font-size:11px;font-weight:700;color:${co};margin-top:3px">${pv}%</div>` +
+        `<div style="background:#e2e8f0;border-radius:3px;height:4px;margin-top:7px;overflow:hidden">` +
+        `<div style="width:${pv}%;background:${co};height:4px;border-radius:3px"></div></div>` +
+        `</div>`;
+    }).join("")}
+  </div>
+  ${bar(Object.entries(ageGroups).filter(([,v])=>v>0) as [string,number][], total, 0)}
 </div>
 
-${h2s("Radiology", "🫁")}
-${col2(
-  box(`By Modality — ${rads.length} orders`, bar(topN(radModMap, 8), rads.length, 3)),
-  box("By Status", bar(topN(radStatMap, 8), rads.length, 5))
-)}
-
-<div class="pb"></div>
-${h2s("Prescriptions", "💊")}
-${col2(
-  box(`Status — ${rxs.length} total`, bar(topN(rxStatMap, 8), rxs.length)),
-  box("Metrics", `<div style="display:flex;flex-direction:column;gap:7px;font-size:10.5px;color:#475569">
-    ${([["Total prescriptions",rxs.length],["Unique drugs",Object.keys(rxDrugMap).length],["Patients with Rx",new Set(rxs.map((r:any)=>r.patientId)).size]] as [string,number][])
-      .map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9"><span>${l}</span><strong style="color:#0f2855">${v}</strong></div>`).join("")}
-  </div>`)
-)}
-${box("Top Prescribed Drugs", bar(topN(rxDrugMap, 15), rxs.length, 2))}
-
-<div class="pb"></div>
-${h2s("Appointments", "📅")}
-${col2(
-  box(`By Status — ${appts.length} total`, bar(topN(apptStatMap, 8), appts.length)),
-  box("By Type", bar(topN(apptTypeMap, 8), appts.length, 3))
-)}
-
-${h2s("Vaccinations", "💉")}
-<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:12px">
-  ${kpi(vaccs.length, "Total Doses", "", "#16a34a")}
-  ${kpi(new Set(vaccs.map((v:any)=>v.patientId)).size, "Patients Vaccinated", "", "#0d9488")}
-  ${kpi(Object.keys(vaccMap).length, "Vaccine Types", "", "#0284c7")}
+<!-- 4. APPOINTMENTS -->
+${sec("📅", "Appointments Breakdown")}
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+  ${([ ["Completed",apptDone,"#16a34a"],["Scheduled",apptSched,"#0284c7"],["Cancelled",apptCancel,"#dc2626"],["No-show",apptNoshow,"#f59e0b"] ] as [string,number,string][])
+    .map(([l,v,co]) =>
+      `<div style="background:${co}0e;border:1.5px solid ${co}28;border-radius:8px;padding:12px;text-align:center">` +
+      `<div style="font-size:22px;font-weight:800;color:${co}">${v}</div>` +
+      `<div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${l}</div>` +
+      `<div style="font-size:11px;font-weight:700;color:${co};margin-top:2px">${pctOf(v,appts.length)}%</div>` +
+      `</div>`).join("")}
 </div>
-${box("Most Administered Vaccines", bar(topN(vaccMap, 15), vaccs.length, 1))}
+${col2(
+  `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">By Status</div>` +
+  bar(topN(apptStatMap,8), appts.length) + `</div>`,
+  `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">By Type</div>` +
+  bar(topN(apptTypeMap,8), appts.length, 3) + `</div>`
+)}
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:9px 14px;font-size:9.5px;color:#0369a1;margin-bottom:14px">
+  \u2726 Completion rate: <strong>${pctOf(apptDone,appts.length)}%</strong> &nbsp;\u00b7&nbsp; Cancellation rate: <strong>${pctOf(apptCancel,appts.length)}%</strong> &nbsp;\u00b7&nbsp; Total appointments: <strong>${appts.length}</strong>
+</div>
 
-${growth.length ? `
-${h2s("Growth & Anthropometrics", "📏")}
-<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px">
-  ${kpi(growth.length, "Measurements", "", "#0d9488")}
-  ${kpi(avgW + " kg", "Avg Weight", "", "#16a34a")}
-  ${kpi(avgH + " cm", "Avg Height", "", "#0284c7")}
-  ${kpi(new Set(growth.map((g:any)=>g.patientId)).size, "Patients Monitored", "", "#ea580c")}
-</div>` : ""}
-
+<!-- 5. TOP 5 LAB TESTS -->
 <div class="pb"></div>
-${h2s("Financial Summary", "💰")}
-<div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px">
+${sec("🔬", "Top 5 Lab Tests Ordered")}
+${top5Card("Test name / category", "Total: "+labs.length+" orders \u00b7 "+rads.length+" radiology", top5Labs, labs.length, 2)}
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+  ${([ ["Total Orders",labs.length,"#0284c7"],["Resulted",labDone,"#16a34a"],["Pending",labPend,"#f59e0b"],["Critical",labCrit,"#dc2626"] ] as [string,number,string][])
+    .map(([l,v,co]) =>
+      `<div style="background:${co}0e;border:1.5px solid ${co}28;border-radius:8px;padding:12px;text-align:center">` +
+      `<div style="font-size:22px;font-weight:800;color:${co}">${v}</div>` +
+      `<div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${l}</div>` +
+      `<div style="font-size:10px;color:${co};margin-top:2px;font-weight:600">${pctOf(v,labs.length)}%</div>` +
+      `</div>`).join("")}
+</div>
+
+<!-- 6. TOP 5 MEDICATIONS -->
+${sec("💊", "Top 5 Medications Requested")}
+${top5Card("Drug / medication name", "Total: "+rxs.length+" prescriptions \u00b7 "+Object.keys(drugMap).length+" unique drugs", top5Drugs, rxs.length, 4)}
+
+<!-- 7. WARD FULLNESS -->
+<div class="pb"></div>
+${sec("🏥", "Ward & Unit Occupancy")}
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+  ${kpi(wardData.length, "Active Wards", "", "#0f2855")}
+  ${kpi(totalOccupied, "Patients Admitted", "across all units", "#16a34a")}
+  ${kpi(totalCapacity > 0 ? String(totalCapacity) : "\u2014", "Total Bed Capacity", "", "#0284c7")}
+  ${kpi(
+    overallUtil >= 0 ? overallUtil+"%" : "\u2014",
+    "Overall Utilization",
+    overallUtil >= 0 ? (overallUtil >= 90 ? "\u26a0 High load" : overallUtil >= 70 ? "Medium load" : "Normal load") : "Capacity not set",
+    overallUtil >= 0 ? (overallUtil >= 90 ? "#dc2626" : overallUtil >= 70 ? "#f59e0b" : "#16a34a") : "#64748b"
+  )}
+</div>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:15px 18px;margin-bottom:14px">
+  <div style="display:flex;font-size:9px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">
+    <span style="flex:1">Ward / Unit (Type)</span>
+    <span style="width:160px">Occupancy Bar</span>
+    <span style="width:85px;text-align:right">Occupied / Cap.</span>
+  </div>
+  ${wardData.length === 0
+    ? `<p style="color:#94a3b8;font-size:10px;padding:10px 0">No ward occupancy data available. Assign patients to units to track fullness.</p>`
+    : wardData.map((w:any) => wardRow(w.name, w.type, w.occupied, w.capacity)).join("")}
+  ${totalCapacity === 0 && wardData.length > 0
+    ? `<div style="margin-top:8px;font-size:9px;color:#94a3b8;padding:8px 10px;background:#f1f5f9;border-radius:6px">` +
+      `\u2139 Set bed capacity for each unit to enable percentage utilization tracking.</div>`
+    : ""}
+</div>
+
+<!-- 8. STAFF DISTRIBUTION -->
+${sec("👩‍⚕️", "Staff Distribution by Role")}
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+  ${kpi(staff.length, "Total Staff", activeStaff.length+" active", "#0f2855")}
+  ${kpi(activeStaff.length, "Active Staff", pctOf(activeStaff.length, staff.length)+"% active", "#16a34a")}
+  ${kpi(Object.keys(roleMap).length, "Roles Represented", "", "#7c3aed")}
+  ${kpi(Object.keys(deptMap).length, "Departments", "", "#0d9488")}
+</div>
+${mini2col(
+  `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px">` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">By Clinical Role</div>` +
+  (staffRoles.length === 0
+    ? `<p style="color:#94a3b8;font-size:10px">No staff data.</p>`
+    : staffRoles.map(([role,cnt], i) => staffRow(role, cnt, pctOf(cnt, activeStaff.length), C[i%C.length], staffMax)).join("")) +
+  `</div>`,
+  `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px">` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">By Department</div>` +
+  bar(topN(deptMap,10), activeStaff.length, 3) +
+  `</div>`
+)}
+
+<!-- 9. FINANCIAL SUMMARY -->
+<div class="pb"></div>
+${sec("💰", "Financial Summary")}
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
   ${kpi(invs.length, "Total Invoices", "", "#0f2855")}
-  ${kpi("SAR " + totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Total Billed", "", "#ca8a04")}
-  ${kpi("SAR " + totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Collected", `${collRate}% rate`, "#16a34a")}
-  ${kpi("SAR " + outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Outstanding", outstanding > 0 ? "unpaid" : "fully settled", outstanding > 0 ? "#dc2626" : "#16a34a")}
+  ${kpi("SAR "+totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Total Billed", "", "#ca8a04")}
+  ${kpi("SAR "+totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Collected", collRate+"% collection rate", "#16a34a")}
+  ${kpi("SAR "+outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Outstanding", outstanding>0?"pending collection":"fully collected", outstanding>0?"#dc2626":"#16a34a")}
 </div>
-${box(`Invoice Status — ${invs.length} invoices`, bar(topN(invStatMap, 8), invs.length))}
-
-</div>
-
-<div style="background:#0f2855;color:rgba(255,255,255,.65);padding:9px 28px;font-size:9px;display:flex;justify-content:space-between;align-items:center;margin-top:24px">
-  <span>❤ Almuzini Children Hospital &nbsp;·&nbsp; Pediatric EHR Statistical Report</span>
-  <span>${periodLabelEn} &nbsp;·&nbsp; ${total} patients &nbsp;·&nbsp; ${reportDate} ${reportTime} &nbsp;·&nbsp; CONFIDENTIAL</span>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:14px">
+  <div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Invoice Status Breakdown</div>
+  ${bar(topN(invStatMap,8), invs.length)}
 </div>
 
-<script>window.onload = () => { setTimeout(() => window.print(), 400); }</script>
+</div><!-- /content -->
+
+<div style="background:linear-gradient(135deg,#0c2044,#163566);color:rgba(255,255,255,.6);padding:9px 28px;font-size:9px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+  <span>\u2764 Almuzini Children Hospital \u00b7 Pediatric EHR Statistical Report</span>
+  <span>${periodLabelEn} \u00b7 ${total} patients \u00b7 ${reportDate} ${reportTime} \u00b7 STRICTLY CONFIDENTIAL</span>
+</div>
+
+<script>window.onload = () => { setTimeout(() => window.print(), 500); }<\/script>
 </body></html>`;
 
-      const win = window.open("", "_blank", "width=950,height=750");
+      const win = window.open("", "_blank", "width=970,height=760");
       if (!win) return;
       win.document.write(html);
       win.document.close();
