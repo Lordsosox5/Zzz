@@ -554,6 +554,9 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.100.9(react@19.1.0)
+      '@tauri-apps/cli':
+        specifier: ^2
+        version: 2.11.4
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2

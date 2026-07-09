@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
