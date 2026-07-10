@@ -9,20 +9,24 @@ import { getToken } from "@/lib/auth";
 function age(dob: string): string {
   const diff = Date.now() - new Date(dob).getTime();
   const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-  if (years >= 2) return `${years} yrs`;
+  if (years >= 2) return `${years} سنة`;
   const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30.44));
-  if (months >= 1) return `${months} mo`;
+  if (months >= 1) return `${months} شهر`;
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  return `${days} d`;
+  return `${days} يوم`;
 }
 
-function fmt(d: any) { return d ? new Date(d).toLocaleDateString("en-GB") : "—"; }
-function fmtDt(d: any) { return d ? new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"; }
+function fmt(d: any) { return d ? new Date(d).toLocaleDateString("ar-SA") : "—"; }
+function fmtDt(d: any) {
+  return d
+    ? new Date(d).toLocaleString("ar-SA", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "—";
+}
 
 function Row({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
-    <div className="grid grid-cols-[200px_1fr] gap-1 py-1 border-b border-gray-100 text-sm">
+    <div className="grid grid-cols-[180px_1fr] gap-1 py-1 border-b border-gray-100 text-sm" dir="rtl">
       <span className="font-semibold text-gray-600">{label}</span>
       <span className="whitespace-pre-wrap text-gray-900">{value}</span>
     </div>
@@ -32,7 +36,7 @@ function Row({ label, value }: { label: string; value?: string | null }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5 break-inside-avoid-page">
-      <div className="bg-gray-800 text-white text-xs font-bold uppercase tracking-widest px-3 py-1.5 mb-2">
+      <div className="bg-gray-800 text-white text-xs font-bold tracking-widest px-3 py-1.5 mb-2 text-right" dir="rtl">
         {title}
       </div>
       <div className="px-2">{children}</div>
@@ -43,26 +47,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function VitalBox({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="border rounded p-2 text-center min-w-[80px]">
-      <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">{label}</div>
+      <div className="text-[10px] text-gray-500 mb-0.5">{label}</div>
       <div className="text-sm font-bold text-gray-800">{value || "—"}</div>
     </div>
   );
 }
 
-function DataTable({ columns, rows, empty = "No records" }: {
+function DataTable({ columns, rows, empty = "لا سجلات" }: {
   columns: { key: string; label: string; render?: (v: any, row: any) => string }[];
   rows: any[];
   empty?: string;
 }) {
   if (!rows.length) {
-    return <p className="text-xs text-gray-400 italic py-2">{empty}</p>;
+    return <p className="text-xs text-gray-400 italic py-2 text-right">{empty}</p>;
   }
   return (
-    <table className="w-full text-xs border-collapse">
+    <table className="w-full text-xs border-collapse" dir="rtl">
       <thead>
         <tr className="bg-gray-100">
           {columns.map(c => (
-            <th key={c.key} className="text-left font-semibold text-gray-600 px-2 py-1.5 border border-gray-200">
+            <th key={c.key} className="text-right font-semibold text-gray-600 px-2 py-1.5 border border-gray-200">
               {c.label}
             </th>
           ))}
@@ -72,7 +76,7 @@ function DataTable({ columns, rows, empty = "No records" }: {
         {rows.map((row, i) => (
           <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
             {columns.map(c => (
-              <td key={c.key} className="px-2 py-1 border border-gray-200 text-gray-800 whitespace-pre-wrap">
+              <td key={c.key} className="px-2 py-1 border border-gray-200 text-gray-800 whitespace-pre-wrap text-right">
                 {c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}
               </td>
             ))}
@@ -174,13 +178,13 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-        <p className="text-sm text-gray-400">Loading complete patient record…</p>
+        <p className="text-sm text-gray-400">جاري تحميل السجل الطبي الكامل…</p>
       </div>
     );
   }
 
   if (!patient) {
-    return <div className="p-8 text-center text-gray-500">Patient not found.</div>;
+    return <div className="p-8 text-center text-gray-500">المريض غير موجود.</div>;
   }
 
   const a = assessment as Record<string, string | null | undefined> | undefined;
@@ -189,353 +193,356 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
   const hasSystems  = a && (a.chestExam || a.cvsExam || a.abdomenExam || a.cnsExam || a.entExam || a.skinExam);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans">
+    <div className="min-h-screen bg-white text-gray-900 font-sans" dir="rtl" lang="ar">
 
       {/* ── Print button (hidden when printing) ── */}
-      <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
+      <div className="print:hidden fixed top-4 left-4 z-50 flex gap-2">
         <Button onClick={() => window.print()} className="gap-2 shadow-lg">
-          <Printer className="h-4 w-4" /> Print / Save as PDF
+          <Printer className="h-4 w-4" /> طباعة / حفظ PDF
         </Button>
-        <Button variant="outline" onClick={() => window.close()}>Close</Button>
+        <Button variant="outline" onClick={() => window.close()}>إغلاق</Button>
       </div>
 
       <div className="max-w-[210mm] mx-auto px-8 py-10 print:max-w-none print:w-full print:mx-0 print:px-6 print:py-4">
 
         {/* ── Hospital header ── */}
         <div className="flex items-start justify-between mb-6 pb-4 border-b-2 border-gray-800">
-          <div>
+          <div className="text-left" dir="ltr">
+            <div className="text-sm font-bold text-gray-700 uppercase tracking-wider">Full Patient Record</div>
+            <div>MRN: <span className="font-mono font-bold text-gray-900">{patient.mrn}</span></div>
+            <div className="text-xs text-gray-500">
+              التاريخ: {new Date().toLocaleDateString("ar-SA", { day: "2-digit", month: "short", year: "numeric" })}
+            </div>
+            {patient.admissionDate && <div className="text-xs text-gray-500">تاريخ الدخول: {fmt(patient.admissionDate)}</div>}
+            {patient.dischargeDate && <div className="text-xs text-gray-500">تاريخ الخروج: {fmt(patient.dischargeDate)}</div>}
+          </div>
+          <div className="text-right">
             <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
               مستشفى المزيني للأطفال
             </div>
             <div className="text-lg font-bold text-gray-700">
               Almuzini Children Hospital
             </div>
-            <div className="text-xs text-gray-500 mt-1">Pediatric EHR System · Confidential Medical Record</div>
-          </div>
-          <div className="text-right text-xs text-gray-500 space-y-0.5">
-            <div className="text-sm font-bold text-gray-700 uppercase tracking-wider">Full Patient Record</div>
-            <div>MRN: <span className="font-mono font-bold text-gray-900">{patient.mrn}</span></div>
-            <div>Date: {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</div>
-            {patient.admissionDate && <div>Admitted: {fmt(patient.admissionDate)}</div>}
-            {patient.dischargeDate && <div>Discharged: {fmt(patient.dischargeDate)}</div>}
+            <div className="text-xs text-gray-500 mt-1">نظام السجلات الطبية الإلكترونية للأطفال · سري وسجل طبي</div>
           </div>
         </div>
 
-        {/* ══ SECTION 1: PATIENT DEMOGRAPHICS ══ */}
-        <Section title="Patient Demographics">
+        {/* ══ القسم 1: البيانات الديموغرافية ══ */}
+        <Section title="البيانات الديموغرافية للمريض">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-0">
-            <Row label="Full Name (EN)"       value={patient.nameEn} />
-            <Row label="Full Name (AR)"       value={patient.nameAr} />
-            <Row label="Date of Birth"        value={`${fmt(patient.dateOfBirth)} (${age(patient.dateOfBirth)})`} />
-            <Row label="Gender"               value={patient.gender === "male" ? "Male / ذكر" : "Female / أنثى"} />
-            <Row label="Nationality"          value={patient.nationality} />
-            <Row label="National ID"          value={patient.nationalId} />
-            <Row label="Blood Group"          value={patient.bloodGroup ?? (patient as any).bloodType} />
-            <Row label="Mother Blood Group"   value={(patient as any).motherBloodGroup} />
-            <Row label="Allergies / NKDA"     value={patient.allergies || "NKDA — No Known Drug Allergies"} />
-            <Row label="Address"              value={(patient as any).address} />
-            <Row label="Residence"            value={(patient as any).residence} />
-            <Row label="Phone"                value={(patient as any).phone} />
-            <Row label="Guardian Name"        value={patient.guardianName ? `${patient.guardianName}${patient.guardianRelation ? ` (${patient.guardianRelation})` : ""}` : undefined} />
-            <Row label="Guardian Phone"       value={patient.guardianPhone} />
-            <Row label="Weight / Height"      value={[(patient as any).weight ? `${(patient as any).weight} kg` : null, (patient as any).height ? `${(patient as any).height} cm` : null].filter(Boolean).join(" · ") || undefined} />
-            <Row label="Admission Status"     value={(patient as any).status} />
-            <Row label="Admission Date"       value={fmt(patient.admissionDate)} />
-            <Row label="Discharge Date"       value={(patient as any).dischargeDate ? fmt((patient as any).dischargeDate) : undefined} />
-            <Row label="Registered"           value={fmtDt((patient as any).createdAt)} />
+            <Row label="الاسم الكامل (إنجليزي)"  value={patient.nameEn} />
+            <Row label="الاسم الكامل (عربي)"      value={patient.nameAr} />
+            <Row label="تاريخ الميلاد"             value={`${fmt(patient.dateOfBirth)} (${age(patient.dateOfBirth)})`} />
+            <Row label="الجنس"                    value={patient.gender === "male" ? "ذكر" : "أنثى"} />
+            <Row label="الجنسية"                  value={patient.nationality} />
+            <Row label="رقم الهوية الوطنية"       value={patient.nationalId} />
+            <Row label="فصيلة الدم"               value={patient.bloodGroup ?? (patient as any).bloodType} />
+            <Row label="فصيلة دم الأم"            value={(patient as any).motherBloodGroup} />
+            <Row label="الحساسية"                 value={patient.allergies || "لا حساسية معروفة للأدوية"} />
+            <Row label="العنوان"                  value={(patient as any).address} />
+            <Row label="محل الإقامة"              value={(patient as any).residence} />
+            <Row label="الهاتف"                   value={(patient as any).phone} />
+            <Row label="ولي الأمر"                value={patient.guardianName ? `${patient.guardianName}${patient.guardianRelation ? ` (${patient.guardianRelation})` : ""}` : undefined} />
+            <Row label="هاتف ولي الأمر"           value={patient.guardianPhone} />
+            <Row label="الوزن / الطول"            value={[(patient as any).weight ? `${(patient as any).weight} كجم` : null, (patient as any).height ? `${(patient as any).height} سم` : null].filter(Boolean).join(" · ") || undefined} />
+            <Row label="حالة الدخول"              value={(patient as any).status} />
+            <Row label="تاريخ الدخول"             value={fmt(patient.admissionDate)} />
+            <Row label="تاريخ الخروج"             value={(patient as any).dischargeDate ? fmt((patient as any).dischargeDate) : undefined} />
+            <Row label="تاريخ التسجيل"            value={fmtDt((patient as any).createdAt)} />
           </div>
         </Section>
 
-        {/* ══ SECTION 2: ADMISSION ASSESSMENT ══ */}
+        {/* ══ القسم 2: تقييم الدخول ══ */}
         {a && (
           <>
             {a.mainComplaint && (
-              <Section title="Chief Complaint">
-                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap">{a.mainComplaint}</p>
+              <Section title="الشكوى الرئيسية">
+                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap text-right">{a.mainComplaint}</p>
               </Section>
             )}
 
             {hasSocrates && (
-              <Section title="Analysis of Complaint — SOCRATES">
+              <Section title="تحليل الشكوى — SOCRATES">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-                  <Row label="S — Site"           value={a.analysisSite} />
-                  <Row label="O — Onset"          value={a.analysisOnset} />
-                  <Row label="C — Character"      value={a.analysisCharacter} />
-                  <Row label="R — Radiation"      value={a.analysisRadiation} />
-                  <Row label="A — Aggravation"    value={a.analysisAggravation} />
-                  <Row label="R — Relieving"      value={a.analysisRelieving} />
+                  <Row label="S — الموقع"              value={a.analysisSite} />
+                  <Row label="O — البداية"             value={a.analysisOnset} />
+                  <Row label="C — الطابع"              value={a.analysisCharacter} />
+                  <Row label="R — الانتشار"            value={a.analysisRadiation} />
+                  <Row label="A — المحرِّضات"          value={a.analysisAggravation} />
+                  <Row label="R — المُسكِّنات"         value={a.analysisRelieving} />
                   <div className="col-span-full">
-                    <Row label="E — Associations" value={a.analysisAssociations} />
+                    <Row label="E — الأعراض المصاحبة"  value={a.analysisAssociations} />
                   </div>
                 </div>
               </Section>
             )}
 
             {a.systemicReview && (
-              <Section title="Review of Systems">
-                <pre className="text-[11px] text-gray-800 whitespace-pre-wrap font-sans leading-relaxed py-1">{a.systemicReview}</pre>
+              <Section title="مراجعة الأجهزة">
+                <pre className="text-[11px] text-gray-800 whitespace-pre-wrap font-sans leading-relaxed py-1 text-right">{a.systemicReview}</pre>
               </Section>
             )}
 
             {(a.pastMedicalHistory || a.drugHistory || a.familyHistory || a.socialHistory || a.developmentalHistory) && (
-              <Section title="Past History">
-                <Row label="Past Medical History" value={a.pastMedicalHistory} />
-                <Row label="Drug History"         value={a.drugHistory} />
-                <Row label="Family History"       value={a.familyHistory} />
-                <Row label="Social History"       value={a.socialHistory} />
-                <Row label="Developmental Hx"     value={a.developmentalHistory} />
+              <Section title="التاريخ المرضي السابق">
+                <Row label="التاريخ الطبي السابق"  value={a.pastMedicalHistory} />
+                <Row label="تاريخ الأدوية"          value={a.drugHistory} />
+                <Row label="التاريخ العائلي"        value={a.familyHistory} />
+                <Row label="التاريخ الاجتماعي"     value={a.socialHistory} />
+                <Row label="التاريخ التطوري"        value={a.developmentalHistory} />
               </Section>
             )}
 
             {(a.historySummary || a.provisionalDiagnosis) && (
-              <Section title="Provisional Diagnosis">
-                <Row label="History Summary"  value={a.historySummary} />
-                <Row label="Provisional Dx"   value={a.provisionalDiagnosis} />
+              <Section title="التشخيص الأولي">
+                <Row label="ملخص التاريخ المرضي"  value={a.historySummary} />
+                <Row label="التشخيص الأولي"        value={a.provisionalDiagnosis} />
               </Section>
             )}
 
             {hasVitals && (
-              <Section title="Vital Signs on Admission">
-                <div className="flex flex-wrap gap-2 py-1">
-                  <VitalBox label="Temp (°C)"  value={a.vitalTemp} />
-                  <VitalBox label="BP (mmHg)"  value={a.vitalBp} />
-                  <VitalBox label="HR (bpm)"   value={a.vitalPr} />
-                  <VitalBox label="RR (/min)"  value={a.vitalRr} />
-                  <VitalBox label="SpO₂ (%)"   value={a.vitalSpo2} />
-                  <VitalBox label="GCS"        value={a.vitalGcs} />
-                  <VitalBox label="RBG"        value={a.vitalRbg} />
+              <Section title="العلامات الحيوية عند الدخول">
+                <div className="flex flex-wrap gap-2 py-1 justify-end">
+                  <VitalBox label="الحرارة (°م)"       value={a.vitalTemp} />
+                  <VitalBox label="ض. الدم (ملم)"      value={a.vitalBp} />
+                  <VitalBox label="النبض (ن/د)"         value={a.vitalPr} />
+                  <VitalBox label="التنفس (/د)"         value={a.vitalRr} />
+                  <VitalBox label="SpO₂ (%)"            value={a.vitalSpo2} />
+                  <VitalBox label="GCS"                 value={a.vitalGcs} />
+                  <VitalBox label="سكر الدم (RBG)"     value={a.vitalRbg} />
                 </div>
               </Section>
             )}
 
             {a.examinationSummary && (
-              <Section title="General Examination">
-                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap">{a.examinationSummary}</p>
+              <Section title="الفحص العام">
+                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap text-right">{a.examinationSummary}</p>
               </Section>
             )}
 
             {hasSystems && (
-              <Section title="Systemic Examination">
-                <Row label="Respiratory / Chest" value={a.chestExam} />
-                <Row label="Cardiovascular"       value={a.cvsExam} />
-                <Row label="Abdomen"              value={a.abdomenExam} />
-                <Row label="CNS / Neurological"   value={a.cnsExam} />
-                <Row label="ENT"                  value={a.entExam} />
-                <Row label="Skin / MSK"           value={a.skinExam} />
+              <Section title="الفحص الجهازي">
+                <Row label="التنفسي / الصدر"              value={a.chestExam} />
+                <Row label="القلب والأوعية الدموية"       value={a.cvsExam} />
+                <Row label="البطن"                        value={a.abdomenExam} />
+                <Row label="الجهاز العصبي"               value={a.cnsExam} />
+                <Row label="الأذن والأنف والحنجرة (ENT)" value={a.entExam} />
+                <Row label="الجلد / الجهاز العضلي الهيكلي" value={a.skinExam} />
               </Section>
             )}
 
             {a.investigationsOrdered && (
-              <Section title="Investigations Ordered (Admission)">
-                <pre className="text-[11px] font-mono text-gray-800 whitespace-pre-wrap py-1 leading-relaxed">{a.investigationsOrdered}</pre>
+              <Section title="الفحوصات المطلوبة (عند الدخول)">
+                <pre className="text-[11px] font-mono text-gray-800 whitespace-pre-wrap py-1 leading-relaxed text-right">{a.investigationsOrdered}</pre>
               </Section>
             )}
 
             {a.managementPlan && (
-              <Section title="Management Plan">
-                <pre className="text-[11px] font-mono text-gray-800 whitespace-pre-wrap py-1 leading-relaxed">{a.managementPlan}</pre>
+              <Section title="خطة العلاج">
+                <pre className="text-[11px] font-mono text-gray-800 whitespace-pre-wrap py-1 leading-relaxed text-right">{a.managementPlan}</pre>
               </Section>
             )}
 
             {(a.morningFollowUp || a.eveningFollowUp) && (
-              <Section title="Follow-up Notes">
-                <Row label="Morning Round" value={a.morningFollowUp} />
-                <Row label="Evening Round" value={a.eveningFollowUp} />
+              <Section title="ملاحظات المتابعة">
+                <Row label="جولة الصباح" value={a.morningFollowUp} />
+                <Row label="جولة المساء" value={a.eveningFollowUp} />
               </Section>
             )}
 
             {a.dischargeLetter && (
-              <Section title="Discharge Summary / Referral Letter">
-                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap">{a.dischargeLetter}</p>
+              <Section title="ملخص الخروج / خطاب الإحالة">
+                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap text-right">{a.dischargeLetter}</p>
               </Section>
             )}
           </>
         )}
 
-        {/* ══ SECTION 3: DIAGNOSES ══ */}
-        <Section title={`Diagnoses (${(diagnoses as any[]).length})`}>
+        {/* ══ القسم 3: التشخيصات ══ */}
+        <Section title={`التشخيصات (${(diagnoses as any[]).length})`}>
           <DataTable
-            empty="No diagnoses recorded"
+            empty="لا تشخيصات مسجلة"
             columns={[
-              { key: "code",        label: "ICD Code" },
-              { key: "description", label: "Description", render: (v, r) => v ?? r.name ?? "—" },
-              { key: "status",      label: "Status" },
-              { key: "type",        label: "Type" },
-              { key: "createdAt",   label: "Date", render: v => fmt(v) },
+              { key: "code",        label: "رمز ICD" },
+              { key: "description", label: "الوصف",   render: (v, r) => v ?? r.name ?? "—" },
+              { key: "status",      label: "الحالة" },
+              { key: "type",        label: "النوع" },
+              { key: "createdAt",   label: "التاريخ", render: v => fmt(v) },
             ]}
             rows={diagnoses as any[]}
           />
         </Section>
 
-        {/* ══ SECTION 4: PRESCRIPTIONS ══ */}
-        <Section title={`Prescriptions (${(prescriptions as any[]).length})`}>
+        {/* ══ القسم 4: الوصفات الطبية ══ */}
+        <Section title={`الوصفات الطبية (${(prescriptions as any[]).length})`}>
           <DataTable
-            empty="No prescriptions recorded"
+            empty="لا وصفات طبية مسجلة"
             columns={[
-              { key: "medicationName", label: "Medication",  render: (v, r) => v ?? r.medication ?? "—" },
-              { key: "dose",           label: "Dose" },
-              { key: "route",          label: "Route" },
-              { key: "frequency",      label: "Frequency" },
-              { key: "duration",       label: "Duration" },
-              { key: "status",         label: "Status" },
-              { key: "prescriberName", label: "Prescribed By" },
-              { key: "notes",          label: "Notes" },
-              { key: "createdAt",      label: "Date", render: v => fmt(v) },
+              { key: "medicationName", label: "الدواء",          render: (v, r) => v ?? r.medication ?? "—" },
+              { key: "dose",           label: "الجرعة" },
+              { key: "route",          label: "طريقة الإعطاء" },
+              { key: "frequency",      label: "التكرار" },
+              { key: "duration",       label: "المدة" },
+              { key: "status",         label: "الحالة" },
+              { key: "prescriberName", label: "وُصف من قِبل" },
+              { key: "notes",          label: "ملاحظات" },
+              { key: "createdAt",      label: "التاريخ",         render: v => fmt(v) },
             ]}
             rows={prescriptions as any[]}
           />
         </Section>
 
-        {/* ══ SECTION 5: LAB ORDERS ══ */}
-        <Section title={`Laboratory Orders (${(labOrders as any[]).length})`}>
+        {/* ══ القسم 5: طلبات المختبر ══ */}
+        <Section title={`طلبات المختبر (${(labOrders as any[]).length})`}>
           <DataTable
-            empty="No lab orders recorded"
+            empty="لا طلبات مختبر مسجلة"
             columns={[
-              { key: "testName",      label: "Test",     render: (v, r) => v ?? r.test_name ?? "—" },
-              { key: "priority",      label: "Priority" },
-              { key: "status",        label: "Status" },
-              { key: "isCritical",    label: "Critical", render: v => v ? "⚠ YES" : "No" },
-              { key: "result",        label: "Result",   render: (v, r) => v ?? r.resultValue ?? "—" },
-              { key: "unit",          label: "Unit",     render: (v, r) => v ?? r.resultUnit ?? "—" },
-              { key: "referenceRange",label: "Ref. Range" },
-              { key: "orderedByName", label: "Ordered By" },
-              { key: "notes",         label: "Notes" },
-              { key: "createdAt",     label: "Date", render: v => fmt(v) },
+              { key: "testName",       label: "الفحص",            render: (v, r) => v ?? r.test_name ?? "—" },
+              { key: "priority",       label: "الأولوية" },
+              { key: "status",         label: "الحالة" },
+              { key: "isCritical",     label: "حرج",              render: v => v ? "⚠ نعم" : "لا" },
+              { key: "result",         label: "النتيجة",          render: (v, r) => v ?? r.resultValue ?? "—" },
+              { key: "unit",           label: "الوحدة",           render: (v, r) => v ?? r.resultUnit ?? "—" },
+              { key: "referenceRange", label: "النطاق الطبيعي" },
+              { key: "orderedByName",  label: "طُلب من قِبل" },
+              { key: "notes",          label: "ملاحظات" },
+              { key: "createdAt",      label: "التاريخ",          render: v => fmt(v) },
             ]}
             rows={labOrders as any[]}
           />
         </Section>
 
-        {/* ══ SECTION 6: RADIOLOGY ORDERS ══ */}
-        <Section title={`Radiology Orders (${(radOrders as any[]).length})`}>
+        {/* ══ القسم 6: طلبات الأشعة ══ */}
+        <Section title={`طلبات الأشعة (${(radOrders as any[]).length})`}>
           <DataTable
-            empty="No radiology orders recorded"
+            empty="لا طلبات أشعة مسجلة"
             columns={[
-              { key: "modality",     label: "Modality" },
-              { key: "orderType",    label: "Type",   render: (v, r) => v ?? r.examType ?? "—" },
-              { key: "clinicalInfo", label: "Clinical Info" },
-              { key: "status",       label: "Status" },
-              { key: "findings",     label: "Findings",  render: (v, r) => v ?? r.report ?? "—" },
-              { key: "impression",   label: "Impression" },
-              { key: "radiologistName", label: "Radiologist" },
-              { key: "reportedAt",   label: "Reported", render: v => fmt(v) },
-              { key: "createdAt",    label: "Ordered",  render: v => fmt(v) },
+              { key: "modality",        label: "طريقة التصوير" },
+              { key: "orderType",       label: "النوع",              render: (v, r) => v ?? r.examType ?? "—" },
+              { key: "clinicalInfo",    label: "المعلومات السريرية" },
+              { key: "status",          label: "الحالة" },
+              { key: "findings",        label: "النتائج",            render: (v, r) => v ?? r.report ?? "—" },
+              { key: "impression",      label: "الانطباع" },
+              { key: "radiologistName", label: "أخصائي الأشعة" },
+              { key: "reportedAt",      label: "تاريخ التقرير",      render: v => fmt(v) },
+              { key: "createdAt",       label: "تاريخ الطلب",        render: v => fmt(v) },
             ]}
             rows={radOrders as any[]}
           />
         </Section>
 
-        {/* ══ SECTION 7: CLINICAL NOTES ══ */}
-        <Section title={`Clinical Notes (${(clinicalNotes as any[]).length})`}>
+        {/* ══ القسم 7: الملاحظات السريرية ══ */}
+        <Section title={`الملاحظات السريرية (${(clinicalNotes as any[]).length})`}>
           {(clinicalNotes as any[]).length === 0 ? (
-            <p className="text-xs text-gray-400 italic py-2">No clinical notes recorded</p>
+            <p className="text-xs text-gray-400 italic py-2 text-right">لا ملاحظات سريرية مسجلة</p>
           ) : (
             (clinicalNotes as any[]).map((note: any, i: number) => (
               <div key={i} className="mb-3 pb-3 border-b border-gray-100 last:border-0">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs font-semibold text-gray-700">
-                    {note.type ?? note.noteType ?? "Note"}{note.authorName ? ` — ${note.authorName}` : ""}
-                  </div>
                   <div className="text-[10px] text-gray-400">{fmtDt(note.createdAt)}</div>
+                  <div className="text-xs font-semibold text-gray-700">
+                    {note.type ?? note.noteType ?? "ملاحظة"}{note.authorName ? ` — ${note.authorName}` : ""}
+                  </div>
                 </div>
                 {note.subjective && (
-                  <div className="text-xs mb-0.5"><span className="font-semibold text-gray-600">S: </span><span className="text-gray-800">{note.subjective}</span></div>
+                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">ذاتي (S): </span><span className="text-gray-800">{note.subjective}</span></div>
                 )}
                 {note.objective && (
-                  <div className="text-xs mb-0.5"><span className="font-semibold text-gray-600">O: </span><span className="text-gray-800">{note.objective}</span></div>
+                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">موضوعي (O): </span><span className="text-gray-800">{note.objective}</span></div>
                 )}
                 {note.assessment && (
-                  <div className="text-xs mb-0.5"><span className="font-semibold text-gray-600">A: </span><span className="text-gray-800">{note.assessment}</span></div>
+                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">التقييم (A): </span><span className="text-gray-800">{note.assessment}</span></div>
                 )}
                 {note.plan && (
-                  <div className="text-xs mb-0.5"><span className="font-semibold text-gray-600">P: </span><span className="text-gray-800">{note.plan}</span></div>
+                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">الخطة (P): </span><span className="text-gray-800">{note.plan}</span></div>
                 )}
                 {note.content && (
-                  <div className="text-xs text-gray-800 whitespace-pre-wrap">{note.content}</div>
+                  <div className="text-xs text-gray-800 whitespace-pre-wrap text-right">{note.content}</div>
                 )}
               </div>
             ))
           )}
         </Section>
 
-        {/* ══ SECTION 8: VACCINATIONS ══ */}
-        <Section title={`Vaccinations (${(vaccinations as any[]).length})`}>
+        {/* ══ القسم 8: التطعيمات ══ */}
+        <Section title={`التطعيمات (${(vaccinations as any[]).length})`}>
           <DataTable
-            empty="No vaccinations recorded"
+            empty="لا تطعيمات مسجلة"
             columns={[
-              { key: "vaccineName",  label: "Vaccine",    render: (v, r) => v ?? r.vaccine ?? r.name ?? "—" },
-              { key: "dose",         label: "Dose" },
-              { key: "batchNumber",  label: "Batch #" },
-              { key: "site",         label: "Site" },
-              { key: "administeredBy", label: "Given By" },
-              { key: "notes",        label: "Notes" },
-              { key: "givenAt",      label: "Date",  render: (v, r) => fmt(v ?? r.createdAt) },
+              { key: "vaccineName",    label: "اللقاح",       render: (v, r) => v ?? r.vaccine ?? r.name ?? "—" },
+              { key: "dose",           label: "الجرعة" },
+              { key: "batchNumber",    label: "رقم الدفعة" },
+              { key: "site",           label: "موضع الحقن" },
+              { key: "administeredBy", label: "أُعطي من قِبل" },
+              { key: "notes",          label: "ملاحظات" },
+              { key: "givenAt",        label: "التاريخ",      render: (v, r) => fmt(v ?? r.createdAt) },
             ]}
             rows={vaccinations as any[]}
           />
         </Section>
 
-        {/* ══ SECTION 9: GROWTH RECORDS ══ */}
-        <Section title={`Growth Records (${(growthRecords as any[]).length})`}>
+        {/* ══ القسم 9: سجلات النمو ══ */}
+        <Section title={`سجلات النمو (${(growthRecords as any[]).length})`}>
           <DataTable
-            empty="No growth records recorded"
+            empty="لا سجلات نمو مسجلة"
             columns={[
-              { key: "recordedAt",       label: "Date",          render: (v, r) => fmt(v ?? r.createdAt) },
-              { key: "weight",           label: "Weight (kg)" },
-              { key: "height",           label: "Height (cm)" },
-              { key: "bmi",              label: "BMI" },
-              { key: "headCircumference",label: "Head Circ. (cm)" },
-              { key: "weightPercentile", label: "Wt %ile" },
-              { key: "heightPercentile", label: "Ht %ile" },
-              { key: "notes",            label: "Notes" },
+              { key: "recordedAt",        label: "التاريخ",               render: (v, r) => fmt(v ?? r.createdAt) },
+              { key: "weight",            label: "الوزن (كجم)" },
+              { key: "height",            label: "الطول (سم)" },
+              { key: "bmi",               label: "مؤشر كتلة الجسم" },
+              { key: "headCircumference", label: "محيط الرأس (سم)" },
+              { key: "weightPercentile",  label: "نسبة الوزن المئوية" },
+              { key: "heightPercentile",  label: "نسبة الطول المئوية" },
+              { key: "notes",             label: "ملاحظات" },
             ]}
             rows={growthRecords as any[]}
           />
         </Section>
 
-        {/* ══ SECTION 10: DISCHARGE SUMMARIES ══ */}
+        {/* ══ القسم 10: ملخصات الخروج ══ */}
         {(dischargeSummaries as any[]).length > 0 && (
-          <Section title={`Discharge Summaries (${(dischargeSummaries as any[]).length})`}>
+          <Section title={`ملخصات الخروج (${(dischargeSummaries as any[]).length})`}>
             {(dischargeSummaries as any[]).map((ds: any, i: number) => (
               <div key={i} className="mb-4 pb-4 border-b border-gray-100 last:border-0">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-700 uppercase">Discharge Summary #{i + 1}</span>
                   <span className="text-[10px] text-gray-400">{fmtDt(ds.createdAt)}</span>
+                  <span className="text-xs font-bold text-gray-700">ملخص الخروج #{i + 1}</span>
                 </div>
-                {ds.finalDiagnosis  && <Row label="Final Diagnosis"    value={ds.finalDiagnosis} />}
-                {ds.conditionOnDischarge && <Row label="Condition on Discharge" value={ds.conditionOnDischarge} />}
-                {ds.treatmentGiven  && <Row label="Treatment Given"    value={ds.treatmentGiven} />}
-                {ds.dischargeInstructions && <Row label="Instructions" value={ds.dischargeInstructions} />}
-                {ds.followUpPlan   && <Row label="Follow-up Plan"      value={ds.followUpPlan} />}
-                {ds.medicationsOnDischarge && <Row label="Medications at Discharge" value={ds.medicationsOnDischarge} />}
+                {ds.finalDiagnosis       && <Row label="التشخيص النهائي"       value={ds.finalDiagnosis} />}
+                {ds.conditionOnDischarge && <Row label="الحالة عند الخروج"     value={ds.conditionOnDischarge} />}
+                {ds.treatmentGiven       && <Row label="العلاج المُعطى"         value={ds.treatmentGiven} />}
+                {ds.dischargeInstructions && <Row label="التعليمات"            value={ds.dischargeInstructions} />}
+                {ds.followUpPlan         && <Row label="خطة المتابعة"          value={ds.followUpPlan} />}
+                {ds.medicationsOnDischarge && <Row label="الأدوية عند الخروج" value={ds.medicationsOnDischarge} />}
               </div>
             ))}
           </Section>
         )}
 
-        {/* ── Signature block ── */}
+        {/* ── كتلة التوقيع ── */}
         <div className="mt-10 pt-6 border-t border-gray-300 grid grid-cols-3 gap-8 text-xs text-gray-600">
-          {["Treating Doctor", "Nurse on Duty", "Supervisor / Consultant"].map(role => (
+          {["الطبيب المعالج", "الممرض/ة المناوب/ة", "المشرف / الاستشاري"].map(role => (
             <div key={role} className="text-center">
               <div className="border-b border-gray-400 mb-6" />
               <div className="font-medium">{role}</div>
-              <div className="text-gray-400 mt-0.5">Name / Signature / Date</div>
+              <div className="text-gray-400 mt-0.5">الاسم / التوقيع / التاريخ</div>
             </div>
           ))}
         </div>
 
-        {/* ── Footer ── */}
+        {/* ── تذييل الصفحة ── */}
         <div className="mt-6 text-center text-[9px] text-gray-400 border-t pt-2">
-          Almuzini Children Hospital EHR · Generated {new Date().toLocaleString()} · CONFIDENTIAL — For authorised medical staff only
+          مستشفى المزيني للأطفال · نظام السجلات الطبية الإلكترونية · صدر بتاريخ {new Date().toLocaleString("ar-SA")} · سري — للكوادر الطبية المخوّلة فقط
         </div>
 
       </div>
 
       {/* ── Print-only global styles ── */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap');
         @media print {
           @page { size: A4 portrait; margin: 10mm 12mm; }
-          body  { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; font-size: 10pt; }
+          body  { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; font-size: 10pt; font-family: 'Tajawal', sans-serif; }
           .bg-gray-800 { background-color: #1f2937 !important; color: white !important; }
           .bg-gray-100 { background-color: #f3f4f6 !important; }
           .bg-gray-50  { background-color: #f9fafb !important; }
@@ -545,6 +552,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
           tr    { page-break-inside: avoid; page-break-after: auto; }
           .break-inside-avoid-page { break-inside: avoid; }
         }
+        body { font-family: 'Tajawal', sans-serif; }
       `}</style>
     </div>
   );
