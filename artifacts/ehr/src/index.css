@@ -231,14 +231,23 @@ body {
   scrollbar-color: hsl(var(--muted-foreground) / 0.5) hsl(var(--muted) / 0.4);
 }
 
-/* RTL support for native date/time input fields — keep field direction in sync
-   with the page direction so digits and the calendar icon read correctly in Arabic mode. */
+/* Native date/time inputs: the internal day/month/year segments must stay
+   direction:ltr or the browser double-flips RTL segment labels (e.g. "يوم"
+   renders reversed as "موي"). In Arabic mode we only mirror the control's
+   position/alignment within its RTL container, never its internal direction. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"] {
+  direction: ltr;
+}
+
 html[dir="rtl"] input[type="date"],
 html[dir="rtl"] input[type="time"],
 html[dir="rtl"] input[type="datetime-local"],
 html[dir="rtl"] input[type="month"],
 html[dir="rtl"] input[type="week"] {
-  direction: rtl;
   text-align: right;
 }
 
@@ -247,6 +256,5 @@ html[dir="ltr"] input[type="time"],
 html[dir="ltr"] input[type="datetime-local"],
 html[dir="ltr"] input[type="month"],
 html[dir="ltr"] input[type="week"] {
-  direction: ltr;
   text-align: left;
 }
