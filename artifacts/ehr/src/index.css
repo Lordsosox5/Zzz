@@ -230,3 +230,23 @@ body {
 .dark * {
   scrollbar-color: hsl(var(--muted-foreground) / 0.5) hsl(var(--muted) / 0.4);
 }
+
+/* RTL support for native date/time input fields — keep field direction in sync
+   with the page direction so digits and the calendar icon read correctly in Arabic mode. */
+html[dir="rtl"] input[type="date"],
+html[dir="rtl"] input[type="time"],
+html[dir="rtl"] input[type="datetime-local"],
+html[dir="rtl"] input[type="month"],
+html[dir="rtl"] input[type="week"] {
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir="ltr"] input[type="date"],
+html[dir="ltr"] input[type="time"],
+html[dir="ltr"] input[type="datetime-local"],
+html[dir="ltr"] input[type="month"],
+html[dir="ltr"] input[type="week"] {
+  direction: ltr;
+  text-align: left;
+}
