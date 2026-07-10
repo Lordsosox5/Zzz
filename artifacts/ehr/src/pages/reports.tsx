@@ -425,7 +425,6 @@ export default function Reports() {
       const user  = getUser();
       const h = { Authorization: `Bearer ${token}` };
 
-      // Fetch all needed data in parallel
       const [diagsRaw, vaccsRaw, growthRaw, unitsRaw, staffRaw] = await Promise.all([
         fetch(`/api/diagnoses`,     { headers: h }).then(r => r.json()).catch(() => []),
         fetch(`/api/vaccinations`,  { headers: h }).then(r => r.json()).catch(() => []),
@@ -434,7 +433,6 @@ export default function Reports() {
         fetch(`/api/staff`,         { headers: h }).then(r => r.json()).catch(() => []),
       ]);
 
-      // Use period-filtered data already in scope from hooks
       const pats  = patients        as any[];
       const appts = appointments    as any[];
       const labs  = labOrders       as any[];
@@ -449,57 +447,66 @@ export default function Reports() {
       const units  = Array.isArray(unitsRaw) ? unitsRaw  : [];
       const staff  = Array.isArray(staffRaw) ? staffRaw  : [];
 
-      // ── helpers ───────────────────────────────────────────────────────
+      // helpers
       const freq = (arr: any[], fn: (x: any) => string): Record<string, number> => {
         const m: Record<string, number> = {};
-        arr.forEach(x => { const k = fn(x) || "Unknown"; m[k] = (m[k] || 0) + 1; });
+        arr.forEach(x => { const k = fn(x) || "\u0645\u062c\u0647\u0648\u0644"; m[k] = (m[k] || 0) + 1; });
         return m;
       };
       const topN = (m: Record<string, number>, n: number) =>
         Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n);
       const pctOf = (n: number, t: number) => t > 0 ? (n / t * 100).toFixed(1) : "0.0";
 
-      // ── demographics ──────────────────────────────────────────────────
+      // demographics
       const total  = pats.length;
       const active = pats.filter(p => p.status === "active" || p.status === "admitted").length;
       const disch  = total - active;
 
-      const ageGroups: Record<string, number> = { "< 1 yr": 0, "1\u20135 yrs": 0, "5\u201312 yrs": 0, "12\u201318 yrs": 0 };
+      const ageGroups: Record<string, number> = {
+        "\u0623\u0642\u0644 \u0645\u0646 \u0633\u0646\u0629": 0,
+        "\u0661\u2013\u0665 \u0633\u0646\u0648\u0627\u062a": 0,
+        "\u0665\u2013\u0661\u0662 \u0633\u0646\u0629": 0,
+        "\u0661\u0662\u2013\u0661\u0668 \u0633\u0646\u0629": 0
+      };
       pats.forEach(p => {
         if (!p.dateOfBirth) return;
         const a = Math.floor((Date.now() - new Date(p.dateOfBirth).getTime()) / 31_557_600_000);
-        if (a < 1) ageGroups["< 1 yr"]++;
-        else if (a < 5)  ageGroups["1\u20135 yrs"]++;
-        else if (a < 12) ageGroups["5\u201312 yrs"]++;
-        else             ageGroups["12\u201318 yrs"]++;
+        if (a < 1)       ageGroups["\u0623\u0642\u0644 \u0645\u0646 \u0633\u0646\u0629"]++;
+        else if (a < 5)  ageGroups["\u0661\u2013\u0665 \u0633\u0646\u0648\u0627\u062a"]++;
+        else if (a < 12) ageGroups["\u0665\u2013\u0661\u0662 \u0633\u0646\u0629"]++;
+        else             ageGroups["\u0661\u0662\u2013\u0661\u0668 \u0633\u0646\u0629"]++;
       });
 
-      // ── clinical ──────────────────────────────────────────────────────
-      const diagMap    = freq(diags, d => [d.code, d.description ?? d.name].filter(Boolean).join(" \u2014 ") || "Unknown");
+      // clinical
+      const diagMap    = freq(diags, d => [d.code, d.description ?? d.name].filter(Boolean).join(" \u2014 ") || "\u0645\u062c\u0647\u0648\u0644");
       const top5Diags  = topN(diagMap, 5);
-
-      const labTestMap = freq(labs, o => o.testName ?? o.test ?? o.name ?? o.category ?? "Unknown");
+      const labTestMap = freq(labs, o => o.testName ?? o.test ?? o.name ?? o.category ?? "\u0645\u062c\u0647\u0648\u0644");
       const top5Labs   = topN(labTestMap, 5);
-
-      const drugMap    = freq(rxs, r => r.drugName ?? r.medicationName ?? r.drug ?? "Unknown");
+      const drugMap    = freq(rxs, r => r.drugName ?? r.medicationName ?? r.drug ?? "\u0645\u062c\u0647\u0648\u0644");
       const top5Drugs  = topN(drugMap, 5);
 
-      const apptStatMap = freq(appts, a => {
-        const s = a.status ?? "unknown";
-        return s.charAt(0).toUpperCase() + s.slice(1);
-      });
-      const apptTypeMap = freq(appts, a => a.type ?? "Unknown");
+      const apptStatAr: Record<string,string> = {
+        completed: "\u0645\u0643\u062a\u0645\u0644", scheduled: "\u0645\u062c\u062f\u0648\u0644",
+        cancelled: "\u0645\u0644\u063a\u064a", "no-show": "\u0644\u0645 \u064a\u062d\u0636\u0631",
+        pending: "\u0642\u064a\u062f \u0627\u0644\u0627\u0646\u062a\u0638\u0627\u0631"
+      };
+      const apptTypeAr: Record<string,string> = {
+        "follow-up": "\u0645\u062a\u0627\u0628\u0639\u0629", consultation: "\u0627\u0633\u062a\u0634\u0627\u0631\u0629",
+        emergency: "\u0637\u0648\u0627\u0631\u0626", routine: "\u0631\u0648\u062a\u064a\u0646\u064a",
+        procedure: "\u0625\u062c\u0631\u0627\u0621", checkup: "\u0641\u062d\u0635 \u062f\u0648\u0631\u064a"
+      };
+      const apptStatMap = freq(appts, a => apptStatAr[a.status] ?? a.status ?? "\u0645\u062c\u0647\u0648\u0644");
+      const apptTypeMap = freq(appts, a => apptTypeAr[a.type]   ?? a.type   ?? "\u0645\u062c\u0647\u0648\u0644");
 
-      // ── ward fullness ────────────────────────────────────────────────
+      // ward fullness
       const unitPatCounts: Record<number, number> = {};
       (allPatients as any[])
         .filter(p => p.status === "active" || p.status === "admitted")
         .forEach(p => { if (p.unitId) unitPatCounts[p.unitId] = (unitPatCounts[p.unitId] || 0) + 1; });
-
       const wardData = units
         .filter((u: any) => u.status !== "inactive")
         .map((u: any) => ({
-          name: u.nameEn ?? "Unit",
+          name: u.nameAr ?? u.nameEn ?? "\u0648\u062d\u062f\u0629",
           type: (u.type ?? "ward") as string,
           occupied: unitPatCounts[u.id] ?? 0,
           capacity: (u.capacity != null && u.capacity > 0) ? Number(u.capacity) : null,
@@ -510,34 +517,42 @@ export default function Reports() {
           const ub = b.capacity ? b.occupied / b.capacity : 0;
           return ub - ua;
         });
-
       const totalCapacity = wardData.reduce((s: number, w: any) => s + (w.capacity ?? 0), 0);
       const totalOccupied = wardData.reduce((s: number, w: any) => s + w.occupied, 0);
       const overallUtil   = totalCapacity > 0 ? Math.round(totalOccupied / totalCapacity * 100) : -1;
 
-      // ── staff ─────────────────────────────────────────────────────────
+      // staff
       const activeStaff = staff.filter((s: any) => s.status === "active");
-      const ROLE_LABELS: Record<string, string> = {
-        super_admin: "Super Admin", pediatric_consultant: "Pediatric Consultant",
-        pediatric_specialist: "Pediatric Specialist", nurse: "Nurse",
-        emergency_physician: "Emergency Physician", pharmacist: "Pharmacist",
-        lab_technician: "Lab Technician", billing_officer: "Billing Officer",
-        house_officer: "House Officer", medical_officer: "Medical Officer",
-        data_analyser: "Data Analyst",
+      const ROLE_AR: Record<string, string> = {
+        super_admin: "\u0645\u062f\u064a\u0631 \u0627\u0644\u0646\u0638\u0627\u0645",
+        pediatric_consultant: "\u0627\u0633\u062a\u0634\u0627\u0631\u064a \u0623\u0637\u0641\u0627\u0644",
+        pediatric_specialist: "\u0623\u062e\u0635\u0627\u0626\u064a \u0623\u0637\u0641\u0627\u0644",
+        nurse: "\u062a\u0645\u0631\u064a\u0636",
+        emergency_physician: "\u0637\u0628\u064a\u0628 \u0637\u0648\u0627\u0631\u0626",
+        pharmacist: "\u0635\u064a\u062f\u0644\u0627\u0646\u064a",
+        lab_technician: "\u0641\u0646\u064a \u0645\u062e\u062a\u0628\u0631",
+        billing_officer: "\u0645\u0648\u0638\u0641 \u0641\u0648\u062a\u0631\u0629",
+        house_officer: "\u0637\u0628\u064a\u0628 \u0645\u0642\u064a\u0645",
+        medical_officer: "\u0636\u0627\u0628\u0637 \u0637\u0628\u064a",
+        data_analyser: "\u0645\u062d\u0644\u0644 \u0628\u064a\u0627\u0646\u0627\u062a",
       };
-      const roleMap = freq(activeStaff, s => ROLE_LABELS[s.role] ?? s.role ?? "Other");
-      const deptMap = freq(activeStaff, s => s.department ?? "General");
+      const roleMap = freq(activeStaff, s => ROLE_AR[s.role] ?? s.role ?? "\u0623\u062e\u0631\u0649");
+      const deptMap = freq(activeStaff, s => s.department ?? "\u0639\u0627\u0645");
 
-      // ── financial ────────────────────────────────────────────────────
-      const invStatMap     = freq(invs, i => i.status ?? "Unknown");
+      // financial
+      const invStatAr: Record<string,string> = {
+        paid: "\u0645\u062f\u0641\u0648\u0639", pending: "\u0645\u0639\u0644\u0642",
+        partial: "\u062c\u0632\u0626\u064a", cancelled: "\u0645\u0644\u063a\u064a"
+      };
+      const invStatMap     = freq(invs, i => invStatAr[i.status] ?? i.status ?? "\u0645\u062c\u0647\u0648\u0644");
       const totalBilled    = invs.reduce((s: number, i: any) => s + parseFloat(i.totalAmount ?? i.total ?? 0), 0);
       const totalCollected = invs.reduce((s: number, i: any) => s + parseFloat(i.paidAmount ?? i.paid ?? 0), 0);
       const outstanding    = totalBilled - totalCollected;
       const collRate       = totalBilled > 0 ? (totalCollected / totalBilled * 100).toFixed(1) : "0.0";
 
-      // ════════════════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════
       //  HTML HELPERS
-      // ════════════════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════
       const C = ["#1d4ed8","#0d9488","#16a34a","#ea580c","#7c3aed","#dc2626","#0284c7","#ca8a04","#db2777","#65a30d","#0891b2","#9333ea"];
       const AGE_C = ["#1d4ed8","#0d9488","#16a34a","#ea580c"];
 
@@ -549,54 +564,52 @@ export default function Reports() {
         `</div>`;
 
       const sec = (icon: string, title: string) =>
-        `<div style="display:flex;align-items:center;gap:9px;margin:26px 0 13px;padding-bottom:8px;border-bottom:2.5px solid #0f2855">` +
+        `<div style="display:flex;align-items:center;gap:9px;margin:26px 0 13px;padding-bottom:8px;border-bottom:2.5px solid #0f2855;flex-direction:row-reverse;justify-content:flex-end">` +
         `<span style="font-size:17px">${icon}</span>` +
-        `<span style="font-size:13.5px;font-weight:800;color:#0f2855;text-transform:uppercase;letter-spacing:.08em">${title}</span>` +
+        `<span style="font-size:13.5px;font-weight:800;color:#0f2855;text-transform:uppercase;letter-spacing:.04em">${title}</span>` +
         `</div>`;
 
-      // generic horizontal bar
+      // horizontal bar — progress fills LTR always (visual)
       const bar = (items: [string, number][], tot: number, ci = 0) =>
         items.length === 0
-          ? `<p style="color:#94a3b8;font-size:10px;margin:4px 0">No data for this period.</p>`
+          ? `<p style="color:#94a3b8;font-size:10px;margin:4px 0;text-align:right">\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u064a\u0627\u0646\u0627\u062a \u0644\u0647\u0630\u0647 \u0627\u0644\u0641\u062a\u0631\u0629.</p>`
           : items.map(([label, cnt], i) => {
               const p = tot > 0 ? cnt / tot * 100 : 0;
               const co = C[(ci + i) % C.length];
-              return `<div style="display:flex;align-items:center;gap:8px;margin:5px 0">` +
-                `<span style="min-width:130px;max-width:130px;font-size:10px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label}">${label}</span>` +
-                `<div style="flex:1;background:#f1f5f9;border-radius:3px;height:13px;overflow:hidden">` +
+              return `<div style="display:flex;align-items:center;gap:8px;margin:5px 0;flex-direction:row-reverse">` +
+                `<span style="min-width:130px;max-width:130px;font-size:10px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right" title="${label}">${label}</span>` +
+                `<div style="flex:1;background:#f1f5f9;border-radius:3px;height:13px;overflow:hidden;direction:ltr">` +
                 `<div style="width:${Math.max(p,.5).toFixed(1)}%;background:${co};height:13px;border-radius:3px"></div></div>` +
-                `<span style="min-width:90px;font-size:10px;font-weight:700;color:${co};text-align:right">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${p.toFixed(1)}%)</span></span>` +
+                `<span style="min-width:90px;font-size:10px;font-weight:700;color:${co};text-align:left">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${p.toFixed(1)}%)</span></span>` +
                 `</div>`;
             }).join("");
 
-      // ranked top-5 row
+      // ranked top-5
       const ranked5 = (items: [string, number][], tot: number, ci = 0) => {
-        if (!items.length) return `<p style="color:#94a3b8;font-size:10px;padding:8px 0">No data for this period.</p>`;
+        if (!items.length) return `<p style="color:#94a3b8;font-size:10px;padding:8px 0;text-align:right">\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u064a\u0627\u0646\u0627\u062a \u0644\u0647\u0630\u0647 \u0627\u0644\u0641\u062a\u0631\u0629.</p>`;
         const maxP = tot > 0 ? items[0][1] / tot * 100 : 0;
         return items.map(([label, cnt], i) => {
           const p = tot > 0 ? cnt / tot * 100 : 0;
           const co = C[(ci + i) % C.length];
-          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">` +
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;flex-direction:row-reverse">` +
             `<span style="width:22px;height:22px;border-radius:50%;background:${co};color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</span>` +
-            `<span style="flex:1;font-size:10.5px;color:#1e293b;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0" title="${label}">${label}</span>` +
-            `<div style="width:130px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:12px;overflow:hidden">` +
+            `<span style="flex:1;font-size:10.5px;color:#1e293b;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;text-align:right" title="${label}">${label}</span>` +
+            `<div style="width:130px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:12px;overflow:hidden;direction:ltr">` +
             `<div style="width:${maxP > 0 ? (p / maxP * 100).toFixed(1) : 0}%;background:${co};height:12px;border-radius:4px"></div></div>` +
-            `<span style="width:95px;font-size:10px;font-weight:700;color:${co};text-align:right;flex-shrink:0">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${p.toFixed(1)}%)</span></span>` +
+            `<span style="width:95px;font-size:10px;font-weight:700;color:${co};text-align:left;flex-shrink:0">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${p.toFixed(1)}%)</span></span>` +
             `</div>`;
         }).join("");
       };
 
-      // ranked card wrapper
-      const top5Card = (title: string, sub: string, items: [string,number][], tot: number, ci = 0) =>
+      const top5Card = (title: string, sub: string, items: [string,number][], tot: number, ci = 0, totalKey: Record<string,number> = {}) =>
         `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:15px 18px;margin-bottom:14px">` +
-        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">` +
-        `<span style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em">${title}</span>` +
+        `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;flex-direction:row-reverse">` +
+        `<span style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em">${title}</span>` +
         `<span style="font-size:9px;color:#94a3b8">${sub}</span></div>` +
         ranked5(items, tot, ci) +
         (tot > 0 && items.length >= 5
-          ? `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #f1f5f9;font-size:9px;color:#94a3b8">` +
-            `Remaining ${Math.max(0, Object.keys(tot === diags.length ? diagMap : tot === labs.length ? labTestMap : drugMap).length - 5)} ` +
-            `items account for ${pctOf(tot - items.reduce((s:number,[,c]:[string,number])=>s+c, 0), tot)}% of total.</div>`
+          ? `<div style="margin-top:8px;padding-top:6px;border-top:1px solid #f1f5f9;font-size:9px;color:#94a3b8;text-align:right">` +
+            `\u0627\u0644\u0639\u0646\u0627\u0635\u0631 \u0627\u0644\u0645\u062a\u0628\u0642\u064a\u0629 \u062a\u0645\u062b\u0651\u0644 ${pctOf(tot - items.reduce((s:number,[,c]:[string,number])=>s+c,0), tot)}% \u0645\u0646 \u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a.</div>`
           : "") +
         `</div>`;
 
@@ -605,28 +618,29 @@ export default function Reports() {
         const hasCap = cap !== null;
         const util   = hasCap ? Math.min(100, occ / cap! * 100) : null;
         const bc     = util === null ? "#0284c7" : util >= 90 ? "#dc2626" : util >= 70 ? "#f59e0b" : "#16a34a";
+        const typeAr: Record<string,string> = { ward:"\u062c\u0646\u0627\u062d", icu:"\u0639\u0646\u0627\u064a\u0629 \u0645\u0631\u0643\u0632\u0629", nicu:"\u062d\u0636\u0627\u0646\u0629", er:"\u0637\u0648\u0627\u0631\u0626", clinic:"\u0639\u064a\u0627\u062f\u0629", lab:"\u0645\u062e\u062a\u0628\u0631" };
         const badge  = util === null ? "" : util >= 90
-          ? `<span style="background:#fee2e2;color:#dc2626;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-left:6px">HIGH</span>`
+          ? `<span style="background:#fee2e2;color:#dc2626;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-right:6px">\u0639\u0627\u0644\u064d</span>`
           : util >= 70
-          ? `<span style="background:#fef3c7;color:#d97706;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-left:6px">MED</span>`
-          : `<span style="background:#dcfce7;color:#16a34a;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-left:6px">OK</span>`;
-        const utilStr = hasCap ? `${util!.toFixed(0)}%` : `${occ} pts`;
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9">` +
-          `<div style="flex:1;min-width:0"><div style="font-size:10.5px;font-weight:600;color:#1e293b;display:flex;align-items:center">${name}${badge}</div>` +
-          `<div style="font-size:9px;color:#94a3b8;margin-top:1px;text-transform:capitalize">${type}</div></div>` +
-          `<div style="width:140px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:11px;overflow:hidden">` +
+          ? `<span style="background:#fef3c7;color:#d97706;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-right:6px">\u0645\u062a\u0648\u0633\u0637</span>`
+          : `<span style="background:#dcfce7;color:#16a34a;font-size:8px;font-weight:700;padding:1px 5px;border-radius:100px;margin-right:6px">\u0637\u0628\u064a\u0639\u064a</span>`;
+        const utilStr = hasCap ? `${util!.toFixed(0)}%` : `${occ} \u0645\u0631\u064a\u0636`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;flex-direction:row-reverse">` +
+          `<div style="flex:1;min-width:0;text-align:right"><div style="font-size:10.5px;font-weight:600;color:#1e293b;display:flex;align-items:center;justify-content:flex-end">${badge}${name}</div>` +
+          `<div style="font-size:9px;color:#94a3b8;margin-top:1px">${typeAr[type] ?? type}</div></div>` +
+          `<div style="width:140px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:11px;overflow:hidden;direction:ltr">` +
           `<div style="width:${util !== null ? util.toFixed(1) : (occ > 0 ? "55" : "0")}%;background:${bc};height:11px;border-radius:4px"></div></div>` +
-          `<span style="width:85px;text-align:right;font-size:10px;font-weight:700;color:${bc};flex-shrink:0">${occ}${hasCap ? "/"+cap : ""}&nbsp;<span style="color:#94a3b8;font-weight:400">${utilStr}</span></span>` +
+          `<span style="width:85px;text-align:left;font-size:10px;font-weight:700;color:${bc};flex-shrink:0">${occ}${hasCap ? "/"+cap : ""}&nbsp;<span style="color:#94a3b8;font-weight:400">${utilStr}</span></span>` +
           `</div>`;
       };
 
       // staff role row
       const staffRow = (role: string, cnt: number, pctVal: string, co: string, maxP: number) =>
-        `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9">` +
-        `<span style="flex:1;font-size:10.5px;color:#1e293b;font-weight:500">${role}</span>` +
-        `<div style="width:110px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:11px;overflow:hidden">` +
+        `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9;flex-direction:row-reverse">` +
+        `<span style="flex:1;font-size:10.5px;color:#1e293b;font-weight:500;text-align:right">${role}</span>` +
+        `<div style="width:110px;flex-shrink:0;background:#f1f5f9;border-radius:4px;height:11px;overflow:hidden;direction:ltr">` +
         `<div style="width:${maxP > 0 ? (parseFloat(pctVal)/maxP*100).toFixed(1) : 0}%;background:${co};height:11px;border-radius:4px"></div></div>` +
-        `<span style="width:95px;font-size:10px;font-weight:700;color:${co};text-align:right;flex-shrink:0">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${pctVal}%)</span></span>` +
+        `<span style="width:95px;font-size:10px;font-weight:700;color:${co};text-align:left;flex-shrink:0">${cnt}&nbsp;<span style="color:#94a3b8;font-weight:400">(${pctVal}%)</span></span>` +
         `</div>`;
 
       const col2 = (a: string, b: string) =>
@@ -635,101 +649,97 @@ export default function Reports() {
       const mini2col = (a: string, b: string) =>
         `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${a}${b}</div>`;
 
-      const reportDate = new Date().toLocaleDateString("en-GB", { day:"2-digit", month:"long", year:"numeric" });
-      const reportTime = new Date().toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+      const reportDate = new Date().toLocaleDateString("ar-SA", { day:"2-digit", month:"long", year:"numeric" });
+      const reportTime = new Date().toLocaleTimeString("ar-SA", { hour:"2-digit", minute:"2-digit" });
 
-      // pre-compute for staff
       const staffRoles = topN(roleMap, 12);
       const staffMax   = staffRoles.length > 0 ? parseFloat(pctOf(staffRoles[0][1], activeStaff.length)) : 0;
 
-      // appt breakdown for KPI row
       const apptDone   = appts.filter((a:any) => a.status === "completed").length;
       const apptSched  = appts.filter((a:any) => a.status === "scheduled").length;
       const apptCancel = appts.filter((a:any) => a.status === "cancelled").length;
       const apptNoshow = appts.filter((a:any) => a.status === "no-show").length;
+      const labDone    = labs.filter((o:any) => o.status === "resulted" || o.status === "reviewed").length;
+      const labPend    = labs.filter((o:any) => o.status === "pending").length;
+      const labCrit    = labs.filter((o:any) => o.resultStatus === "critical" || o.status === "critical" || o.isCritical).length;
 
-      // lab breakdown
-      const labDone   = labs.filter((o:any) => o.status === "resulted" || o.status === "reviewed").length;
-      const labPend   = labs.filter((o:any) => o.status === "pending").length;
-      const labCrit   = labs.filter((o:any) => o.resultStatus === "critical" || o.status === "critical" || o.isCritical).length;
-
-      // ════════════════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════
       //  HTML DOCUMENT
-      // ════════════════════════════════════════════════════════════════
+      // ══════════════════════════════════════════════
       const html =
-`<!DOCTYPE html><html lang="en"><head>
+`<!DOCTYPE html><html lang="ar" dir="rtl"><head>
 <meta charset="UTF-8">
-<title>AMH Statistical Report \u2014 ${periodLabelEn} \u2014 ${reportDate}</title>
+<title>\u062a\u0642\u0631\u064a\u0631 \u0625\u062d\u0635\u0627\u0626\u064a \u2014 ${periodLabel} \u2014 ${reportDate}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
   @page { size:A4 portrait; margin:14mm 14mm 15mm; }
   @media print { .pb{page-break-before:always} *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important} }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',Arial,sans-serif;font-size:11px;color:#1e293b;background:#fff;line-height:1.4}
+  body{font-family:'Tajawal',Arial,sans-serif;font-size:11px;color:#1e293b;background:#fff;line-height:1.6;direction:rtl}
 </style>
 </head><body>
 
-<!-- LETTERHEAD -->
-<div style="background:linear-gradient(135deg,#0c2044 0%,#163566 100%);color:#fff;padding:20px 28px 18px;position:relative;overflow:hidden">
-  <div style="position:absolute;top:-24px;right:-24px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.04)"></div>
-  <div style="display:flex;align-items:center;gap:14px;position:relative">
+<!-- \u0631\u0623\u0633\u064a\u0629 \u0627\u0644\u062a\u0642\u0631\u064a\u0631 -->
+<div style="background:linear-gradient(135deg,#0c2044 0%,#163566 100%);color:#fff;padding:20px 28px 18px;position:relative;overflow:hidden;direction:ltr">
+  <div style="position:absolute;top:-24px;left:-24px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.04)"></div>
+  <div style="display:flex;align-items:center;gap:14px;direction:rtl">
     <div style="width:46px;height:46px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">\u2764</div>
-    <div style="flex:1">
-      <div style="font-size:19px;font-weight:800;letter-spacing:.01em">Almuzini Children Hospital</div>
-      <div style="font-size:9.5px;opacity:.65;margin-top:2px">\u0645\u0633\u062a\u0634\u0641\u0649 \u0627\u0644\u0645\u0632\u064a\u0646\u064a \u0644\u0644\u0623\u0637\u0641\u0627\u0644 \u00b7 Pediatric Health Information System</div>
+    <div style="flex:1;text-align:right">
+      <div style="font-size:19px;font-weight:900">\u0645\u0633\u062a\u0634\u0641\u0649 \u0627\u0644\u0645\u0632\u064a\u0646\u064a \u0644\u0644\u0623\u0637\u0641\u0627\u0644</div>
+      <div style="font-size:9.5px;opacity:.65;margin-top:2px">Almuzini Children Hospital &nbsp;\u00b7&nbsp; \u0646\u0638\u0627\u0645 \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0635\u062d\u064a\u0629 \u0644\u0644\u0623\u0637\u0641\u0627\u0644</div>
     </div>
-    <div style="text-align:right;opacity:.9;flex-shrink:0">
-      <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase">Statistical Report</div>
+    <div style="text-align:left;opacity:.9;flex-shrink:0">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.04em">\u062a\u0642\u0631\u064a\u0631 \u0625\u062d\u0635\u0627\u0626\u064a</div>
       <div style="font-size:9px;margin-top:4px;opacity:.75">${reportDate} \u00b7 ${reportTime}</div>
-      <div style="font-size:9px;margin-top:2px;opacity:.75">Period: <strong>${periodLabelEn}</strong> \u00b7 By: ${user?.username ?? "System"}</div>
+      <div style="font-size:9px;margin-top:2px;opacity:.75">\u0627\u0644\u0641\u062a\u0631\u0629: <strong>${periodLabel}</strong> \u00b7 \u0628\u0648\u0627\u0633\u0637\u0629: ${user?.username ?? "\u0627\u0644\u0646\u0638\u0627\u0645"}</div>
     </div>
   </div>
-  <div style="margin-top:12px;background:rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;font-size:9px;display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;position:relative">
-    <span style="opacity:.55;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Scope</span>
-    <span>${start.toLocaleDateString("en-GB")} \u2013 ${end.toLocaleDateString("en-GB")}</span>
-    <span style="opacity:.3">|</span><span><strong>${total}</strong> patients in period</span>
-    <span style="opacity:.3">|</span><span><strong>${appts.length}</strong> appointments</span>
-    <span style="opacity:.3">|</span><span><strong>${labs.length + rads.length}</strong> investigations</span>
-    <span style="opacity:.3">|</span><span><strong>${activeStaff.length}</strong> active staff</span>
+  <div style="margin-top:12px;background:rgba(255,255,255,.08);border-radius:8px;padding:7px 14px;font-size:9px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;direction:rtl">
+    <span style="opacity:.55;font-weight:700">\u0646\u0637\u0627\u0642 \u0627\u0644\u062a\u0642\u0631\u064a\u0631</span>
+    <span>${start.toLocaleDateString("ar-SA")} \u2013 ${end.toLocaleDateString("ar-SA")}</span>
+    <span style="opacity:.3">|</span><span><strong>${total}</strong> \u0645\u0631\u064a\u0636 \u0641\u064a \u0627\u0644\u0641\u062a\u0631\u0629</span>
+    <span style="opacity:.3">|</span><span><strong>${appts.length}</strong> \u0645\u0648\u0639\u062f</span>
+    <span style="opacity:.3">|</span><span><strong>${labs.length + rads.length}</strong> \u0641\u062d\u0635 \u0648\u062a\u062d\u0644\u064a\u0644</span>
+    <span style="opacity:.3">|</span><span><strong>${activeStaff.length}</strong> \u0643\u0627\u062f\u0631 \u0641\u0639\u0651\u0627\u0644</span>
   </div>
   <div style="position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#60a5fa,#34d399,#fbbf24,#f87171,#a78bfa)"></div>
 </div>
 
 <div style="padding:20px 28px">
 
-<!-- 1. EXECUTIVE KPIs -->
+<!-- 1. \u0627\u0644\u0645\u0624\u0634\u0631\u0627\u062a \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629 -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
-  ${kpi(total, "Patients (Period)", pctOf(active, total)+"% active", "#0f2855")}
-  ${kpi(active, "Active / Admitted", pctOf(disch, total)+"% discharged", "#16a34a")}
-  ${kpi(appts.length, "Appointments", pctOf(apptDone, appts.length)+"% completed", "#0284c7")}
-  ${kpi(labs.length, "Lab Orders", rads.length+" radiology", "#0d9488")}
-  ${kpi(rxs.length, "Prescriptions", Object.keys(drugMap).length+" unique drugs", "#ea580c")}
-  ${kpi(diags.length, "Diagnoses", Object.keys(diagMap).length+" unique", "#7c3aed")}
-  ${kpi(activeStaff.length, "Active Staff", Object.keys(roleMap).length+" roles", "#db2777")}
-  ${kpi("SAR "+totalBilled.toLocaleString("en",{maximumFractionDigits:0}), "Total Billed", collRate+"% collected", "#ca8a04")}
+  ${kpi(total, "\u0627\u0644\u0645\u0631\u0636\u0649 (\u0627\u0644\u0641\u062a\u0631\u0629)", pctOf(active,total)+"% \u0646\u0634\u0637", "#0f2855")}
+  ${kpi(active, "\u0646\u0634\u0637 / \u0645\u0642\u064a\u0645", pctOf(disch,total)+"% \u062e\u0631\u062c\u0648\u0627", "#16a34a")}
+  ${kpi(appts.length, "\u0627\u0644\u0645\u0648\u0627\u0639\u064a\u062f", pctOf(apptDone,appts.length)+"% \u0645\u0643\u062a\u0645\u0644\u0629", "#0284c7")}
+  ${kpi(labs.length, "\u0623\u0648\u0627\u0645\u0631 \u0627\u0644\u0645\u062e\u062a\u0628\u0631", rads.length+" \u0623\u0634\u0639\u0629", "#0d9488")}
+  ${kpi(rxs.length, "\u0627\u0644\u0648\u0635\u0641\u0627\u062a", Object.keys(drugMap).length+" \u062f\u0648\u0627\u0621 \u0641\u0631\u064a\u062f", "#ea580c")}
+  ${kpi(diags.length, "\u0627\u0644\u062a\u0634\u062e\u064a\u0635\u0627\u062a", Object.keys(diagMap).length+" \u0641\u0631\u064a\u062f\u0629", "#7c3aed")}
+  ${kpi(activeStaff.length, "\u0627\u0644\u0643\u0648\u0627\u062f\u0631 \u0627\u0644\u0641\u0639\u0627\u0644\u0629", Object.keys(roleMap).length+" \u0623\u062f\u0648\u0627\u0631", "#db2777")}
+  ${kpi("SAR "+totalBilled.toLocaleString("en",{maximumFractionDigits:0}), "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0648\u062a\u0631\u0629", collRate+"% \u0645\u062d\u0635\u0651\u0644", "#ca8a04")}
 </div>
 
-<!-- 2. TOP 5 DIAGNOSES -->
+<!-- 2. \u0623\u0639\u0644\u0649 5 \u062a\u0634\u062e\u064a\u0635\u0627\u062a -->
 <div class="pb"></div>
-${sec("🩺", "Top 5 Diagnoses — Period")}
-${top5Card("Diagnosis (ICD code + description)", "Total: "+diags.length+" records \u00b7 "+Object.keys(diagMap).length+" unique conditions", top5Diags, diags.length, 0)}
+${sec("\ud83e\ude7a", "\u0623\u0639\u0644\u0649 \u0665 \u062a\u0634\u062e\u064a\u0635\u0627\u062a \u2014 \u0627\u0644\u0641\u062a\u0631\u0629")}
+${top5Card("\u0627\u0644\u062a\u0634\u062e\u064a\u0635 (\u0643\u0648\u062f ICD + \u0627\u0644\u0648\u0635\u0641)", "\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a: "+diags.length+" \u0633\u062c\u0644 \u00b7 "+Object.keys(diagMap).length+" \u062d\u0627\u0644\u0629 \u0641\u0631\u064a\u062f\u0629", top5Diags, diags.length, 0)}
 
-<!-- 3. AGE GROUPS -->
-${sec("👶", "Patient Age Group Distribution")}
+<!-- 3. \u0627\u0644\u0641\u0626\u0627\u062a \u0627\u0644\u0639\u0645\u0631\u064a\u0629 -->
+${sec("\ud83d\udc76", "\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0641\u0626\u0627\u062a \u0627\u0644\u0639\u0645\u0631\u064a\u0629 \u0644\u0644\u0645\u0631\u0636\u0649")}
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:15px 18px;margin-bottom:14px">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
-    <span style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em">Age Group</span>
-    <span style="font-size:9px;color:#94a3b8">${total} patient(s) in scope</span>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;flex-direction:row-reverse">
+    <span style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em">\u0627\u0644\u0641\u0626\u0629 \u0627\u0644\u0639\u0645\u0631\u064a\u0629</span>
+    <span style="font-size:9px;color:#94a3b8">${total} \u0645\u0631\u064a\u0636 \u0641\u064a \u0627\u0644\u0646\u0637\u0627\u0642</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
     ${Object.entries(ageGroups).map(([lbl,cnt], i) => {
       const pv = pctOf(cnt, total);
       const co = AGE_C[i];
       return `<div style="background:${co}0e;border:1.5px solid ${co}28;border-radius:8px;padding:12px;text-align:center">` +
-        `<div style="font-size:22px;font-weight:800;color:${co}">${cnt}</div>` +
-        `<div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${lbl}</div>` +
-        `<div style="font-size:11px;font-weight:700;color:${co};margin-top:3px">${pv}%</div>` +
-        `<div style="background:#e2e8f0;border-radius:3px;height:4px;margin-top:7px;overflow:hidden">` +
+        `<div style="font-size:22px;font-weight:900;color:${co}">${cnt}</div>` +
+        `<div style="font-size:10px;font-weight:700;color:#475569;margin-top:3px">${lbl}</div>` +
+        `<div style="font-size:12px;font-weight:800;color:${co};margin-top:3px">${pv}%</div>` +
+        `<div style="background:#e2e8f0;border-radius:3px;height:4px;margin-top:7px;overflow:hidden;direction:ltr">` +
         `<div style="width:${pv}%;background:${co};height:4px;border-radius:3px"></div></div>` +
         `</div>`;
     }).join("")}
@@ -737,116 +747,126 @@ ${sec("👶", "Patient Age Group Distribution")}
   ${bar(Object.entries(ageGroups).filter(([,v])=>v>0) as [string,number][], total, 0)}
 </div>
 
-<!-- 4. APPOINTMENTS -->
-${sec("📅", "Appointments Breakdown")}
+<!-- 4. \u0627\u0644\u0645\u0648\u0627\u0639\u064a\u062f -->
+${sec("\ud83d\udcc5", "\u062a\u0641\u0635\u064a\u0644 \u0627\u0644\u0645\u0648\u0627\u0639\u064a\u062f")}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-  ${([ ["Completed",apptDone,"#16a34a"],["Scheduled",apptSched,"#0284c7"],["Cancelled",apptCancel,"#dc2626"],["No-show",apptNoshow,"#f59e0b"] ] as [string,number,string][])
+  ${([
+    ["\u0645\u0643\u062a\u0645\u0644\u0629",apptDone,"#16a34a"],
+    ["\u0645\u062c\u062f\u0648\u0644\u0629",apptSched,"#0284c7"],
+    ["\u0645\u0644\u063a\u0627\u0629",apptCancel,"#dc2626"],
+    ["\u0644\u0645 \u064a\u062d\u0636\u0631",apptNoshow,"#f59e0b"]
+  ] as [string,number,string][])
     .map(([l,v,co]) =>
       `<div style="background:${co}0e;border:1.5px solid ${co}28;border-radius:8px;padding:12px;text-align:center">` +
-      `<div style="font-size:22px;font-weight:800;color:${co}">${v}</div>` +
-      `<div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${l}</div>` +
-      `<div style="font-size:11px;font-weight:700;color:${co};margin-top:2px">${pctOf(v,appts.length)}%</div>` +
+      `<div style="font-size:22px;font-weight:900;color:${co}">${v}</div>` +
+      `<div style="font-size:10px;font-weight:700;color:#475569;margin-top:3px">${l}</div>` +
+      `<div style="font-size:12px;font-weight:800;color:${co};margin-top:2px">${pctOf(v,appts.length)}%</div>` +
       `</div>`).join("")}
 </div>
 ${col2(
   `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">` +
-  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">By Status</div>` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;text-align:right">\u062d\u0633\u0628 \u0627\u0644\u062d\u0627\u0644\u0629</div>` +
   bar(topN(apptStatMap,8), appts.length) + `</div>`,
   `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px">` +
-  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">By Type</div>` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;text-align:right">\u062d\u0633\u0628 \u0627\u0644\u0646\u0648\u0639</div>` +
   bar(topN(apptTypeMap,8), appts.length, 3) + `</div>`
 )}
-<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:9px 14px;font-size:9.5px;color:#0369a1;margin-bottom:14px">
-  \u2726 Completion rate: <strong>${pctOf(apptDone,appts.length)}%</strong> &nbsp;\u00b7&nbsp; Cancellation rate: <strong>${pctOf(apptCancel,appts.length)}%</strong> &nbsp;\u00b7&nbsp; Total appointments: <strong>${appts.length}</strong>
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:9px 14px;font-size:9.5px;color:#0369a1;margin-bottom:14px;text-align:right">
+  \u2726 \u0645\u0639\u062f\u0644 \u0627\u0644\u0625\u0643\u0645\u0627\u0644: <strong>${pctOf(apptDone,appts.length)}%</strong> &nbsp;\u00b7&nbsp; \u0645\u0639\u062f\u0644 \u0627\u0644\u0625\u0644\u063a\u0627\u0621: <strong>${pctOf(apptCancel,appts.length)}%</strong> &nbsp;\u00b7&nbsp; \u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0648\u0627\u0639\u064a\u062f: <strong>${appts.length}</strong>
 </div>
 
-<!-- 5. TOP 5 LAB TESTS -->
+<!-- 5. \u0623\u0639\u0644\u0649 5 \u0641\u062d\u0648\u0635\u0627\u062a -->
 <div class="pb"></div>
-${sec("🔬", "Top 5 Lab Tests Ordered")}
-${top5Card("Test name / category", "Total: "+labs.length+" orders \u00b7 "+rads.length+" radiology", top5Labs, labs.length, 2)}
+${sec("\ud83d\udd2c", "\u0623\u0639\u0644\u0649 \u0665 \u0641\u062d\u0648\u0635\u0627\u062a \u0645\u062e\u062a\u0628\u0631\u064a\u0629 \u0645\u0637\u0644\u0648\u0628\u0629")}
+${top5Card("\u0627\u0633\u0645 \u0627\u0644\u0641\u062d\u0635 / \u0627\u0644\u0641\u0626\u0629", "\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a: "+labs.length+" \u0623\u0645\u0631 \u00b7 "+rads.length+" \u0623\u0634\u0639\u0629", top5Labs, labs.length, 2)}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-  ${([ ["Total Orders",labs.length,"#0284c7"],["Resulted",labDone,"#16a34a"],["Pending",labPend,"#f59e0b"],["Critical",labCrit,"#dc2626"] ] as [string,number,string][])
+  ${([
+    ["\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0623\u0648\u0627\u0645\u0631",labs.length,"#0284c7"],
+    ["\u0645\u0646\u062c\u0632\u0629",labDone,"#16a34a"],
+    ["\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630",labPend,"#f59e0b"],
+    ["\u062d\u0631\u062c\u0629",labCrit,"#dc2626"]
+  ] as [string,number,string][])
     .map(([l,v,co]) =>
       `<div style="background:${co}0e;border:1.5px solid ${co}28;border-radius:8px;padding:12px;text-align:center">` +
-      `<div style="font-size:22px;font-weight:800;color:${co}">${v}</div>` +
-      `<div style="font-size:9px;font-weight:600;color:#475569;margin-top:3px">${l}</div>` +
-      `<div style="font-size:10px;color:${co};margin-top:2px;font-weight:600">${pctOf(v,labs.length)}%</div>` +
+      `<div style="font-size:22px;font-weight:900;color:${co}">${v}</div>` +
+      `<div style="font-size:10px;font-weight:700;color:#475569;margin-top:3px">${l}</div>` +
+      `<div style="font-size:10px;color:${co};margin-top:2px;font-weight:700">${pctOf(v,labs.length)}%</div>` +
       `</div>`).join("")}
 </div>
 
-<!-- 6. TOP 5 MEDICATIONS -->
-${sec("💊", "Top 5 Medications Requested")}
-${top5Card("Drug / medication name", "Total: "+rxs.length+" prescriptions \u00b7 "+Object.keys(drugMap).length+" unique drugs", top5Drugs, rxs.length, 4)}
+<!-- 6. \u0623\u0639\u0644\u0649 5 \u0623\u062f\u0648\u064a\u0629 -->
+${sec("\ud83d\udc8a", "\u0623\u0639\u0644\u0649 \u0665 \u0623\u062f\u0648\u064a\u0629 \u0645\u0637\u0644\u0648\u0628\u0629")}
+${top5Card("\u0627\u0633\u0645 \u0627\u0644\u062f\u0648\u0627\u0621 / \u0627\u0644\u0639\u0644\u0627\u062c", "\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a: "+rxs.length+" \u0648\u0635\u0641\u0629 \u00b7 "+Object.keys(drugMap).length+" \u062f\u0648\u0627\u0621 \u0641\u0631\u064a\u062f", top5Drugs, rxs.length, 4)}
 
-<!-- 7. WARD FULLNESS -->
+<!-- 7. \u0625\u0634\u063a\u0627\u0644 \u0627\u0644\u0623\u062c\u0646\u062d\u0629 -->
 <div class="pb"></div>
-${sec("🏥", "Ward & Unit Occupancy")}
+${sec("\ud83c\udfe5", "\u0625\u0634\u063a\u0627\u0644 \u0627\u0644\u0623\u062c\u0646\u062d\u0629 \u0648\u0627\u0644\u0648\u062d\u062f\u0627\u062a")}
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-  ${kpi(wardData.length, "Active Wards", "", "#0f2855")}
-  ${kpi(totalOccupied, "Patients Admitted", "across all units", "#16a34a")}
-  ${kpi(totalCapacity > 0 ? String(totalCapacity) : "\u2014", "Total Bed Capacity", "", "#0284c7")}
+  ${kpi(wardData.length, "\u0627\u0644\u0623\u062c\u0646\u062d\u0629 \u0627\u0644\u0646\u0634\u0637\u0629", "", "#0f2855")}
+  ${kpi(totalOccupied, "\u0645\u0631\u0636\u0649 \u0645\u0642\u064a\u0645\u0648\u0646", "\u0639\u0628\u0631 \u062c\u0645\u064a\u0639 \u0627\u0644\u0648\u062d\u062f\u0627\u062a", "#16a34a")}
+  ${kpi(totalCapacity > 0 ? String(totalCapacity) : "\u2014", "\u0625\u062c\u0645\u0627\u0644\u064a \u0633\u0639\u0629 \u0627\u0644\u0623\u0633\u0631\u0651\u0629", "", "#0284c7")}
   ${kpi(
     overallUtil >= 0 ? overallUtil+"%" : "\u2014",
-    "Overall Utilization",
-    overallUtil >= 0 ? (overallUtil >= 90 ? "\u26a0 High load" : overallUtil >= 70 ? "Medium load" : "Normal load") : "Capacity not set",
+    "\u0646\u0633\u0628\u0629 \u0627\u0644\u0625\u0634\u063a\u0627\u0644 \u0627\u0644\u0643\u0644\u064a\u0629",
+    overallUtil >= 0 ? (overallUtil >= 90 ? "\u26a0 \u062d\u0645\u0644 \u0639\u0627\u0644\u064d" : overallUtil >= 70 ? "\u062d\u0645\u0644 \u0645\u062a\u0648\u0633\u0637" : "\u062d\u0645\u0644 \u0637\u0628\u064a\u0639\u064a") : "\u0627\u0644\u0633\u0639\u0629 \u063a\u064a\u0631 \u0645\u062d\u062f\u062f\u0629",
     overallUtil >= 0 ? (overallUtil >= 90 ? "#dc2626" : overallUtil >= 70 ? "#f59e0b" : "#16a34a") : "#64748b"
   )}
 </div>
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:15px 18px;margin-bottom:14px">
-  <div style="display:flex;font-size:9px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #e2e8f0">
-    <span style="flex:1">Ward / Unit (Type)</span>
-    <span style="width:160px">Occupancy Bar</span>
-    <span style="width:85px;text-align:right">Occupied / Cap.</span>
+  <div style="display:flex;font-size:9px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;flex-direction:row-reverse">
+    <span style="flex:1;text-align:right">\u0627\u0644\u062c\u0646\u0627\u062d / \u0627\u0644\u0648\u062d\u062f\u0629 (\u0627\u0644\u0646\u0648\u0639)</span>
+    <span style="width:160px;text-align:center">\u0634\u0631\u064a\u0637 \u0627\u0644\u0625\u0634\u063a\u0627\u0644</span>
+    <span style="width:85px;text-align:left">\u0627\u0644\u0645\u0634\u063a\u0648\u0644 / \u0627\u0644\u0633\u0639\u0629</span>
   </div>
   ${wardData.length === 0
-    ? `<p style="color:#94a3b8;font-size:10px;padding:10px 0">No ward occupancy data available. Assign patients to units to track fullness.</p>`
+    ? `<p style="color:#94a3b8;font-size:10px;padding:10px 0;text-align:right">\u0644\u0627 \u062a\u062a\u0648\u0641\u0631 \u0628\u064a\u0627\u0646\u0627\u062a \u0625\u0634\u063a\u0627\u0644 \u0627\u0644\u0623\u062c\u0646\u062d\u0629. \u0642\u0645 \u0628\u062a\u0639\u064a\u064a\u0646 \u0627\u0644\u0645\u0631\u0636\u0649 \u0644\u0644\u0648\u062d\u062f\u0627\u062a \u0644\u062a\u062a\u0628\u0639 \u0627\u0644\u0625\u0634\u063a\u0627\u0644.</p>`
     : wardData.map((w:any) => wardRow(w.name, w.type, w.occupied, w.capacity)).join("")}
   ${totalCapacity === 0 && wardData.length > 0
-    ? `<div style="margin-top:8px;font-size:9px;color:#94a3b8;padding:8px 10px;background:#f1f5f9;border-radius:6px">` +
-      `\u2139 Set bed capacity for each unit to enable percentage utilization tracking.</div>`
+    ? `<div style="margin-top:8px;font-size:9px;color:#94a3b8;padding:8px 10px;background:#f1f5f9;border-radius:6px;text-align:right">` +
+      `\u2139 \u062d\u062f\u062f \u0633\u0639\u0629 \u0627\u0644\u0623\u0633\u0631\u0651\u0629 \u0644\u0643\u0644 \u0648\u062d\u062f\u0629 \u0644\u062a\u0641\u0639\u064a\u0644 \u062a\u062a\u0628\u0639 \u0646\u0633\u0628\u0629 \u0627\u0644\u0625\u0634\u063a\u0627\u0644.</div>`
     : ""}
 </div>
 
-<!-- 8. STAFF DISTRIBUTION -->
-${sec("👩‍⚕️", "Staff Distribution by Role")}
+<!-- 8. \u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0643\u0648\u0627\u062f\u0631 -->
+${sec("\ud83d\udc69\u200d\u2695\ufe0f", "\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0643\u0648\u0627\u062f\u0631 \u0627\u0644\u0637\u0628\u064a\u0629 \u062d\u0633\u0628 \u0627\u0644\u062f\u0648\u0631")}
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-  ${kpi(staff.length, "Total Staff", activeStaff.length+" active", "#0f2855")}
-  ${kpi(activeStaff.length, "Active Staff", pctOf(activeStaff.length, staff.length)+"% active", "#16a34a")}
-  ${kpi(Object.keys(roleMap).length, "Roles Represented", "", "#7c3aed")}
-  ${kpi(Object.keys(deptMap).length, "Departments", "", "#0d9488")}
+  ${kpi(staff.length, "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0643\u0648\u0627\u062f\u0631", activeStaff.length+" \u0641\u0639\u0627\u0644", "#0f2855")}
+  ${kpi(activeStaff.length, "\u0643\u0648\u0627\u062f\u0631 \u0641\u0639\u0627\u0644\u0629", pctOf(activeStaff.length,staff.length)+"% \u0646\u0633\u0628\u0629 \u0627\u0644\u0641\u0627\u0639\u0644\u064a\u0629", "#16a34a")}
+  ${kpi(Object.keys(roleMap).length, "\u0627\u0644\u0623\u062f\u0648\u0627\u0631 \u0627\u0644\u0645\u0645\u062b\u0651\u0644\u0629", "", "#7c3aed")}
+  ${kpi(Object.keys(deptMap).length, "\u0627\u0644\u0623\u0642\u0633\u0627\u0645", "", "#0d9488")}
 </div>
 ${mini2col(
   `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px">` +
-  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">By Clinical Role</div>` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;text-align:right">\u062d\u0633\u0628 \u0627\u0644\u062f\u0648\u0631 \u0627\u0644\u0633\u0631\u064a\u0631\u064a</div>` +
   (staffRoles.length === 0
-    ? `<p style="color:#94a3b8;font-size:10px">No staff data.</p>`
+    ? `<p style="color:#94a3b8;font-size:10px;text-align:right">\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u064a\u0627\u0646\u0627\u062a.</p>`
     : staffRoles.map(([role,cnt], i) => staffRow(role, cnt, pctOf(cnt, activeStaff.length), C[i%C.length], staffMax)).join("")) +
   `</div>`,
   `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px">` +
-  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">By Department</div>` +
+  `<div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;text-align:right">\u062d\u0633\u0628 \u0627\u0644\u0642\u0633\u0645</div>` +
   bar(topN(deptMap,10), activeStaff.length, 3) +
   `</div>`
 )}
 
-<!-- 9. FINANCIAL SUMMARY -->
+<!-- 9. \u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0645\u0627\u0644\u064a -->
 <div class="pb"></div>
-${sec("💰", "Financial Summary")}
+${sec("\ud83d\udcb0", "\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0645\u0627\u0644\u064a")}
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-  ${kpi(invs.length, "Total Invoices", "", "#0f2855")}
-  ${kpi("SAR "+totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Total Billed", "", "#ca8a04")}
-  ${kpi("SAR "+totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Collected", collRate+"% collection rate", "#16a34a")}
-  ${kpi("SAR "+outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "Outstanding", outstanding>0?"pending collection":"fully collected", outstanding>0?"#dc2626":"#16a34a")}
+  ${kpi(invs.length, "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631", "", "#0f2855")}
+  ${kpi("SAR "+totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0641\u0648\u062a\u064e\u0631", "", "#ca8a04")}
+  ${kpi("SAR "+totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0627\u0644\u0645\u062d\u0635\u0651\u0644", collRate+"% \u0645\u0639\u062f\u0644 \u0627\u0644\u062a\u062d\u0635\u064a\u0644", "#16a34a")}
+  ${kpi("SAR "+outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0627\u0644\u0645\u062a\u0628\u0642\u064a", outstanding>0?"\u0642\u064a\u062f \u0627\u0644\u062a\u062d\u0635\u064a\u0644":"\u0645\u062d\u0635\u0651\u0644 \u0628\u0627\u0644\u0643\u0627\u0645\u0644", outstanding>0?"#dc2626":"#16a34a")}
 </div>
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:14px">
-  <div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Invoice Status Breakdown</div>
+  <div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;text-align:right">\u062a\u0641\u0635\u064a\u0644 \u062d\u0627\u0644\u0629 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631</div>
   ${bar(topN(invStatMap,8), invs.length)}
 </div>
 
-</div><!-- /content -->
+</div>
 
-<div style="background:linear-gradient(135deg,#0c2044,#163566);color:rgba(255,255,255,.6);padding:9px 28px;font-size:9px;display:flex;justify-content:space-between;align-items:center;margin-top:16px">
-  <span>\u2764 Almuzini Children Hospital \u00b7 Pediatric EHR Statistical Report</span>
-  <span>${periodLabelEn} \u00b7 ${total} patients \u00b7 ${reportDate} ${reportTime} \u00b7 STRICTLY CONFIDENTIAL</span>
+<div style="background:linear-gradient(135deg,#0c2044,#163566);color:rgba(255,255,255,.6);padding:9px 28px;font-size:9px;display:flex;justify-content:space-between;align-items:center;margin-top:16px;direction:rtl">
+  <span>\u2764 \u0645\u0633\u062a\u0634\u0641\u0649 \u0627\u0644\u0645\u0632\u064a\u0646\u064a \u0644\u0644\u0623\u0637\u0641\u0627\u0644 \u00b7 \u062a\u0642\u0631\u064a\u0631 \u0625\u062d\u0635\u0627\u0626\u064a</span>
+  <span>${periodLabel} \u00b7 ${total} \u0645\u0631\u064a\u0636 \u00b7 ${reportDate} \u00b7 \u0633\u0631\u064a \u0644\u0644\u063a\u0627\u064a\u0629</span>
 </div>
 
 <script>window.onload = () => { setTimeout(() => window.print(), 500); }<\/script>
