@@ -9,7 +9,7 @@ import {
   FlaskConical, Activity, HeartPulse, Receipt, UserRound,
   ShieldAlert, Settings, LogOut, Bell, Moon, Sun, Languages, TrendingUp, Building2,
   X, FlaskRound, UserPlus, CalendarPlus, PackageOpen, CheckCheck, Baby, BedDouble,
-  FileBarChart, MapPin,
+  FileBarChart, MapPin, WifiOff, Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -140,6 +140,67 @@ function NotifItem({ n, language, onDismiss, onRead }: {
       >
         <X className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+function OfflineBanner({ isRtl }: { isRtl: boolean }) {
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [showOnline, setShowOnline] = useState(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      setShowOnline(false);
+    };
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      setShowOnline(true);
+      timer = setTimeout(() => setShowOnline(false), 5000);
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  if (isOnline && !showOnline) return null;
+
+  return (
+    <div
+      className={`flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-all duration-500
+        ${!isOnline
+          ? "bg-destructive/10 text-destructive border-b border-destructive/20"
+          : "bg-emerald-50 text-emerald-700 border-b border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800"
+        }`}
+    >
+      {!isOnline
+        ? <WifiOff className="h-4 w-4 shrink-0" />
+        : <Wifi className="h-4 w-4 shrink-0" />}
+      <span>
+        {!isOnline
+          ? (isRtl ? "أنت غير متصل بالإنترنت. قد لا تعمل بعض الميزات." : "You're offline. Some features may be unavailable.")
+          : (isRtl ? "تم استعادة الاتصال بالإنترنت." : "Back online.")}
+      </span>
+      {!isOnline && (
+        <span className="ms-auto flex items-center gap-1.5 text-xs opacity-70">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+          {isRtl ? "غير متصل" : "Offline"}
+        </span>
+      )}
+      {isOnline && showOnline && (
+        <span className="ms-auto flex items-center gap-1.5 text-xs opacity-70">
+          <CheckCheck className="h-3.5 w-3.5" />
+          {isRtl ? "متصل" : "Connected"}
+        </span>
+      )}
     </div>
   );
 }
@@ -391,6 +452,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
+
+        {/* Offline / back-online banner */}
+        <OfflineBanner isRtl={isRtl} />
 
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-6">
