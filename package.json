@@ -12,5 +12,9 @@
   "devDependencies": {
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "baseline-browser-mapping": "^2.10.42",
+    "hasown": "^2.0.4"
   }
 }
