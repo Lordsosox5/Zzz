@@ -44,7 +44,10 @@ export default function MyPatients() {
     limit: 50,
   });
 
-  const patients = data?.patients ?? [];
+  const allPatients = data?.patients ?? [];
+  const patients = user?.unitId
+    ? allPatients.filter((p: any) => p.unitId === user.unitId)
+    : allPatients;
 
   const unitNameDisplay = userUnit
     ? (isRtl && userUnit.nameAr ? userUnit.nameAr : userUnit.nameEn)

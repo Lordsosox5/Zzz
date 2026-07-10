@@ -841,7 +841,10 @@ function UnitDashboard() {
   });
   const { data: alerts, isLoading: alertsLoading } = useGetDashboardAlerts();
 
-  const unitPatients = patientsData?.patients ?? [];
+  const allFetched = patientsData?.patients ?? [];
+  const unitPatients = user?.unitId
+    ? allFetched.filter((p: any) => p.unitId === user.unitId)
+    : allFetched;
   const userUnit = user?.unitId ? unitsData.find((u) => u.id === user.unitId) : null;
   const unitName = userUnit ? (isRtl && userUnit.nameAr ? userUnit.nameAr : userUnit.nameEn) : null;
 
