@@ -1799,13 +1799,19 @@ function OverallReport({ patients, allPatients, appointments, labOrders, invoice
             const combined = Object.entries(combinedMap).map(([name, count]) => ({ name, count }));
             return combined.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={combined}>
+                <AreaChart data={combined}>
+                  <defs>
+                    <linearGradient id="gradCombined" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid {...GRID_PROPS} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                  <Bar dataKey="count" name={en ? "Events" : "أحداث"} fill="#0ea5e9" radius={[3, 3, 0, 0]} />
-                </BarChart>
+                  <Area type="monotone" dataKey="count" name={en ? "Events" : "أحداث"} stroke="#0ea5e9" strokeWidth={2.5} fill="url(#gradCombined)" dot={false} activeDot={{ r: 5, fill: "#0ea5e9", strokeWidth: 0 }} animationDuration={700} />
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
@@ -1968,11 +1974,17 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradPatient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name={language === "ar" ? "مريض" : "Patients"} />
+                <Bar dataKey="count" fill="url(#gradPatient)" radius={[5, 5, 0, 0]} name={language === "ar" ? "مريض" : "Patients"} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -1989,7 +2001,7 @@ function PatientReport({ patients, allPatients, period, groupBy, periodLabel, la
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={pieStatus} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                  <Pie data={pieStatus} cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10} animationDuration={700}>
                     {pieStatus.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
@@ -2104,11 +2116,17 @@ function AppointmentReport({ appointments, period, groupBy, periodLabel, languag
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradAppt" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name={language === "ar" ? "موعد" : "Appointments"} />
+                <Bar dataKey="count" fill="url(#gradAppt)" radius={[5, 5, 0, 0]} name={language === "ar" ? "موعد" : "Appointments"} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -2125,7 +2143,7 @@ function AppointmentReport({ appointments, period, groupBy, periodLabel, languag
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10} animationDuration={700}>
                     {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
@@ -2204,11 +2222,17 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradLab" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} />
+                <Bar dataKey="count" fill="url(#gradLab)" radius={[5, 5, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -2225,7 +2249,7 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={pieStatus} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                  <Pie data={pieStatus} cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10} animationDuration={700}>
                     {pieStatus.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
@@ -2252,11 +2276,17 @@ function LabReport({ labOrders, period, groupBy, periodLabel, language }:
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={topTests} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradLabH" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.9} />
+                      <stop offset="95%" stopColor="#fcd34d" stopOpacity={0.6} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid {...GRID_PROPS} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={110} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={110} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                  <Bar dataKey="count" fill="#f59e0b" radius={[0, 4, 4, 0]} name={language === "ar" ? "طلبات" : "Orders"} />
+                  <Bar dataKey="count" fill="url(#gradLabH)" radius={[0, 5, 5, 0]} name={language === "ar" ? "طلبات" : "Orders"} animationDuration={700} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -2343,13 +2373,19 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={revTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+              <AreaChart data={revTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip formatter={(v) => [`SDG ${Number(v).toLocaleString()}`, language === "ar" ? "الإيراد" : "Revenue"]} />
-                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#gradRevenue)" dot={{ r: 3, fill: "#10b981", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }} animationDuration={700} />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -2365,7 +2401,7 @@ function RevenueReport({ invoices, period, groupBy, periodLabel, language }:
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={pieStatus} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                  <Pie data={pieStatus} cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10} animationDuration={700}>
                     {pieStatus.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
@@ -2442,11 +2478,17 @@ function PrescriptionReport({ prescriptions, period, groupBy, periodLabel, langu
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradRx" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                <Bar dataKey="count" fill="#ef4444" radius={[4, 4, 0, 0]} name={language === "ar" ? "وصفة" : "Prescriptions"} />
+                <Bar dataKey="count" fill="url(#gradRx)" radius={[5, 5, 0, 0]} name={language === "ar" ? "وصفة" : "Prescriptions"} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -2469,8 +2511,8 @@ function PrescriptionReport({ prescriptions, period, groupBy, periodLabel, langu
                       { name: language === "ar" ? "معلقة" : "Pending", value: pending, fill: "#f59e0b" },
                       { name: language === "ar" ? "ملغاة" : "Cancelled", value: cancelled, fill: "#ef4444" },
                     ].filter(d => d.value > 0)}
-                    cx="50%" cy="50%" outerRadius={75} dataKey="value"
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}
+                    cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value"
+                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10} animationDuration={700}
                   >
                     {[dispensed, pending, cancelled].filter(v => v > 0).map((_, i) => (
                       <Cell key={i} fill={["#10b981", "#f59e0b", "#ef4444"][i]} />
@@ -2570,11 +2612,17 @@ function RadiologyReport({ radiologyOrders, period, groupBy, periodLabel, langua
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradRadiology" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.45} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid {...GRID_PROPS} />
                 <XAxis dataKey="name" tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
-                <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} />
+                <Bar dataKey="count" fill="url(#gradRadiology)" radius={[5, 5, 0, 0]} name={language === "ar" ? "طلب" : "Orders"} animationDuration={700} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -2592,7 +2640,7 @@ function RadiologyReport({ radiologyOrders, period, groupBy, periodLabel, langua
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value" label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={10} animationDuration={700}>
                     {statusData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
@@ -2731,9 +2779,9 @@ function PharmacyReport({ drugs, period, periodLabel, language }:
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={categoryData} cx="50%" cy="50%" outerRadius={75} dataKey="value"
+                  <Pie data={categoryData} cx="50%" cy="50%" innerRadius={36} outerRadius={78} dataKey="value"
                     label={({ name, percent }) => `${name.slice(0, 10)} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false} fontSize={9}>
+                    labelLine={false} fontSize={9} animationDuration={700}>
                     {categoryData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.3)" }} />
