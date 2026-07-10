@@ -1,3 +1,8 @@
+import { useState, useMemo } from "react";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from "recharts";
 import {
   useGetDashboardStats,
   useGetDashboardAlerts,
@@ -214,6 +219,54 @@ function GeneralDashboard() {
   const { data: occupancy, isLoading: occupancyLoading } = useGetBedOccupancy();
   const { data: revenue, isLoading: revenueLoading } = useGetRevenueStats();
 
+  const [trendPeriod, setTrendPeriod] = useState<30 | 90 | 180>(30);
+  const { data: allPatientsData } = useListPatients({ limit: 500 });
+
+  const trendData = useMemo(() => {
+    const patients = (allPatientsData?.patients ?? []) as Array<{ createdAt?: string | null }>;
+    const now = new Date();
+
+    if (trendPeriod === 30) {
+      return Array.from({ length: 30 }, (_, i) => {
+        const d = new Date(now);
+        d.setDate(d.getDate() - (29 - i));
+        const dateStr = d.toISOString().slice(0, 10);
+        const label = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+        const count = patients.filter(p => (p.createdAt ?? "").slice(0, 10) === dateStr).length;
+        return { label, count };
+      });
+    }
+
+    if (trendPeriod === 90) {
+      return Array.from({ length: 13 }, (_, i) => {
+        const weekEnd = new Date(now);
+        weekEnd.setDate(weekEnd.getDate() - (12 - i) * 7);
+        weekEnd.setHours(23, 59, 59, 999);
+        const weekStart = new Date(weekEnd);
+        weekStart.setDate(weekStart.getDate() - 6);
+        weekStart.setHours(0, 0, 0, 0);
+        const label = weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+        const count = patients.filter(p => {
+          if (!p.createdAt) return false;
+          const d = new Date(p.createdAt);
+          return d >= weekStart && d <= weekEnd;
+        }).length;
+        return { label, count };
+      });
+    }
+
+    return Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const label = d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+      const count = patients.filter(p => {
+        if (!p.createdAt) return false;
+        const pd = new Date(p.createdAt);
+        return pd.getMonth() === d.getMonth() && pd.getFullYear() === d.getFullYear();
+      }).length;
+      return { label, count };
+    });
+  }, [allPatientsData, trendPeriod]);
+
   const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -324,6 +377,81 @@ function GeneralDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Patient Registration Trend */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+            {isRtl ? "تسجيل المرضى عبر الزمن" : "Patient Registrations Over Time"}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            {([30, 90, 180] as const).map((p) => (
+              <Button
+                key={p}
+                size="sm"
+                variant={trendPeriod === p ? "default" : "ghost"}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setTrendPeriod(p)}
+              >
+                {p === 30 ? (isRtl ? "٣٠ي" : "30d") : p === 90 ? (isRtl ? "٣م" : "3M") : (isRtl ? "٦م" : "6M")}
+              </Button>
+            ))}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-5 pb-3 px-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={trendData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="patientGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tickLine={false}
+                axisLine={false}
+                interval={trendPeriod === 30 ? 4 : trendPeriod === 90 ? 1 : 0}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+                width={28}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                }}
+                labelStyle={{ fontWeight: 600, marginBottom: 2 }}
+                formatter={(val: number) => [val, isRtl ? "مريض جديد" : "New patients"]}
+              />
+              <Area
+                type="monotone"
+                dataKey="count"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                fill="url(#patientGradient)"
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 0, fill: "#3b82f6" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            {isRtl
+              ? `${trendData.reduce((s, d) => s + d.count, 0)} مريض مسجل في هذه الفترة`
+              : `${trendData.reduce((s, d) => s + d.count, 0)} patient${trendData.reduce((s, d) => s + d.count, 0) !== 1 ? "s" : ""} registered in this period`}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Middle row: Alerts + Appointments + Bed Occupancy */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
