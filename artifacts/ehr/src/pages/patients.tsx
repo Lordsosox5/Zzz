@@ -48,6 +48,7 @@ type Patient = {
   dateOfBirth: string;
   gender: string;
   status: string;
+  unitId?: number | null;
 };
 
 type ExportFilters = {
@@ -78,6 +79,9 @@ export default function Patients() {
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [assignUnitPatient, setAssignUnitPatient] = useState<Patient | null>(null);
+  const [assignUnitId, setAssignUnitId] = useState<string>("none");
+  const [assigningUnit, setAssigningUnit] = useState(false);
   const [filters, setFilters] = useState<ExportFilters>({
     dateFrom: "",
     dateTo: "",
@@ -109,6 +113,39 @@ export default function Patients() {
   });
 
   const deleteMutation = useDeletePatient();
+
+  const openAssignUnit = (patient: Patient) => {
+    setAssignUnitPatient(patient);
+    setAssignUnitId(patient.unitId ? String(patient.unitId) : "none");
+  };
+
+  const handleAssignUnit = async () => {
+    if (!assignUnitPatient) return;
+    setAssigningUnit(true);
+    try {
+      const token = getToken();
+      const unitId = assignUnitId === "none" ? null : Number(assignUnitId);
+      const res = await fetch(`/api/patients/${assignUnitPatient.id}/unit`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ unitId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
+      toast({
+        title: t("generic.success"),
+        description: isRtl ? "تم تعيين الوحدة بنجاح" : "Unit assigned successfully",
+      });
+      setAssignUnitPatient(null);
+    } catch {
+      toast({ variant: "destructive", title: t("generic.error"), description: isRtl ? "فشل تعيين الوحدة" : "Failed to assign unit" });
+    } finally {
+      setAssigningUnit(false);
+    }
+  };
 
   const handleDelete = () => {
     if (!patientToDelete) return;
@@ -448,16 +485,15 @@ export default function Patients() {
                     <TableCell className="px-4">
                       <div className="flex flex-col gap-1.5">
                         <PatientStatusBadge status={patient.status} size="sm" />
-                        {(patient as any).place && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                            {(patient as any).place === "picu" ? "PICU"
-                              : (patient as any).place === "phdu" ? "PHDU"
-                              : (patient as any).place === "nursery" ? (isRtl ? "الحضانة" : "Nursery")
-                              : (patient as any).place === "general_ward" ? (isRtl ? "العنبر العام" : "General Ward")
-                              : (patient as any).place}
-                          </span>
-                        )}
+                        {patient.unitId && (() => {
+                          const u = unitsData.find(u => u.id === patient.unitId);
+                          return u ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Building2 className="h-3 w-3 shrink-0" />
+                              {isRtl && u.nameAr ? u.nameAr : u.nameEn}
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
@@ -466,6 +502,14 @@ export default function Patients() {
                           <Link href={`/patients/${patient.id}`}>
                             {t("patient.viewProfile")}
                           </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={isRtl ? "تعيين الوحدة" : "Assign Unit"}
+                          onClick={() => openAssignUnit(patient as Patient)}
+                        >
+                          <Building2 className="h-4 w-4" />
                         </Button>
                         {isAdmin && (
                           <Button
@@ -668,6 +712,49 @@ export default function Patients() {
                 {isRtl ? "تصدير Excel" : "Export Excel"}
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Assign Unit dialog */}
+      <Dialog open={!!assignUnitPatient} onOpenChange={(o) => { if (!o) setAssignUnitPatient(null); }}>
+        <DialogContent className="max-w-sm" dir={isRtl ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              {isRtl ? "تعيين الوحدة" : "Assign Unit"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            {assignUnitPatient && (
+              <p className="text-sm text-muted-foreground">
+                {isRtl
+                  ? `تعيين ${assignUnitPatient.nameAr ?? assignUnitPatient.nameEn} إلى وحدة`
+                  : `Assign ${assignUnitPatient.nameEn} to a unit`}
+              </p>
+            )}
+            <Select value={assignUnitId} onValueChange={setAssignUnitId}>
+              <SelectTrigger>
+                <SelectValue placeholder={isRtl ? "اختر وحدة" : "Select a unit"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{isRtl ? "بدون وحدة" : "No unit"}</SelectItem>
+                {unitsData.map((u) => (
+                  <SelectItem key={u.id} value={String(u.id)}>
+                    {isRtl && u.nameAr ? u.nameAr : u.nameEn}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignUnitPatient(null)} disabled={assigningUnit}>
+              {t("generic.cancel")}
+            </Button>
+            <Button onClick={handleAssignUnit} disabled={assigningUnit}>
+              {assigningUnit && <Loader2 className={`h-4 w-4 animate-spin ${isRtl ? "ml-2" : "mr-2"}`} />}
+              {isRtl ? "تعيين" : "Assign"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
