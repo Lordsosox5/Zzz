@@ -22,8 +22,18 @@ type Patient = {
   gender: string;
   status: string;
   place?: string | null;
+  unitId?: number | null;
   guardianName?: string | null;
   admissionDate?: string | null;
+};
+
+const UNIT_TYPE_TO_PLACE: Record<string, string> = {
+  icu:       "picu",
+  nicu:      "nursery",
+  emergency: "phdu",
+  ward:      "general_ward",
+  surgical:  "general_ward",
+  outpatient:"general_ward",
 };
 
 const GENDER_BADGE: Record<string, string> = {
@@ -230,6 +240,25 @@ export default function WardCensus() {
     refetchInterval: 60_000,
   });
 
+  const { data: unitsRaw } = useQuery({
+    queryKey: ["units-for-census"],
+    queryFn: async () => {
+      const token = getToken();
+      const res = await fetch("/api/units", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return [];
+      return res.json() as Promise<{ id: number; type: string }[]>;
+    },
+    staleTime: 120_000,
+  });
+
+  const unitTypeMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const u of (unitsRaw ?? [])) map[u.id] = u.type;
+    return map;
+  }, [unitsRaw]);
+
   const allPatients = data?.patients ?? [];
 
   const filtered = useMemo(() => {
@@ -247,11 +276,13 @@ export default function WardCensus() {
     for (const place of PLACE_ORDER) map[place] = [];
     map["__unassigned"] = [];
     for (const p of filtered) {
-      const key = p.place && PLACE_ORDER.includes(p.place) ? p.place : "__unassigned";
+      const unitType = p.unitId ? unitTypeMap[p.unitId] : null;
+      const derivedPlace = unitType ? UNIT_TYPE_TO_PLACE[unitType] : null;
+      const key = derivedPlace && PLACE_ORDER.includes(derivedPlace) ? derivedPlace : "__unassigned";
       map[key].push(p);
     }
     return map;
-  }, [filtered]);
+  }, [filtered, unitTypeMap]);
 
   const totalAdmitted = allPatients.length;
 

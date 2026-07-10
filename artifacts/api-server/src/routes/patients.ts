@@ -13,6 +13,13 @@ const router = Router();
 
 const UNIT_RESTRICTED_ROLES = ["house_officer", "medical_officer"];
 
+const PLACE_TO_UNIT_TYPE: Record<string, string> = {
+  picu:         "icu",
+  nursery:      "nicu",
+  phdu:         "emergency",
+  general_ward: "ward",
+};
+
 function mapPatient(raw: Record<string, unknown>) {
   return mapRow<Record<string, unknown>>(raw);
 }
@@ -65,7 +72,18 @@ router.get("/patients", async (req, res): Promise<void> => {
 
     let query = supabase.from("patients").select("*", { count: "exact" });
     if (isUnitRestricted && caller.unitId !== null) query = query.eq("unit_id", caller.unitId);
-    if (place) query = query.eq("place", place);
+    if (place) {
+      const unitType = PLACE_TO_UNIT_TYPE[place];
+      if (unitType) {
+        const { data: unitRows } = await supabase.from("units").select("id").eq("type", unitType);
+        const unitIds = (unitRows ?? []).map((u: any) => u.id);
+        if (unitIds.length === 0) {
+          res.json({ patients: [], total: 0, page, limit });
+          return;
+        }
+        query = query.in("unit_id", unitIds);
+      }
+    }
     if (statusFilter) query = query.eq("status", statusFilter);
     if (search) query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%`);
     query = query.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
