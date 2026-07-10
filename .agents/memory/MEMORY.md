@@ -3,3 +3,4 @@
 - [Supabase REST-only backend](supabase-rest-backend.md) — All 14 route files use @supabase/supabase-js REST; direct DB is DNS-blocked from Replit. ws package required for Node 20 realtime.
 - [Units feature implementation](units-feature.md) — Units page, in-memory API route, new roles (house_officer, medical_officer), unit selector in new-patient form; all wired end-to-end.
 - [Arabic PDF export](arabic-pdf.md) — Tajawal TTF converted from WOFF via custom Node script; full Arabic shaping (isolated/final/initial/medial) + BiDi reversal in report-pdf.ts; PDF generators are async.
+- [Patient export anonymization](patient-export-anonymization.md) — Excel bulk export uses random Research IDs, hides names/admission date, single-sheet output.

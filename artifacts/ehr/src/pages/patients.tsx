@@ -222,250 +222,110 @@ export default function Patients() {
       const pidSet = new Set(filtered.map((p) => p.id));
       const fmt = (d: any) => (d ? new Date(d).toLocaleDateString() : "");
       const fmtDt = (d: any) => (d ? new Date(d).toLocaleString() : "");
+      const join = (arr: string[]) => arr.filter(Boolean).join(" | ");
 
-      // Helper: auto-fit column widths
-      const autoWidth = (rows: Record<string, any>[]) =>
-        Object.keys(rows[0] ?? {}).map((k) => ({
-          wch: Math.max(k.length + 2, ...rows.map((r) => String(r[k] ?? "").length + 1)),
-        }));
-
-      const makeSheet = (rows: Record<string, any>[]) => {
-        if (!rows.length) return XLSX.utils.json_to_sheet([{ Note: "No records" }]);
-        const ws = XLSX.utils.json_to_sheet(rows);
-        ws["!cols"] = autoWidth(rows);
-        return ws;
+      // ── Anonymization: generate a random, non-derivable Research ID per patient ──
+      const usedResearchIds = new Set<string>();
+      const genResearchId = () => {
+        let id: string;
+        do {
+          const rand1 = Math.random().toString(36).slice(2, 6).toUpperCase();
+          const rand2 = Math.floor(1000 + Math.random() * 9000);
+          id = `RID-${rand1}-${rand2}`;
+        } while (usedResearchIds.has(id));
+        usedResearchIds.add(id);
+        return id;
       };
+      const researchIdMap = new Map<number, string>();
+      filtered.forEach((p) => researchIdMap.set(p.id, genResearchId()));
 
-      // ── Sheet 1: Patients (all fields) ────────────────────────────────────
-      const patientRows = filtered.map((p: any) => ({
-        MRN: p.mrn,
-        "Name (EN)": p.nameEn,
-        "Name (AR)": p.nameAr ?? "",
-        "Date of Birth": fmt(p.dateOfBirth),
-        "Age (Years)": p.dateOfBirth ? calcAge(p.dateOfBirth) : "",
-        Gender: p.gender,
-        "Blood Group": p.bloodGroup ?? p.bloodType ?? "",
-        "Mother Blood Group": p.motherBloodGroup ?? "",
-        Nationality: p.nationality ?? "",
-        "National ID": p.nationalId ?? "",
-        Phone: p.phone ?? "",
-        Address: p.address ?? "",
-        Residence: p.residence ?? "",
-        "Weight (kg)": p.weight ?? "",
-        "Height (cm)": p.height ?? "",
-        "Admission Date": fmt(p.admissionDate),
-        "Discharge Date": fmt(p.dischargeDate),
-        "Guardian Name": p.guardianName ?? "",
-        "Guardian Relation": p.guardianRelation ?? "",
-        "Guardian Phone": p.guardianPhone ?? "",
-        Allergies: p.allergies ?? "",
-        Status: p.status,
-        Unit: p.unitId ? (unitMap[p.unitId] ?? String(p.unitId)) : "",
-        "Registered At": fmtDt(p.createdAt),
-        "Last Updated": fmtDt(p.updatedAt),
+      const prescriptionsArr = Array.isArray(prescriptionsRaw) ? prescriptionsRaw : (prescriptionsRaw as any)?.prescriptions ?? [];
+      const labOrdersArr = Array.isArray(labOrdersRaw) ? labOrdersRaw : (labOrdersRaw as any)?.orders ?? [];
+      const radiologyOrdersArr = Array.isArray(radiologyOrdersRaw) ? radiologyOrdersRaw : (radiologyOrdersRaw as any)?.orders ?? [];
+      const appointmentsArr = Array.isArray(appointmentsRaw) ? appointmentsRaw : [];
+      const vaccinationsArr = Array.isArray(vaccinationsRaw) ? vaccinationsRaw : [];
+      const growthArr = Array.isArray(growthRaw) ? growthRaw : [];
+      const notesArr = Array.isArray(notesRaw) ? notesRaw : [];
+      const dischargeArr = Array.isArray(dischargeRaw) ? dischargeRaw : [];
+      const invoicesArr = Array.isArray(invoicesRaw) ? invoicesRaw : (invoicesRaw as any)?.invoices ?? [];
+
+      const byPatient = (arr: any[], pid: number) => arr.filter((x) => x.patientId === pid);
+
+      // ── Single-sheet, fully anonymized patient dataset ──────────────────────
+      // Excludes: database ID/MRN (replaced by random Research ID), patient name,
+      // guardian/mother's name, and admission date.
+      const patientRows = filtered.map((p: any) => {
+        const pid = p.id;
+        const diag = byPatient(diagnosesRaw as any[], pid).map((d: any) => `${d.code ?? ""} ${d.description ?? d.name ?? ""}`.trim());
+        const rx = byPatient(prescriptionsArr, pid).map((r: any) => `${r.drugName ?? r.medicationName ?? ""} (${r.dosage ?? ""}, ${r.frequency ?? ""})`.trim());
+        const labs = byPatient(labOrdersArr, pid).map((o: any) => `${o.testName ?? ""} [${o.status ?? ""}]${o.resultValue ? ": " + o.resultValue : ""}`.trim());
+        const rad = byPatient(radiologyOrdersArr, pid).map((o: any) => `${o.modality ?? ""} ${o.study ?? o.studyName ?? ""} [${o.status ?? ""}]`.trim());
+        const appts = byPatient(appointmentsArr, pid).map((a: any) => `${fmtDt(a.scheduledAt)} - ${a.type ?? ""} [${a.status ?? ""}]`.trim());
+        const vacc = byPatient(vaccinationsArr, pid).map((v: any) => `${v.vaccineName ?? v.name ?? ""} dose ${v.dose ?? v.doseNumber ?? ""} (${fmt(v.givenAt ?? v.administeredAt ?? v.createdAt)})`.trim());
+        const growth = byPatient(growthArr, pid).map((g: any) => `${fmt(g.createdAt)}: ${g.weight ?? "?"}kg / ${g.height ?? "?"}cm`);
+        const notes = byPatient(notesArr, pid).map((n: any) => `${n.type ?? "Note"}: ${n.content ?? ""}`);
+        const discharge = byPatient(dischargeArr, pid).map((d: any) => `Dx: ${d.dischargeDiagnosis ?? ""} — ${d.treatmentSummary ?? d.summary ?? ""}`);
+        const invoices = byPatient(invoicesArr, pid).map((i: any) => `#${i.invoiceNumber ?? i.id} - ${i.totalAmount ?? i.total ?? ""} (${i.status ?? ""})`);
+
+        return {
+          "Research ID": researchIdMap.get(pid),
+          "Age (Years)": p.dateOfBirth ? calcAge(p.dateOfBirth) : "",
+          Gender: p.gender ?? "",
+          "Blood Group": p.bloodGroup ?? p.bloodType ?? "",
+          "Mother Blood Group": p.motherBloodGroup ?? "",
+          Nationality: p.nationality ?? "",
+          Phone: p.phone ?? "",
+          Address: p.address ?? "",
+          Residence: p.residence ?? "",
+          "Weight (kg)": p.weight ?? "",
+          "Height (cm)": p.height ?? "",
+          "Discharge Date": fmt(p.dischargeDate),
+          "Guardian Relation": p.guardianRelation ?? "",
+          "Guardian Phone": p.guardianPhone ?? "",
+          Allergies: p.allergies ?? "",
+          Status: p.status ?? "",
+          Unit: p.unitId ? (unitMap[p.unitId] ?? String(p.unitId)) : "",
+          Diagnoses: join(diag),
+          Prescriptions: join(rx),
+          "Lab Orders": join(labs),
+          "Radiology Orders": join(rad),
+          Appointments: join(appts),
+          Vaccinations: join(vacc),
+          "Growth Records": join(growth),
+          "Clinical Notes": join(notes),
+          "Discharge Summary": join(discharge),
+          Invoices: join(invoices),
+        };
+      });
+
+      // ── Build single-page workbook ───────────────────────────────────────
+      const longCols = new Set([
+        "Diagnoses", "Prescriptions", "Lab Orders", "Radiology Orders", "Appointments",
+        "Vaccinations", "Growth Records", "Clinical Notes", "Discharge Summary", "Invoices",
+      ]);
+      const columnKeys = Object.keys(patientRows[0] ?? { "Research ID": "" });
+      const ws = XLSX.utils.json_to_sheet(patientRows.length ? patientRows : [{ "Research ID": "No records" }]);
+      ws["!cols"] = columnKeys.map((h) => ({
+        wch: longCols.has(h)
+          ? 40
+          : Math.max(h.length + 2, ...patientRows.map((r: any) => String(r[h] ?? "").length + 1), 10),
       }));
+      ws["!rows"] = [{ hpt: 20 }];
+      (ws as any)["!freeze"] = { xSplit: 0, ySplit: 1 };
+      (ws as any)["!views"] = [{ state: "frozen", ySplit: 1 }];
+      ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: patientRows.length, c: columnKeys.length - 1 } }) };
 
-      // ── Sheet 2: Diagnoses ────────────────────────────────────────────────
-      const diagRows = (diagnosesRaw as any[])
-        .filter((d) => pidSet.has(d.patientId))
-        .map((d) => ({
-          MRN: allPatients.find((p) => p.id === d.patientId)?.mrn ?? "",
-          "Patient Name": d.patientName ?? allPatients.find((p) => p.id === d.patientId)?.nameEn ?? "",
-          "ICD Code": d.code ?? "",
-          Description: d.description ?? d.name ?? "",
-          Status: d.status ?? "",
-          "Diagnosed At": fmtDt(d.createdAt),
-        }));
-
-      // ── Sheet 3: Prescriptions ────────────────────────────────────────────
-      const rxRows = (Array.isArray(prescriptionsRaw) ? prescriptionsRaw : (prescriptionsRaw as any)?.prescriptions ?? [])
-        .filter((r: any) => pidSet.has(r.patientId))
-        .map((r: any) => ({
-          MRN: allPatients.find((p) => p.id === r.patientId)?.mrn ?? "",
-          "Patient Name": r.patientName ?? "",
-          "Drug Name": r.drugName ?? r.medicationName ?? "",
-          Dosage: r.dosage ?? "",
-          Frequency: r.frequency ?? "",
-          Duration: r.duration ?? "",
-          Route: r.route ?? "",
-          Instructions: r.instructions ?? r.notes ?? "",
-          Status: r.status ?? "",
-          "Prescribed By": r.prescriberName ?? "",
-          "Prescribed At": fmtDt(r.createdAt),
-        }));
-
-      // ── Sheet 4: Lab Orders ───────────────────────────────────────────────
-      const labRows = (Array.isArray(labOrdersRaw) ? labOrdersRaw : (labOrdersRaw as any)?.orders ?? [])
-        .filter((o: any) => pidSet.has(o.patientId))
-        .map((o: any) => ({
-          MRN: allPatients.find((p) => p.id === o.patientId)?.mrn ?? "",
-          "Patient Name": o.patientName ?? "",
-          "Test Name": o.testName ?? "",
-          "Test Code": o.testCode ?? "",
-          Category: o.category ?? "",
-          Priority: o.priority ?? "",
-          Status: o.status ?? "",
-          "Result Value": o.resultValue ?? "",
-          "Result Status": o.resultStatus ?? "",
-          "Ordered By": o.orderedByName ?? "",
-          "Ordered At": fmtDt(o.createdAt),
-          "Resulted At": fmtDt(o.resultedAt),
-          Notes: o.notes ?? "",
-        }));
-
-      // ── Sheet 5: Radiology Orders ─────────────────────────────────────────
-      const radRows = (Array.isArray(radiologyOrdersRaw) ? radiologyOrdersRaw : (radiologyOrdersRaw as any)?.orders ?? [])
-        .filter((o: any) => pidSet.has(o.patientId))
-        .map((o: any) => ({
-          MRN: allPatients.find((p) => p.id === o.patientId)?.mrn ?? "",
-          "Patient Name": o.patientName ?? "",
-          Modality: o.modality ?? "",
-          Study: o.study ?? o.studyName ?? "",
-          Priority: o.priority ?? "",
-          Status: o.status ?? "",
-          Findings: o.findings ?? o.report ?? "",
-          Impression: o.impression ?? "",
-          "Ordered By": o.orderedByName ?? "",
-          "Ordered At": fmtDt(o.createdAt),
-          "Reported At": fmtDt(o.reportedAt),
-        }));
-
-      // ── Sheet 6: Appointments ─────────────────────────────────────────────
-      const apptRows = (Array.isArray(appointmentsRaw) ? appointmentsRaw : [])
-        .filter((a: any) => pidSet.has(a.patientId))
-        .map((a: any) => ({
-          MRN: allPatients.find((p) => p.id === a.patientId)?.mrn ?? "",
-          "Patient Name": a.patientName ?? "",
-          Type: a.type ?? "",
-          Status: a.status ?? "",
-          "Scheduled At": fmtDt(a.scheduledAt),
-          "Doctor/Provider": a.doctorName ?? a.providerName ?? "",
-          Notes: a.notes ?? "",
-        }));
-
-      // ── Sheet 7: Vaccinations ─────────────────────────────────────────────
-      const vaccRows = (Array.isArray(vaccinationsRaw) ? vaccinationsRaw : [])
-        .filter((v: any) => pidSet.has(v.patientId))
-        .map((v: any) => ({
-          MRN: allPatients.find((p) => p.id === v.patientId)?.mrn ?? "",
-          "Patient Name": v.patientName ?? allPatients.find((p) => p.id === v.patientId)?.nameEn ?? "",
-          Vaccine: v.vaccineName ?? v.name ?? "",
-          Dose: v.dose ?? v.doseNumber ?? "",
-          "Batch Number": v.batchNumber ?? "",
-          "Given At": fmtDt(v.givenAt ?? v.administeredAt ?? v.createdAt),
-          "Next Due": fmt(v.nextDueDate ?? v.nextDue),
-          "Given By": v.administeredBy ?? v.givenBy ?? "",
-          Notes: v.notes ?? "",
-        }));
-
-      // ── Sheet 8: Growth Records ───────────────────────────────────────────
-      const growthRows = (Array.isArray(growthRaw) ? growthRaw : [])
-        .filter((g: any) => pidSet.has(g.patientId))
-        .map((g: any) => ({
-          MRN: allPatients.find((p) => p.id === g.patientId)?.mrn ?? "",
-          "Patient Name": g.patientName ?? allPatients.find((p) => p.id === g.patientId)?.nameEn ?? "",
-          "Weight (kg)": g.weight ?? "",
-          "Height (cm)": g.height ?? "",
-          "Head Circ. (cm)": g.headCircumference ?? "",
-          "BMI": g.bmi ?? "",
-          "Weight %ile": g.weightPercentile ?? "",
-          "Height %ile": g.heightPercentile ?? "",
-          "BMI %ile": g.bmiPercentile ?? "",
-          "Recorded At": fmtDt(g.createdAt),
-          Notes: g.notes ?? "",
-        }));
-
-      // ── Sheet 9: Clinical Notes ───────────────────────────────────────────
-      const notesRows = (Array.isArray(notesRaw) ? notesRaw : [])
-        .filter((n: any) => pidSet.has(n.patientId))
-        .map((n: any) => ({
-          MRN: allPatients.find((p) => p.id === n.patientId)?.mrn ?? "",
-          "Patient Name": n.patientName ?? allPatients.find((p) => p.id === n.patientId)?.nameEn ?? "",
-          Type: n.type ?? "",
-          Content: n.content ?? "",
-          Author: n.authorName ?? "",
-          "Written At": fmtDt(n.createdAt),
-        }));
-
-      // ── Sheet 10: Discharge Summaries ─────────────────────────────────────
-      const dischargeRows = (Array.isArray(dischargeRaw) ? dischargeRaw : [])
-        .filter((d: any) => pidSet.has(d.patientId))
-        .map((d: any) => ({
-          MRN: allPatients.find((p) => p.id === d.patientId)?.mrn ?? "",
-          "Patient Name": d.patientName ?? allPatients.find((p) => p.id === d.patientId)?.nameEn ?? "",
-          "Admission Diagnosis": d.admissionDiagnosis ?? "",
-          "Discharge Diagnosis": d.dischargeDiagnosis ?? "",
-          "Treatment Summary": d.treatmentSummary ?? d.summary ?? "",
-          Condition: d.conditionAtDischarge ?? d.condition ?? "",
-          "Follow-up": d.followUpInstructions ?? d.followUp ?? "",
-          "Discharged By": d.physicianName ?? d.dischargedBy ?? "",
-          "Discharge Date": fmtDt(d.dischargeDate ?? d.createdAt),
-        }));
-
-      // ── Sheet 11: Invoices / Billing ──────────────────────────────────────
-      const invoiceRows = (Array.isArray(invoicesRaw) ? invoicesRaw : (invoicesRaw as any)?.invoices ?? [])
-        .filter((i: any) => pidSet.has(i.patientId))
-        .map((i: any) => ({
-          MRN: allPatients.find((p) => p.id === i.patientId)?.mrn ?? "",
-          "Patient Name": i.patientName ?? allPatients.find((p) => p.id === i.patientId)?.nameEn ?? "",
-          "Invoice #": i.invoiceNumber ?? i.id,
-          "Total Amount": i.totalAmount ?? i.total ?? "",
-          "Paid Amount": i.paidAmount ?? i.paid ?? "",
-          "Balance Due": i.balanceDue ?? i.balance ?? "",
-          Status: i.status ?? "",
-          "Invoice Date": fmt(i.invoiceDate ?? i.createdAt),
-          Notes: i.notes ?? "",
-        }));
-
-      // ── Sheet 12: Export Criteria ─────────────────────────────────────────
-      const criteriaRows: { Filter: string; Value: string }[] = [];
-      if (filters.dateFrom || filters.dateTo)
-        criteriaRows.push({ Filter: "Period (Registration)", Value: `${filters.dateFrom || "—"} → ${filters.dateTo || "—"}` });
-      if (filters.unitId && filters.unitId !== "all")
-        criteriaRows.push({ Filter: "Unit", Value: unitMap[Number(filters.unitId)] ?? filters.unitId });
-      if (filters.ageMin !== "" || filters.ageMax !== "")
-        criteriaRows.push({ Filter: "Age Range", Value: `${filters.ageMin || "0"} – ${filters.ageMax || "∞"} yrs` });
-      if (filters.diagnosis)
-        criteriaRows.push({ Filter: "Diagnosis", Value: filters.diagnosis });
-      if (!criteriaRows.length)
-        criteriaRows.push({ Filter: "Filters", Value: "None — full export" });
-      criteriaRows.push({ Filter: "Total Patients Exported", Value: String(filtered.length) });
-      criteriaRows.push({ Filter: "Diagnoses Records", Value: String(diagRows.length) });
-      criteriaRows.push({ Filter: "Prescriptions Records", Value: String(rxRows.length) });
-      criteriaRows.push({ Filter: "Lab Orders Records", Value: String(labRows.length) });
-      criteriaRows.push({ Filter: "Radiology Orders Records", Value: String(radRows.length) });
-      criteriaRows.push({ Filter: "Appointments Records", Value: String(apptRows.length) });
-      criteriaRows.push({ Filter: "Vaccinations Records", Value: String(vaccRows.length) });
-      criteriaRows.push({ Filter: "Growth Records", Value: String(growthRows.length) });
-      criteriaRows.push({ Filter: "Clinical Notes Records", Value: String(notesRows.length) });
-      criteriaRows.push({ Filter: "Discharge Summaries Records", Value: String(dischargeRows.length) });
-      criteriaRows.push({ Filter: "Invoice Records", Value: String(invoiceRows.length) });
-      criteriaRows.push({ Filter: "Export Date & Time", Value: new Date().toLocaleString() });
-      criteriaRows.push({ Filter: "Exported By", Value: user?.username ?? "" });
-
-      // ── Build workbook ────────────────────────────────────────────────────
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, makeSheet(patientRows),    "Patients");
-      XLSX.utils.book_append_sheet(wb, makeSheet(diagRows),       "Diagnoses");
-      XLSX.utils.book_append_sheet(wb, makeSheet(rxRows),         "Prescriptions");
-      XLSX.utils.book_append_sheet(wb, makeSheet(labRows),        "Lab Orders");
-      XLSX.utils.book_append_sheet(wb, makeSheet(radRows),        "Radiology Orders");
-      XLSX.utils.book_append_sheet(wb, makeSheet(apptRows),       "Appointments");
-      XLSX.utils.book_append_sheet(wb, makeSheet(vaccRows),       "Vaccinations");
-      XLSX.utils.book_append_sheet(wb, makeSheet(growthRows),     "Growth Records");
-      XLSX.utils.book_append_sheet(wb, makeSheet(notesRows),      "Clinical Notes");
-      XLSX.utils.book_append_sheet(wb, makeSheet(dischargeRows),  "Discharge Summaries");
-      XLSX.utils.book_append_sheet(wb, makeSheet(invoiceRows),    "Invoices");
-      XLSX.utils.book_append_sheet(wb, makeSheet(criteriaRows),   "Export Criteria");
+      XLSX.utils.book_append_sheet(wb, ws, "Anonymized Patients");
 
       const dateTag = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `AMH_patients_full_export_${dateTag}.xlsx`);
+      XLSX.writeFile(wb, `AMH_patients_anonymized_export_${dateTag}.xlsx`);
 
       toast({
         title: isRtl ? "تم التصدير بنجاح" : "Export complete",
         description: isRtl
-          ? `تم تصدير ${filtered.length} مريض في ${12} أوراق عمل`
-          : `${filtered.length} patients exported across 12 sheets`,
+          ? `تم تصدير ${filtered.length} مريض (بيانات مجهولة الهوية) في ورقة واحدة`
+          : `${filtered.length} patients exported (anonymized) in a single sheet`,
       });
       setExportOpen(false);
     } catch (err) {
