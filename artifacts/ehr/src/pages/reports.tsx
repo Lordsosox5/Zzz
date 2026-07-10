@@ -716,7 +716,7 @@ export default function Reports() {
   ${kpi(rxs.length, "\u0627\u0644\u0648\u0635\u0641\u0627\u062a", Object.keys(drugMap).length+" \u062f\u0648\u0627\u0621 \u0641\u0631\u064a\u062f", "#ea580c")}
   ${kpi(diags.length, "\u0627\u0644\u062a\u0634\u062e\u064a\u0635\u0627\u062a", Object.keys(diagMap).length+" \u0641\u0631\u064a\u062f\u0629", "#7c3aed")}
   ${kpi(activeStaff.length, "\u0627\u0644\u0643\u0648\u0627\u062f\u0631 \u0627\u0644\u0641\u0639\u0627\u0644\u0629", Object.keys(roleMap).length+" \u0623\u062f\u0648\u0627\u0631", "#db2777")}
-  ${kpi("SAR "+totalBilled.toLocaleString("en",{maximumFractionDigits:0}), "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0648\u062a\u0631\u0629", collRate+"% \u0645\u062d\u0635\u0651\u0644", "#ca8a04")}
+  ${kpi("SDG "+totalBilled.toLocaleString("en",{maximumFractionDigits:0}), "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0648\u062a\u0631\u0629", collRate+"% \u0645\u062d\u0635\u0651\u0644", "#ca8a04")}
 </div>
 
 <!-- 2. \u0623\u0639\u0644\u0649 5 \u062a\u0634\u062e\u064a\u0635\u0627\u062a -->
@@ -853,9 +853,9 @@ ${mini2col(
 ${sec("\ud83d\udcb0", "\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0645\u0627\u0644\u064a")}
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
   ${kpi(invs.length, "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631", "", "#0f2855")}
-  ${kpi("SAR "+totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0641\u0648\u062a\u064e\u0631", "", "#ca8a04")}
-  ${kpi("SAR "+totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0627\u0644\u0645\u062d\u0635\u0651\u0644", collRate+"% \u0645\u0639\u062f\u0644 \u0627\u0644\u062a\u062d\u0635\u064a\u0644", "#16a34a")}
-  ${kpi("SAR "+outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0627\u0644\u0645\u062a\u0628\u0642\u064a", outstanding>0?"\u0642\u064a\u062f \u0627\u0644\u062a\u062d\u0635\u064a\u0644":"\u0645\u062d\u0635\u0651\u0644 \u0628\u0627\u0644\u0643\u0627\u0645\u0644", outstanding>0?"#dc2626":"#16a34a")}
+  ${kpi("SDG "+totalBilled.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0645\u0641\u0648\u062a\u064e\u0631", "", "#ca8a04")}
+  ${kpi("SDG "+totalCollected.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0627\u0644\u0645\u062d\u0635\u0651\u0644", collRate+"% \u0645\u0639\u062f\u0644 \u0627\u0644\u062a\u062d\u0635\u064a\u0644", "#16a34a")}
+  ${kpi("SDG "+outstanding.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}), "\u0627\u0644\u0645\u062a\u0628\u0642\u064a", outstanding>0?"\u0642\u064a\u062f \u0627\u0644\u062a\u062d\u0635\u064a\u0644":"\u0645\u062d\u0635\u0651\u0644 \u0628\u0627\u0644\u0643\u0627\u0645\u0644", outstanding>0?"#dc2626":"#16a34a")}
 </div>
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:14px">
   <div style="font-size:9.5px;font-weight:700;color:#1e3a6e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px;text-align:right">\u062a\u0641\u0635\u064a\u0644 \u062d\u0627\u0644\u0629 \u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631</div>
