@@ -121,6 +121,7 @@ function ExpiryBadge({ role, expiryDate, t, language }: {
 function CredentialsPanel({
   username, password, onClose,
 }: { username: string; password: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState<"user" | "pass" | null>(null);
   const [showPass, setShowPass] = useState(false);
 
@@ -135,12 +136,12 @@ function CredentialsPanel({
       <div className="flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
         <p className="text-sm font-semibold text-green-800 dark:text-green-300">
-          Account created — save these credentials
+          {t("staff.credentialsCreated")}
         </p>
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Label className="text-xs w-20 shrink-0 text-muted-foreground">Username</Label>
+          <Label className="text-xs w-20 shrink-0 text-muted-foreground">{t("staff.username")}</Label>
           <code className="flex-1 text-xs bg-white dark:bg-black/20 border rounded px-2 py-1 font-mono">
             {username}
           </code>
@@ -150,7 +151,7 @@ function CredentialsPanel({
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <Label className="text-xs w-20 shrink-0 text-muted-foreground">Password</Label>
+          <Label className="text-xs w-20 shrink-0 text-muted-foreground">{t("login.password")}</Label>
           <code className="flex-1 text-xs bg-white dark:bg-black/20 border rounded px-2 py-1 font-mono tracking-widest">
             {showPass ? password : "•".repeat(password.length)}
           </code>
@@ -165,7 +166,7 @@ function CredentialsPanel({
         </div>
       </div>
       <Button type="button" size="sm" className="w-full mt-1" onClick={onClose}>
-        Done
+        {t("staff.done")}
       </Button>
     </div>
   );
@@ -233,10 +234,10 @@ export default function Staff() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
-          toast({ title: "Staff updated", description: `${editForm.nameEn} has been updated.` });
+          toast({ title: t("staff.updated"), description: `${editForm.nameEn} ${t("staff.updatedDesc")}` });
           setEditTarget(null);
         },
-        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to update staff member." }),
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.updateFailed") }),
       }
     );
   };
@@ -257,10 +258,10 @@ export default function Staff() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
-          toast({ title: "Account deleted", description: `${deleteTarget.nameEn} has been permanently removed.` });
+          toast({ title: t("staff.deleted"), description: `${deleteTarget.nameEn} ${t("staff.deletedDesc")}` });
           setDeleteTarget(null);
         },
-        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to delete staff member." }),
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.deleteFailed") }),
       }
     );
   };
@@ -345,10 +346,10 @@ export default function Staff() {
       { id: resetTarget.id, data: { password: resetPassword.trim() } },
       {
         onSuccess: () => {
-          toast({ title: "Password reset", description: `New password set for ${resetTarget.nameEn}.` });
+          toast({ title: t("staff.passwordReset"), description: `${t("staff.passwordResetDesc")} ${resetTarget.nameEn}.` });
           setResetTarget(null);
         },
-        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to reset password." }),
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.passwordResetFailed") }),
       }
     );
   };
@@ -359,9 +360,9 @@ export default function Staff() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
-          toast({ title: "Account cancelled", description: `${nameEn}'s account has been deactivated.` });
+          toast({ title: t("staff.accountCancelled"), description: `${nameEn}${t("staff.accountCancelledDesc")}` });
         },
-        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: "Failed to cancel account." }),
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.cancelFailed") }),
       }
     );
   };
@@ -404,7 +405,7 @@ export default function Staff() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>{t("staff.nameEn")} *</Label>
-                      <Input name="nameEn" required value={form.nameEn} onChange={handleChange} placeholder="e.g. Dr. Ahmed Ali" />
+                      <Input name="nameEn" required value={form.nameEn} onChange={handleChange} placeholder={t("staff.nameEnPlaceholder")} />
                     </div>
                     <div className="space-y-1.5">
                       <Label>{t("staff.nameAr")}</Label>
@@ -422,17 +423,17 @@ export default function Staff() {
                         required
                         value={form.username}
                         onChange={handleChange}
-                        placeholder="e.g. dr.ahmed"
+                        placeholder={t("staff.usernamePlaceholder")}
                         className="font-mono pr-24"
                       />
                       {!usernameTouched && form.username && (
                         <span className="absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground pointer-events-none">
-                          auto-suggested
+                          {t("staff.autoSuggested")}
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Used to sign in. Auto-filled from the name — edit freely.
+                      {t("staff.usernameHelp")}
                     </p>
                   </div>
 
@@ -452,19 +453,19 @@ export default function Staff() {
                             <SelectItem value="house_officer">
                               <div>
                                 <span className="font-medium">{t("staff.houseOfficer")}</span>
-                                <span className="text-xs text-muted-foreground block">3-month contract</span>
+                                <span className="text-xs text-muted-foreground block">{t("staff.houseOfficerBadge")}</span>
                               </div>
                             </SelectItem>
                             <SelectItem value="medical_officer">
                               <div>
                                 <span className="font-medium">{t("staff.medicalOfficer")}</span>
-                                <span className="text-xs text-muted-foreground block">Until departure</span>
+                                <span className="text-xs text-muted-foreground block">{t("staff.medicalOfficerBadge")}</span>
                               </div>
                             </SelectItem>
                             <SelectItem value="registrar">
                               <div>
-                                <span className="font-medium">Registrar</span>
-                                <span className="text-xs text-muted-foreground block">Specialist in training</span>
+                                <span className="font-medium">{t("staff.registrar")}</span>
+                                <span className="text-xs text-muted-foreground block">{t("staff.registrarInfo")}</span>
                               </div>
                             </SelectItem>
                             <SelectItem value="consultant">{t("staff.consultant")}</SelectItem>
@@ -485,7 +486,7 @@ export default function Staff() {
                             <SelectItem value="pharmacist">{t("staff.pharmacist")}</SelectItem>
                             <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
                             <SelectItem value="admin">{t("staff.admin")}</SelectItem>
-                            <SelectItem value="data_analyser">Data Analyser</SelectItem>
+                            <SelectItem value="data_analyser">{t("staff.dataAnalyser")}</SelectItem>
                             <SelectItem value="accounts_manager">{t("staff.accountsManager")}</SelectItem>
                             <SelectItem value="administrative">{t("staff.administrative")}</SelectItem>
                           </SelectGroup>
@@ -524,7 +525,7 @@ export default function Staff() {
                         <>
                           <Label>{t("generic.department")} *</Label>
                           <Input name="department" required={!isDoctor} value={form.department}
-                            onChange={handleChange} placeholder="e.g. Pediatrics" />
+                            onChange={handleChange} placeholder={t("staff.departmentPlaceholder")} />
                         </>
                       )}
                     </div>
@@ -535,7 +536,7 @@ export default function Staff() {
                     <div className="rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800 p-3 space-y-1">
                       <div className="flex items-center gap-2">
                         <CalendarClock className="h-4 w-4 text-orange-600 dark:text-orange-400 shrink-0" />
-                        <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">3-Month Contract</p>
+                        <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">{t("staff.houseOfficerContractLabel")}</p>
                       </div>
                       <p className="text-xs text-orange-700 dark:text-orange-400">
                         {t("staff.autoExpiryNote")} <strong>{formatDate(previewExpiry, language)}</strong>
@@ -547,7 +548,7 @@ export default function Staff() {
                     <div className="rounded-lg border border-teal-200 bg-teal-50 dark:bg-teal-900/20 dark:border-teal-800 p-3 space-y-1">
                       <div className="flex items-center gap-2">
                         <Infinity className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                        <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">Permanent Contract</p>
+                        <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">{t("staff.permanentContractLabel")}</p>
                       </div>
                       <p className="text-xs text-teal-700 dark:text-teal-400">{t("staff.medicalOfficerInfo")}</p>
                     </div>
@@ -575,7 +576,7 @@ export default function Staff() {
                           type={showPass ? "text" : "password"}
                           value={form.password}
                           onChange={handleChange}
-                          placeholder="Set account password"
+                          placeholder={t("staff.setPasswordPlaceholder")}
                           className="pr-9 font-mono"
                         />
                         <button type="button"
@@ -585,13 +586,13 @@ export default function Staff() {
                         </button>
                       </div>
                       <Button type="button" variant="outline" size="icon"
-                        title="Generate password"
+                        title={t("staff.generatePassword")}
                         onClick={() => setForm(p => ({ ...p, password: generatePassword() }))}>
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Click <RefreshCw className="inline h-3 w-3" /> to auto-generate a secure password.
+                      <RefreshCw className="inline h-3 w-3" /> {t("staff.generatePasswordHint")}
                     </p>
                   </div>
 
@@ -642,13 +643,13 @@ export default function Staff() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <KeyRound className="h-4 w-4 text-primary" />
-              Reset Password
+              {t("staff.resetPasswordTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Setting a new password for <span className="font-semibold text-foreground">{resetTarget?.nameEn}</span>.
-              The current password will be replaced immediately.
+              {t("staff.resetPasswordFor")} <span className="font-semibold text-foreground">{resetTarget?.nameEn}</span>.{" "}
+              {t("staff.resetPasswordNote")}
             </p>
 
             <div className="space-y-1.5">
@@ -660,7 +661,7 @@ export default function Staff() {
                     value={resetPassword}
                     onChange={e => setResetPassword(e.target.value)}
                     className="pr-9 font-mono"
-                    placeholder="New password"
+                    placeholder={t("staff.newPasswordPlaceholder")}
                   />
                   <button
                     type="button"
@@ -672,14 +673,14 @@ export default function Staff() {
                 </div>
                 <Button
                   type="button" variant="outline" size="icon"
-                  title="Generate new password"
+                  title={t("staff.generateNewPassword")}
                   onClick={() => { setResetPassword(generatePassword()); setResetCopied(false); }}
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button" variant="outline" size="icon"
-                  title="Copy password"
+                  title={t("staff.copyPassword")}
                   onClick={() => {
                     navigator.clipboard.writeText(resetPassword);
                     setResetCopied(true);
@@ -692,7 +693,7 @@ export default function Staff() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Copy the password before saving — it won't be shown again.
+                {t("staff.copyPasswordHint")}
               </p>
             </div>
 
@@ -708,7 +709,7 @@ export default function Staff() {
                 {updateMutation.isPending
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <KeyRound className="h-4 w-4" />}
-                Reset Password
+                {t("staff.resetPasswordButton")}
               </Button>
             </div>
           </div>
@@ -721,17 +722,17 @@ export default function Staff() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <Trash2 className="h-4 w-4" />
-              Delete Account
+              {t("staff.deleteAccountTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
               <p className="text-sm font-semibold text-foreground">
-                This will permanently delete{" "}
-                <span className="text-destructive">{deleteTarget?.nameEn}</span>'s account.
+                {t("staff.deleteAccountConfirm")}{" "}
+                <span className="text-destructive">{deleteTarget?.nameEn}</span>{t("staff.deleteAccountConfirmSuffix")}
               </p>
               <p className="text-xs text-muted-foreground">
-                This action cannot be undone. The user will immediately lose access to the system.
+                {t("staff.deleteAccountNote")}
               </p>
             </div>
             <div className="flex gap-2 justify-end">
@@ -747,7 +748,7 @@ export default function Staff() {
                 {deleteMutation.isPending
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <Trash2 className="h-4 w-4" />}
-                Delete Account
+                {t("staff.deleteAccountButton")}
               </Button>
             </div>
           </div>
@@ -760,7 +761,7 @@ export default function Staff() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-4 w-4 text-primary" />
-              Edit Staff Profile
+              {t("staff.editProfileTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
@@ -769,7 +770,7 @@ export default function Staff() {
                 <Label>{t("staff.nameEn")} *</Label>
                 <Input required value={editForm.nameEn}
                   onChange={e => setEditForm(p => ({ ...p, nameEn: e.target.value }))}
-                  placeholder="e.g. Dr. Ahmed Ali" />
+                  placeholder={t("staff.nameEnPlaceholder")} />
               </div>
               <div className="space-y-1.5">
                 <Label>{t("staff.nameAr")}</Label>
@@ -789,7 +790,7 @@ export default function Staff() {
                       <SelectLabel className="flex items-center gap-1.5 text-primary font-semibold">🩺 {t("staff.doctorCategory")}</SelectLabel>
                       <SelectItem value="house_officer">{t("staff.houseOfficer")}</SelectItem>
                       <SelectItem value="medical_officer">{t("staff.medicalOfficer")}</SelectItem>
-                      <SelectItem value="registrar">Registrar</SelectItem>
+                      <SelectItem value="registrar">{t("staff.registrar")}</SelectItem>
                       <SelectItem value="consultant">{t("staff.consultant")}</SelectItem>
                       <SelectItem value="specialist">{t("staff.specialist")}</SelectItem>
                     </SelectGroup>
@@ -804,7 +805,7 @@ export default function Staff() {
                       <SelectItem value="pharmacist">{t("staff.pharmacist")}</SelectItem>
                       <SelectItem value="lab_specialist">{t("staff.labSpecialist")}</SelectItem>
                       <SelectItem value="admin">{t("staff.admin")}</SelectItem>
-                      <SelectItem value="data_analyser">Data Analyser</SelectItem>
+                      <SelectItem value="data_analyser">{t("staff.dataAnalyser")}</SelectItem>
                       <SelectItem value="accounts_manager">{t("staff.accountsManager")}</SelectItem>
                       <SelectItem value="administrative">{t("staff.administrative")}</SelectItem>
                     </SelectGroup>
@@ -832,7 +833,7 @@ export default function Staff() {
                     <Label>{t("generic.department")} *</Label>
                     <Input required={!DOCTOR_ROLES.includes(editForm.role)} value={editForm.department}
                       onChange={e => setEditForm(p => ({ ...p, department: e.target.value }))}
-                      placeholder="e.g. Pediatrics" />
+                      placeholder={t("staff.departmentPlaceholder")} />
                   </>
                 )}
               </div>
@@ -929,7 +930,7 @@ export default function Staff() {
                         <div className="flex flex-wrap gap-2">
                           {def.allowedNav === "all" ? (
                             <Badge className="gap-1">
-                              <CheckCircle2 className="h-3 w-3" /> All Modules
+                              <CheckCircle2 className="h-3 w-3" /> {t("staff.allModules")}
                             </Badge>
                           ) : (
                             def.allowedNav.map(nav => (
@@ -964,7 +965,7 @@ export default function Staff() {
                 <TableHead>{t("generic.email")}</TableHead>
                 <TableHead>{t("staff.contract")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{t("staff.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1029,7 +1030,7 @@ export default function Staff() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={isActive ? "default" : "secondary"}>
-                          {isActive ? "active" : "inactive"}
+                          {isActive ? t("staff.active") : t("staff.inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -1043,7 +1044,7 @@ export default function Staff() {
                                 onClick={() => openEdit(member)}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
-                                Edit
+                                {t("staff.edit")}
                               </Button>
                               {isActive && (
                                 <Button
@@ -1054,7 +1055,7 @@ export default function Staff() {
                                   onClick={() => handleCancelAccount(member.id, member.nameEn)}
                                 >
                                   <UserX className="h-3.5 w-3.5" />
-                                  Suspend
+                                  {t("staff.suspend")}
                                 </Button>
                               )}
                               {isActive && currentUser?.id !== member.id && (
@@ -1065,7 +1066,7 @@ export default function Staff() {
                                   onClick={() => openReset(member.id, member.nameEn)}
                                 >
                                   <KeyRound className="h-3.5 w-3.5" />
-                                  Reset
+                                  {t("staff.resetAction")}
                                 </Button>
                               )}
                             </>
@@ -1078,7 +1079,7 @@ export default function Staff() {
                               onClick={() => setDeleteTarget({ id: member.id, nameEn: member.nameEn })}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
-                              Delete
+                              {t("staff.deleteAction")}
                             </Button>
                           )}
                         </div>

@@ -1,5 +1,6 @@
 - [EHR project setup](ehr-project-setup.md) — Almuzini Children Hospital EHR: full-stack React+Vite + Express 5 + Drizzle/PostgreSQL; all modules wired end-to-end.
 - [Admission assessment feature](admission-assessment.md) — 5-section new-patient form backed by `admissionAssessmentsTable` + new API routes; codegen pipeline and DB migration approach documented.
+- [i18n translation coverage](i18n-coverage.md) — when translating a page, easily missed spots are toast() messages and duplicated Select option lists across add/edit dialogs.
 - [Supabase REST-only backend](supabase-rest-backend.md) — All 14 route files use @supabase/supabase-js REST; direct DB is DNS-blocked from Replit. ws package required for Node 20 realtime.
 - [Units feature implementation](units-feature.md) — Units page, in-memory API route, new roles (house_officer, medical_officer), unit selector in new-patient form; all wired end-to-end.
 - [Arabic PDF export](arabic-pdf.md) — Tajawal TTF converted from WOFF via custom Node script; full Arabic shaping (isolated/final/initial/medial) + BiDi reversal in report-pdf.ts; PDF generators are async.
