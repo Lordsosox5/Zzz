@@ -349,3 +349,9 @@ ALTER TABLE patients ADD COLUMN IF NOT EXISTS mother_blood_group text;
 
 -- ─── MIGRATION v2: Add MUAC column to growth_records ────────────────────────
 ALTER TABLE growth_records ADD COLUMN IF NOT EXISTS muac NUMERIC(5,2);
+
+-- ─── MIGRATION v3: Add place column to patients (ward/department assignment) ──
+-- Without this column, filtering patients by ward (PICU/PHDU/Nursery/General Ward)
+-- silently returns ALL patients instead of the filtered subset.
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS place TEXT;
+UPDATE patients SET place = 'general_ward' WHERE place IS NULL;
