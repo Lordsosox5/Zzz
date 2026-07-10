@@ -24,6 +24,7 @@ import { isLabRole, isUnitRole } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
@@ -33,6 +34,7 @@ import {
   BedDouble, AlertTriangle, Info, Clock, CheckCircle2,
   ArrowUpRight, ArrowDownRight, Minus, UserPlus,
   Pill, ClipboardList, TrendingUp, ShieldAlert, Package, FileText,
+  Search, Hash, UserSearch, Download, XCircle, Loader2,
 } from "lucide-react";
 
 function getGreeting(hour: number): "dash.goodMorning" | "dash.goodAfternoon" | "dash.goodEvening" {
@@ -1639,6 +1641,331 @@ function BillingOfficerDashboard() {
   );
 }
 
+// ─── Data Analyser Dashboard ──────────────────────────────────────────────────
+
+const RESEARCH_ID_SALT = "AMH-EHR-RESEARCH-2026";
+function hashPatientId(pid: number): string {
+  const input = `${RESEARCH_ID_SALT}:${pid}`;
+  let h1 = 0xdeadbeef ^ input.length;
+  let h2 = 0x41c6ce57 ^ input.length;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const combined = (h2 >>> 0) * 0x100000000 + (h1 >>> 0);
+  const part1 = (h1 >>> 0).toString(36).toUpperCase().slice(0, 4).padStart(4, "0");
+  const part2 = (Math.abs(combined) % 9000 + 1000).toString();
+  return `RID-${part1}-${part2}`;
+}
+
+function calcAge(dob: string | null | undefined): string {
+  if (!dob) return "—";
+  const birth = new Date(dob);
+  const now = new Date();
+  let years = now.getFullYear() - birth.getFullYear();
+  const months = now.getMonth() - birth.getMonth();
+  if (months < 0 || (months === 0 && now.getDate() < birth.getDate())) years--;
+  if (years === 0) {
+    const m = ((now.getFullYear() - birth.getFullYear()) * 12) + (now.getMonth() - birth.getMonth());
+    return `${Math.max(0, m)}m`;
+  }
+  return `${years}y`;
+}
+
+function DataAnalyserDashboard() {
+  const { t, isRtl } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const [ridInput, setRidInput] = useState("");
+  const [ridQuery, setRidQuery] = useState("");
+  const [ridResult, setRidResult] = useState<"idle" | "found" | "not_found">("idle");
+  const [ridPatient, setRidPatient] = useState<any | null>(null);
+
+  const { data: allPatientsData, isLoading: patientsLoading } = useListPatients({ limit: 1000 });
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
+    query: { queryKey: getGetDashboardStatsQueryKey() },
+  });
+
+  const patients = allPatientsData?.patients ?? [];
+
+  const handleLookup = () => {
+    const q = ridInput.trim().toUpperCase();
+    if (!q) return;
+    setRidQuery(q);
+    const match = patients.find((p: any) => hashPatientId(p.id) === q);
+    if (match) {
+      setRidPatient(match);
+      setRidResult("found");
+    } else {
+      setRidPatient(null);
+      setRidResult("not_found");
+    }
+  };
+
+  const handleClear = () => {
+    setRidInput("");
+    setRidQuery("");
+    setRidResult("idle");
+    setRidPatient(null);
+  };
+
+  const statCards = [
+    { label: isRtl ? "إجمالي المرضى" : "Total Patients", value: stats?.totalPatients, icon: Users, color: "text-blue-600", bg: "bg-blue-500/10", loading: statsLoading, path: "/patients" },
+    { label: isRtl ? "الطلبات المعلقة" : "Pending Labs", value: stats?.pendingLabOrders, icon: FlaskConical, color: "text-amber-600", bg: "bg-amber-500/10", loading: statsLoading, path: "/patients" },
+    { label: isRtl ? "الوصفات النشطة" : "Active Prescriptions", value: stats?.pendingPrescriptions, icon: Pill, color: "text-orange-600", bg: "bg-orange-500/10", loading: statsLoading, path: "/patients" },
+    { label: isRtl ? "التنبيهات الحرجة" : "Critical Alerts", value: stats?.criticalAlerts, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-500/10", loading: statsLoading, path: "/patients" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+            {isRtl ? "لوحة تحكم محلل البيانات" : "Data Analyser Dashboard"}
+          </p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isRtl ? "وصول قراءة كامل للبيانات السريرية وتصدير البيانات" : "Full read access to clinical data and export capabilities"}
+          </p>
+        </div>
+        <Button size="sm" onClick={() => navigate("/patients")} className="gap-1.5 self-start sm:self-auto">
+          <Download className="h-4 w-4" />
+          {isRtl ? "تصدير البيانات" : "Export Data"}
+        </Button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card
+              key={i}
+              className="relative overflow-hidden cursor-pointer hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98]"
+              onClick={() => navigate(s.path)}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading
+                      ? <Skeleton className="h-8 w-16" />
+                      : <p className={`text-3xl font-bold tracking-tight tabular-nums ${s.color}`}>{s.value ?? 0}</p>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Research ID Lookup */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader className="pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <UserSearch className="h-4 w-4 text-primary" />
+            {isRtl ? "البحث بمعرّف البحث" : "Research ID → Patient Lookup"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5 space-y-5">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {isRtl
+              ? "أدخل معرّف البحث (Research ID) من ملف التصدير للكشف عن هوية المريض الحقيقية."
+              : "Enter a Research ID from an exported dataset to reveal the corresponding patient's real identity."}
+          </p>
+
+          {/* Input row */}
+          <div className="flex gap-2 max-w-lg">
+            <div className="relative flex-1">
+              <Hash className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
+              <Input
+                className={`${isRtl ? "pr-9 font-mono" : "pl-9 font-mono"} uppercase tracking-widest`}
+                placeholder="RID-XXXX-0000"
+                value={ridInput}
+                onChange={e => setRidInput(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === "Enter" && handleLookup()}
+                disabled={patientsLoading}
+              />
+            </div>
+            <Button onClick={handleLookup} disabled={patientsLoading || !ridInput.trim()} className="gap-1.5 shrink-0">
+              {patientsLoading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Search className="h-4 w-4" />}
+              {isRtl ? "بحث" : "Lookup"}
+            </Button>
+            {ridResult !== "idle" && (
+              <Button variant="ghost" size="icon" onClick={handleClear} title="Clear">
+                <XCircle className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Result */}
+          {ridResult === "not_found" && (
+            <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                {isRtl
+                  ? `لم يُعثر على مريض بمعرّف البحث: ${ridQuery}`
+                  : `No patient found for Research ID: ${ridQuery}`}
+              </span>
+            </div>
+          )}
+
+          {ridResult === "found" && ridPatient && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 overflow-hidden">
+              {/* Match header */}
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-100 dark:bg-emerald-900/40 border-b border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">
+                  {isRtl ? "تم التعريف — مريض محدد" : "Match found — patient identified"}
+                </span>
+                <Badge variant="outline" className="ms-auto font-mono text-xs border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300">
+                  {ridQuery}
+                </Badge>
+              </div>
+
+              {/* Patient details grid */}
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { label: isRtl ? "الاسم (إنجليزي)" : "Name (English)", value: ridPatient.nameEn ?? "—" },
+                  { label: isRtl ? "الاسم (عربي)" : "Name (Arabic)", value: ridPatient.nameAr ?? "—" },
+                  { label: isRtl ? "رقم السجل الطبي" : "MRN", value: ridPatient.mrn ?? "—", mono: true },
+                  { label: isRtl ? "تاريخ الميلاد" : "Date of Birth", value: ridPatient.dateOfBirth ? new Date(ridPatient.dateOfBirth).toLocaleDateString() : "—" },
+                  { label: isRtl ? "العمر" : "Age", value: calcAge(ridPatient.dateOfBirth) },
+                  { label: isRtl ? "الجنس" : "Gender", value: ridPatient.gender ? ridPatient.gender.charAt(0).toUpperCase() + ridPatient.gender.slice(1) : "—" },
+                  { label: isRtl ? "فصيلة الدم" : "Blood Group", value: ridPatient.bloodGroup ?? "—" },
+                  { label: isRtl ? "تاريخ الدخول" : "Admission Date", value: ridPatient.admissionDate ? new Date(ridPatient.admissionDate).toLocaleDateString() : "—" },
+                  { label: isRtl ? "الحالة" : "Status", value: ridPatient.status ?? "active" },
+                ].map((row, i) => (
+                  <div key={i} className="space-y-0.5">
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{row.label}</p>
+                    <p className={`text-sm font-semibold text-foreground ${(row as any).mono ? "font-mono" : ""}`}>{row.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action */}
+              <div className="px-4 pb-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                  onClick={() => navigate(`/patients/${ridPatient.id}`)}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  {isRtl ? "فتح ملف المريض" : "Open Patient Record"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Hint */}
+          {ridResult === "idle" && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 shrink-0" />
+              {isRtl
+                ? "معرّف البحث بصيغة RID-XXXX-0000 — يمكنك إيجاده في عمود \"Research ID\" في ملف التصدير."
+                : 'Research IDs follow the format RID-XXXX-0000 — find them in the "Research ID" column of exported files.'}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent patients table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            {isRtl ? "المرضى الأخيرون" : "Recent Patients"}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/patients")}>
+            {t("dash.viewAll")}
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          {patientsLoading ? (
+            <div className="space-y-0">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
+                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                  <div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-3 w-1/3" /></div>
+                </div>
+              ))}
+            </div>
+          ) : patients.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="px-4">{isRtl ? "رقم السجل" : "MRN"}</TableHead>
+                  <TableHead>{isRtl ? "الاسم" : "Name"}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{isRtl ? "معرّف البحث" : "Research ID"}</TableHead>
+                  <TableHead className="hidden md:table-cell">{isRtl ? "العمر" : "Age"}</TableHead>
+                  <TableHead className="hidden md:table-cell">{isRtl ? "الجنس" : "Gender"}</TableHead>
+                  <TableHead>{isRtl ? "الحالة" : "Status"}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {patients.slice(0, 10).map((p: any) => (
+                  <TableRow
+                    key={p.id}
+                    className="cursor-pointer hover:bg-muted/40 transition-colors"
+                    onClick={() => navigate(`/patients/${p.id}`)}
+                  >
+                    <TableCell className="px-4 font-mono text-xs text-muted-foreground">{p.mrn}</TableCell>
+                    <TableCell className="font-medium">{isRtl && p.nameAr ? p.nameAr : p.nameEn}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <span
+                        className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors"
+                        title={isRtl ? "انقر للبحث" : "Click to look up"}
+                        onClick={e => {
+                          e.stopPropagation();
+                          const rid = hashPatientId(p.id);
+                          setRidInput(rid);
+                          setRidQuery(rid);
+                          setRidPatient(p);
+                          setRidResult("found");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        {hashPatientId(p.id)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{calcAge(p.dateOfBirth)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-sm capitalize text-muted-foreground">{p.gender ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={p.status === "active" ? "default" : "secondary"} className="text-xs capitalize">
+                        {p.status ?? "active"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Users className="h-8 w-8 mb-2 opacity-30" />
+              <p className="text-sm">{isRtl ? "لا يوجد مرضى" : "No patients yet"}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -1649,5 +1976,6 @@ export default function Dashboard() {
   if (role === "nurse")            return <NurseDashboard />;
   if (role === "pharmacist")       return <PharmacistDashboard />;
   if (role === "billing_officer")  return <BillingOfficerDashboard />;
+  if (role === "data_analyser")    return <DataAnalyserDashboard />;
   return <GeneralDashboard />;
 }
