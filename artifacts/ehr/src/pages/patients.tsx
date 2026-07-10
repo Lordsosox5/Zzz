@@ -224,20 +224,28 @@ export default function Patients() {
       const fmtDt = (d: any) => (d ? new Date(d).toLocaleString() : "");
       const join = (arr: string[]) => arr.filter(Boolean).join(" | ");
 
-      // ── Anonymization: generate a random, non-derivable Research ID per patient ──
-      const usedResearchIds = new Set<string>();
-      const genResearchId = () => {
-        let id: string;
-        do {
-          const rand1 = Math.random().toString(36).slice(2, 6).toUpperCase();
-          const rand2 = Math.floor(1000 + Math.random() * 9000);
-          id = `RID-${rand1}-${rand2}`;
-        } while (usedResearchIds.has(id));
-        usedResearchIds.add(id);
-        return id;
+      // ── Anonymization: Research ID is a one-way hash of the patient's real ID ──
+      // Deterministic (same patient → same Research ID every export) but the
+      // original ID cannot be recovered by inspecting the code or the output.
+      const RESEARCH_ID_SALT = "AMH-EHR-RESEARCH-2026";
+      const hashPatientId = (pid: number) => {
+        const input = `${RESEARCH_ID_SALT}:${pid}`;
+        let h1 = 0xdeadbeef ^ input.length;
+        let h2 = 0x41c6ce57 ^ input.length;
+        for (let i = 0; i < input.length; i++) {
+          const ch = input.charCodeAt(i);
+          h1 = Math.imul(h1 ^ ch, 2654435761);
+          h2 = Math.imul(h2 ^ ch, 1597334677);
+        }
+        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+        const combined = (h2 >>> 0) * 0x100000000 + (h1 >>> 0);
+        const part1 = (h1 >>> 0).toString(36).toUpperCase().slice(0, 4).padStart(4, "0");
+        const part2 = (Math.abs(combined) % 9000 + 1000).toString();
+        return `RID-${part1}-${part2}`;
       };
       const researchIdMap = new Map<number, string>();
-      filtered.forEach((p) => researchIdMap.set(p.id, genResearchId()));
+      filtered.forEach((p) => researchIdMap.set(p.id, hashPatientId(p.id)));
 
       const prescriptionsArr = Array.isArray(prescriptionsRaw) ? prescriptionsRaw : (prescriptionsRaw as any)?.prescriptions ?? [];
       const labOrdersArr = Array.isArray(labOrdersRaw) ? labOrdersRaw : (labOrdersRaw as any)?.orders ?? [];
