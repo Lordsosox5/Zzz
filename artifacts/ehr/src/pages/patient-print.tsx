@@ -26,29 +26,29 @@ function fmtDt(d: any) {
 function Row({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
-    <div className="grid grid-cols-[180px_1fr] gap-1 py-1 border-b border-gray-100 text-sm" dir="rtl">
-      <span className="font-semibold text-gray-600">{label}</span>
-      <span className="whitespace-pre-wrap text-gray-900">{value}</span>
+    <div dir="rtl" style={{ display: "grid", gridTemplateColumns: "170px 1fr", gap: "4px", padding: "5px 0", borderBottom: "1px solid #f0f0f0", fontSize: "11pt" }}>
+      <span style={{ fontWeight: 600, color: "#4b5563" }}>{label}</span>
+      <span style={{ color: "#111827", whiteSpace: "pre-wrap" }}>{value}</span>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mb-5 break-inside-avoid-page">
-      <div className="bg-gray-800 text-white text-xs font-bold tracking-widest px-3 py-1.5 mb-2 text-right" dir="rtl">
+    <div style={{ marginBottom: "16px", breakInside: "avoid" }}>
+      <div dir="rtl" style={{ backgroundColor: "#1f2937", color: "#ffffff", fontSize: "10pt", fontWeight: 700, letterSpacing: "0.05em", padding: "5px 10px", marginBottom: "6px", textAlign: "right" }}>
         {title}
       </div>
-      <div className="px-2">{children}</div>
+      <div style={{ paddingInline: "6px" }}>{children}</div>
     </div>
   );
 }
 
 function VitalBox({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="border rounded p-2 text-center min-w-[80px]">
-      <div className="text-[10px] text-gray-500 mb-0.5">{label}</div>
-      <div className="text-sm font-bold text-gray-800">{value || "—"}</div>
+    <div style={{ border: "1px solid #d1d5db", borderRadius: "4px", padding: "6px 8px", textAlign: "center", minWidth: "78px" }}>
+      <div style={{ fontSize: "9pt", color: "#6b7280", marginBottom: "2px" }}>{label}</div>
+      <div style={{ fontSize: "11pt", fontWeight: 700, color: "#1f2937" }}>{value || "—"}</div>
     </div>
   );
 }
@@ -59,14 +59,14 @@ function DataTable({ columns, rows, empty = "لا سجلات" }: {
   empty?: string;
 }) {
   if (!rows.length) {
-    return <p className="text-xs text-gray-400 italic py-2 text-right">{empty}</p>;
+    return <p style={{ fontSize: "10pt", color: "#9ca3af", fontStyle: "italic", padding: "6px 0", textAlign: "right" }}>{empty}</p>;
   }
   return (
-    <table className="w-full text-xs border-collapse" dir="rtl">
+    <table dir="rtl" style={{ width: "100%", fontSize: "9.5pt", borderCollapse: "collapse" }}>
       <thead>
-        <tr className="bg-gray-100">
+        <tr style={{ backgroundColor: "#e5e7eb" }}>
           {columns.map(c => (
-            <th key={c.key} className="text-right font-semibold text-gray-600 px-2 py-1.5 border border-gray-200">
+            <th key={c.key} style={{ textAlign: "right", fontWeight: 600, color: "#374151", padding: "5px 7px", border: "1px solid #d1d5db" }}>
               {c.label}
             </th>
           ))}
@@ -74,9 +74,9 @@ function DataTable({ columns, rows, empty = "لا سجلات" }: {
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+          <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
             {columns.map(c => (
-              <td key={c.key} className="px-2 py-1 border border-gray-200 text-gray-800 whitespace-pre-wrap text-right">
+              <td key={c.key} style={{ padding: "4px 7px", border: "1px solid #d1d5db", color: "#1f2937", whiteSpace: "pre-wrap", textAlign: "right", verticalAlign: "top" }}>
                 {c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}
               </td>
             ))}
@@ -193,43 +193,43 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
   const hasSystems  = a && (a.chestExam || a.cvsExam || a.abdomenExam || a.cnsExam || a.entExam || a.skinExam);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans" dir="rtl" lang="ar">
+    <div dir="rtl" lang="ar" style={{ minHeight: "100vh", backgroundColor: "#ffffff", color: "#111827", fontFamily: "'Tajawal', 'Arial', sans-serif" }}>
 
       {/* ── Print button (hidden when printing) ── */}
-      <div className="print:hidden fixed top-4 left-4 z-50 flex gap-2">
+      <div id="no-print" style={{ position: "fixed", top: "16px", left: "16px", zIndex: 50, display: "flex", gap: "8px" }}>
         <Button onClick={() => window.print()} className="gap-2 shadow-lg">
           <Printer className="h-4 w-4" /> طباعة / حفظ PDF
         </Button>
         <Button variant="outline" onClick={() => window.close()}>إغلاق</Button>
       </div>
 
-      <div className="max-w-[210mm] mx-auto px-8 py-10 print:max-w-none print:w-full print:mx-0 print:px-6 print:py-4">
+      <div style={{ maxWidth: "210mm", margin: "0 auto", padding: "32px 28px 40px" }}>
 
         {/* ── Hospital header ── */}
-        <div className="flex items-start justify-between mb-6 pb-4 border-b-2 border-gray-800">
-          <div className="text-left" dir="ltr">
-            <div className="text-sm font-bold text-gray-700 uppercase tracking-wider">Full Patient Record</div>
-            <div>MRN: <span className="font-mono font-bold text-gray-900">{patient.mrn}</span></div>
-            <div className="text-xs text-gray-500">
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px", paddingBottom: "14px", borderBottom: "2.5px solid #1f2937" }}>
+          <div dir="ltr" style={{ textAlign: "left" }}>
+            <div style={{ fontSize: "9pt", fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Full Patient Record</div>
+            <div style={{ fontSize: "10pt", marginTop: "3px" }}>MRN: <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#111827" }}>{patient.mrn}</span></div>
+            <div style={{ fontSize: "9pt", color: "#6b7280", marginTop: "2px" }}>
               التاريخ: {new Date().toLocaleDateString("ar-SA", { day: "2-digit", month: "short", year: "numeric" })}
             </div>
-            {patient.admissionDate && <div className="text-xs text-gray-500">تاريخ الدخول: {fmt(patient.admissionDate)}</div>}
-            {patient.dischargeDate && <div className="text-xs text-gray-500">تاريخ الخروج: {fmt(patient.dischargeDate)}</div>}
+            {patient.admissionDate && <div style={{ fontSize: "9pt", color: "#6b7280" }}>تاريخ الدخول: {fmt(patient.admissionDate)}</div>}
+            {patient.dischargeDate && <div style={{ fontSize: "9pt", color: "#6b7280" }}>تاريخ الخروج: {fmt(patient.dischargeDate)}</div>}
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-extrabold text-gray-900 tracking-tight">
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "22pt", fontWeight: 800, color: "#111827", lineHeight: 1.2 }}>
               مستشفى المزيني للأطفال
             </div>
-            <div className="text-lg font-bold text-gray-700">
+            <div style={{ fontSize: "13pt", fontWeight: 700, color: "#374151", marginTop: "2px" }}>
               Almuzini Children Hospital
             </div>
-            <div className="text-xs text-gray-500 mt-1">نظام السجلات الطبية الإلكترونية للأطفال · سري وسجل طبي</div>
+            <div style={{ fontSize: "8.5pt", color: "#6b7280", marginTop: "3px" }}>نظام السجلات الطبية الإلكترونية للأطفال · سري وسجل طبي</div>
           </div>
         </div>
 
         {/* ══ القسم 1: البيانات الديموغرافية ══ */}
         <Section title="البيانات الديموغرافية للمريض">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-0">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0 24px" }}>
             <Row label="الاسم الكامل (إنجليزي)"  value={patient.nameEn} />
             <Row label="الاسم الكامل (عربي)"      value={patient.nameAr} />
             <Row label="تاريخ الميلاد"             value={`${fmt(patient.dateOfBirth)} (${age(patient.dateOfBirth)})`} />
@@ -257,20 +257,20 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
           <>
             {a.mainComplaint && (
               <Section title="الشكوى الرئيسية">
-                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap text-right">{a.mainComplaint}</p>
+                <p style={{ fontSize: "11pt", color: "#111827", padding: "4px 0", whiteSpace: "pre-wrap", textAlign: "right" }}>{a.mainComplaint}</p>
               </Section>
             )}
 
             {hasSocrates && (
               <Section title="تحليل الشكوى — SOCRATES">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
                   <Row label="S — الموقع"              value={a.analysisSite} />
                   <Row label="O — البداية"             value={a.analysisOnset} />
                   <Row label="C — الطابع"              value={a.analysisCharacter} />
                   <Row label="R — الانتشار"            value={a.analysisRadiation} />
                   <Row label="A — المحرِّضات"          value={a.analysisAggravation} />
                   <Row label="R — المُسكِّنات"         value={a.analysisRelieving} />
-                  <div className="col-span-full">
+                  <div style={{ gridColumn: "1 / -1" }}>
                     <Row label="E — الأعراض المصاحبة"  value={a.analysisAssociations} />
                   </div>
                 </div>
@@ -279,7 +279,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
             {a.systemicReview && (
               <Section title="مراجعة الأجهزة">
-                <pre className="text-[11px] text-gray-800 whitespace-pre-wrap font-sans leading-relaxed py-1 text-right">{a.systemicReview}</pre>
+                <pre style={{ fontSize: "10pt", color: "#1f2937", whiteSpace: "pre-wrap", fontFamily: "'Tajawal','Arial',sans-serif", lineHeight: 1.6, padding: "4px 0", textAlign: "right" }}>{a.systemicReview}</pre>
               </Section>
             )}
 
@@ -302,7 +302,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
             {hasVitals && (
               <Section title="العلامات الحيوية عند الدخول">
-                <div className="flex flex-wrap gap-2 py-1 justify-end">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", padding: "4px 0", justifyContent: "flex-end" }}>
                   <VitalBox label="الحرارة (°م)"       value={a.vitalTemp} />
                   <VitalBox label="ض. الدم (ملم)"      value={a.vitalBp} />
                   <VitalBox label="النبض (ن/د)"         value={a.vitalPr} />
@@ -316,7 +316,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
             {a.examinationSummary && (
               <Section title="الفحص العام">
-                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap text-right">{a.examinationSummary}</p>
+                <p style={{ fontSize: "11pt", color: "#111827", padding: "4px 0", whiteSpace: "pre-wrap", textAlign: "right" }}>{a.examinationSummary}</p>
               </Section>
             )}
 
@@ -333,13 +333,13 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
             {a.investigationsOrdered && (
               <Section title="الفحوصات المطلوبة (عند الدخول)">
-                <pre className="text-[11px] font-mono text-gray-800 whitespace-pre-wrap py-1 leading-relaxed text-right">{a.investigationsOrdered}</pre>
+                <pre style={{ fontSize: "10pt", color: "#1f2937", whiteSpace: "pre-wrap", fontFamily: "'Tajawal','Arial',sans-serif", lineHeight: 1.6, padding: "4px 0", textAlign: "right" }}>{a.investigationsOrdered}</pre>
               </Section>
             )}
 
             {a.managementPlan && (
               <Section title="خطة العلاج">
-                <pre className="text-[11px] font-mono text-gray-800 whitespace-pre-wrap py-1 leading-relaxed text-right">{a.managementPlan}</pre>
+                <pre style={{ fontSize: "10pt", color: "#1f2937", whiteSpace: "pre-wrap", fontFamily: "'Tajawal','Arial',sans-serif", lineHeight: 1.6, padding: "4px 0", textAlign: "right" }}>{a.managementPlan}</pre>
               </Section>
             )}
 
@@ -352,7 +352,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
             {a.dischargeLetter && (
               <Section title="ملخص الخروج / خطاب الإحالة">
-                <p className="text-sm text-gray-900 py-1 whitespace-pre-wrap text-right">{a.dischargeLetter}</p>
+                <p style={{ fontSize: "11pt", color: "#111827", padding: "4px 0", whiteSpace: "pre-wrap", textAlign: "right" }}>{a.dischargeLetter}</p>
               </Section>
             )}
           </>
@@ -434,30 +434,30 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         {/* ══ القسم 7: الملاحظات السريرية ══ */}
         <Section title={`الملاحظات السريرية (${(clinicalNotes as any[]).length})`}>
           {(clinicalNotes as any[]).length === 0 ? (
-            <p className="text-xs text-gray-400 italic py-2 text-right">لا ملاحظات سريرية مسجلة</p>
+            <p style={{ fontSize: "10pt", color: "#9ca3af", fontStyle: "italic", padding: "6px 0", textAlign: "right" }}>لا ملاحظات سريرية مسجلة</p>
           ) : (
             (clinicalNotes as any[]).map((note: any, i: number) => (
-              <div key={i} className="mb-3 pb-3 border-b border-gray-100 last:border-0">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-[10px] text-gray-400">{fmtDt(note.createdAt)}</div>
-                  <div className="text-xs font-semibold text-gray-700">
+              <div key={i} style={{ marginBottom: "10px", paddingBottom: "10px", borderBottom: i < (clinicalNotes as any[]).length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <div style={{ fontSize: "9pt", color: "#9ca3af" }}>{fmtDt(note.createdAt)}</div>
+                  <div style={{ fontSize: "10pt", fontWeight: 600, color: "#374151" }}>
                     {note.type ?? note.noteType ?? "ملاحظة"}{note.authorName ? ` — ${note.authorName}` : ""}
                   </div>
                 </div>
                 {note.subjective && (
-                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">ذاتي (S): </span><span className="text-gray-800">{note.subjective}</span></div>
+                  <div style={{ fontSize: "10pt", marginBottom: "2px", textAlign: "right" }}><span style={{ fontWeight: 600, color: "#4b5563" }}>ذاتي (S): </span><span style={{ color: "#1f2937" }}>{note.subjective}</span></div>
                 )}
                 {note.objective && (
-                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">موضوعي (O): </span><span className="text-gray-800">{note.objective}</span></div>
+                  <div style={{ fontSize: "10pt", marginBottom: "2px", textAlign: "right" }}><span style={{ fontWeight: 600, color: "#4b5563" }}>موضوعي (O): </span><span style={{ color: "#1f2937" }}>{note.objective}</span></div>
                 )}
                 {note.assessment && (
-                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">التقييم (A): </span><span className="text-gray-800">{note.assessment}</span></div>
+                  <div style={{ fontSize: "10pt", marginBottom: "2px", textAlign: "right" }}><span style={{ fontWeight: 600, color: "#4b5563" }}>التقييم (A): </span><span style={{ color: "#1f2937" }}>{note.assessment}</span></div>
                 )}
                 {note.plan && (
-                  <div className="text-xs mb-0.5 text-right"><span className="font-semibold text-gray-600">الخطة (P): </span><span className="text-gray-800">{note.plan}</span></div>
+                  <div style={{ fontSize: "10pt", marginBottom: "2px", textAlign: "right" }}><span style={{ fontWeight: 600, color: "#4b5563" }}>الخطة (P): </span><span style={{ color: "#1f2937" }}>{note.plan}</span></div>
                 )}
                 {note.content && (
-                  <div className="text-xs text-gray-800 whitespace-pre-wrap text-right">{note.content}</div>
+                  <div style={{ fontSize: "10pt", color: "#1f2937", whiteSpace: "pre-wrap", textAlign: "right" }}>{note.content}</div>
                 )}
               </div>
             ))
@@ -503,10 +503,10 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         {(dischargeSummaries as any[]).length > 0 && (
           <Section title={`ملخصات الخروج (${(dischargeSummaries as any[]).length})`}>
             {(dischargeSummaries as any[]).map((ds: any, i: number) => (
-              <div key={i} className="mb-4 pb-4 border-b border-gray-100 last:border-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-gray-400">{fmtDt(ds.createdAt)}</span>
-                  <span className="text-xs font-bold text-gray-700">ملخص الخروج #{i + 1}</span>
+              <div key={i} style={{ marginBottom: "14px", paddingBottom: "14px", borderBottom: i < (dischargeSummaries as any[]).length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ fontSize: "9pt", color: "#9ca3af" }}>{fmtDt(ds.createdAt)}</span>
+                  <span style={{ fontSize: "10pt", fontWeight: 700, color: "#374151" }}>ملخص الخروج #{i + 1}</span>
                 </div>
                 {ds.finalDiagnosis       && <Row label="التشخيص النهائي"       value={ds.finalDiagnosis} />}
                 {ds.conditionOnDischarge && <Row label="الحالة عند الخروج"     value={ds.conditionOnDischarge} />}
@@ -520,18 +520,18 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         )}
 
         {/* ── كتلة التوقيع ── */}
-        <div className="mt-10 pt-6 border-t border-gray-300 grid grid-cols-3 gap-8 text-xs text-gray-600">
+        <div style={{ marginTop: "40px", paddingTop: "20px", borderTop: "1px solid #d1d5db", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "32px", fontSize: "10pt", color: "#4b5563" }}>
           {["الطبيب المعالج", "الممرض/ة المناوب/ة", "المشرف / الاستشاري"].map(role => (
-            <div key={role} className="text-center">
-              <div className="border-b border-gray-400 mb-6" />
-              <div className="font-medium">{role}</div>
-              <div className="text-gray-400 mt-0.5">الاسم / التوقيع / التاريخ</div>
+            <div key={role} style={{ textAlign: "center" }}>
+              <div style={{ borderBottom: "1px solid #9ca3af", marginBottom: "24px" }} />
+              <div style={{ fontWeight: 600 }}>{role}</div>
+              <div style={{ color: "#9ca3af", marginTop: "3px", fontSize: "9pt" }}>الاسم / التوقيع / التاريخ</div>
             </div>
           ))}
         </div>
 
         {/* ── تذييل الصفحة ── */}
-        <div className="mt-6 text-center text-[9px] text-gray-400 border-t pt-2">
+        <div style={{ marginTop: "20px", textAlign: "center", fontSize: "8pt", color: "#9ca3af", borderTop: "1px solid #e5e7eb", paddingTop: "8px" }}>
           مستشفى المزيني للأطفال · نظام السجلات الطبية الإلكترونية · صدر بتاريخ {new Date().toLocaleString("ar-SA")} · سري — للكوادر الطبية المخوّلة فقط
         </div>
 
@@ -539,20 +539,64 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
       {/* ── Print-only global styles ── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap');
-        @media print {
-          @page { size: A4 portrait; margin: 10mm 12mm; }
-          body  { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; font-size: 10pt; font-family: 'Tajawal', sans-serif; }
-          .bg-gray-800 { background-color: #1f2937 !important; color: white !important; }
-          .bg-gray-100 { background-color: #f3f4f6 !important; }
-          .bg-gray-50  { background-color: #f9fafb !important; }
-          .bg-white    { background-color: #ffffff !important; }
-          .print\\:hidden { display: none !important; }
-          table { page-break-inside: auto; }
-          tr    { page-break-inside: avoid; page-break-after: auto; }
-          .break-inside-avoid-page { break-inside: avoid; }
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap');
+
+        html, body {
+          font-family: 'Tajawal', 'Arial', sans-serif;
+          background: #ffffff;
         }
-        body { font-family: 'Tajawal', sans-serif; }
+
+        #no-print { display: flex; }
+
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm 14mm;
+          }
+
+          html, body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            font-family: 'Tajawal', 'Arial', sans-serif !important;
+            font-size: 10pt !important;
+            color: #111827 !important;
+          }
+
+          /* hide the print button */
+          #no-print { display: none !important; }
+
+          /* ensure all backgrounds are forced */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* page break control */
+          table { page-break-inside: auto; border-collapse: collapse; }
+          tr    { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+
+          /* avoid breaking section titles from their content */
+          div[style*="breakInside: avoid"],
+          div[style*="break-inside: avoid"] {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          /* make sure the outer wrapper fills the page */
+          div[style*="maxWidth: 210mm"],
+          div[style*="max-width: 210mm"] {
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
       `}</style>
     </div>
   );
