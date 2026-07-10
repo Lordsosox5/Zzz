@@ -569,6 +569,7 @@ export default function Appointments() {
           <CardTitle className="text-lg">{t("appt.schedule")}</CardTitle>
           <input
             type="date"
+            dir="ltr"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="border rounded px-2 py-1 bg-transparent"

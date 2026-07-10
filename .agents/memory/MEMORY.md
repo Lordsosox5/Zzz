@@ -4,3 +4,4 @@
 - [Units feature implementation](units-feature.md) — Units page, in-memory API route, new roles (house_officer, medical_officer), unit selector in new-patient form; all wired end-to-end.
 - [Arabic PDF export](arabic-pdf.md) — Tajawal TTF converted from WOFF via custom Node script; full Arabic shaping (isolated/final/initial/medial) + BiDi reversal in report-pdf.ts; PDF generators are async.
 - [Patient export anonymization](patient-export-anonymization.md) — Excel bulk export uses random Research IDs, hides names/admission date, single-sheet output.
+- [RTL native date inputs](rtl-native-date-inputs.md) — set dir="ltr" attribute (not CSS direction) on date/time inputs or Chromium mirrors Arabic segment glyphs.
