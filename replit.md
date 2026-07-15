@@ -50,7 +50,7 @@ Then click **Run**. The app will start automatically.
 - **Database: Supabase via REST API** — all backend routes use `@supabase/supabase-js` client with `SUPABASE_URL` + `SUPABASE_ANON_KEY`. Direct PostgreSQL connections are not used. Data returned in snake_case is converted to camelCase via `mapRow()`/`mapRows()`. Inserts/updates are converted from camelCase to snake_case via `toSnake()`.
 - **Token auth (not cookie auth)**: token stored in localStorage, injected via `setAuthTokenGetter` in `lib/api-client-react/src/custom-fetch.ts`. Auth is decoded server-side from base64 (MVP; upgrade to JWT for production).
 - **Password storage in plaintext** (MVP only — seed users have simple passwords for demo). Upgrade to bcrypt for production.
-- **In-memory MRN/invoice counters**: counters reset on server restart. Acceptable for demo; use a DB sequence for production.
+- **DB-derived MRN/invoice counters**: both `generateMRN()` and `generateInvoiceNumber()` query the live DB for the current maximum on every creation — no in-memory counter, no startup init needed, fully restart-proof.
 - **Bilingual RTL/LTR**: language toggle updates `dir` and `lang` on `<html>` element; all UI strings in `i18n.tsx` translation object.
 - **Role-based access**: roles stored in `users.role` column (super_admin, pediatric_consultant, pediatric_specialist, nurse, emergency_physician, pharmacist, lab_technician, billing_officer).
 

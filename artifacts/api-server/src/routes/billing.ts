@@ -10,21 +10,16 @@ import {
 
 const router = Router();
 
-let invoiceCounter = 100;
-
-export async function initInvoiceCounter(): Promise<void> {
-  try {
-    const { data } = await supabase.from("invoices").select("invoice_number").order("id", { ascending: false }).limit(1);
-    const raw = data?.[0]?.invoice_number;
-    if (raw) {
-      const num = parseInt(String(raw).replace(/\D/g, "").slice(-5), 10);
-      if (!isNaN(num) && num > invoiceCounter) invoiceCounter = num;
-    }
-  } catch { }
-}
-
-function generateInvoiceNumber(): string {
-  return `INV-${new Date().getFullYear()}-${String(++invoiceCounter).padStart(5, "0")}`;
+async function generateInvoiceNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const { data } = await supabase.from("invoices").select("invoice_number");
+  let max = 100;
+  for (const row of data ?? []) {
+    const raw = String(row.invoice_number ?? "");
+    const num = parseInt(raw.replace(/\D/g, "").slice(-5), 10);
+    if (!isNaN(num) && num > max) max = num;
+  }
+  return `INV-${year}-${String(max + 1).padStart(5, "0")}`;
 }
 
 function normalizeItem(item: Record<string, unknown>) {
@@ -76,7 +71,7 @@ router.post("/invoices", async (req, res): Promise<void> => {
   try {
     const items = parsed.data.items ?? [];
     const totalAmount = items.reduce((sum: number, item: { total: number }) => sum + item.total, 0).toFixed(2);
-    const invoiceNumber = generateInvoiceNumber();
+    const invoiceNumber = await generateInvoiceNumber();
     const { data: patientRow } = await supabase.from("patients").select("name_en").eq("id", parsed.data.patientId).single();
     const patientName: string | null = patientRow?.name_en ?? null;
     const insertData = { ...toSnake(parsed.data as Record<string, unknown>), invoice_number: invoiceNumber, total_amount: totalAmount };

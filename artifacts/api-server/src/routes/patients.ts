@@ -24,20 +24,14 @@ function mapPatient(raw: Record<string, unknown>) {
   return mapRow<Record<string, unknown>>(raw);
 }
 
-let mrnCounter = 1000;
-function generateMRN(): string {
-  return `AMH-${String(++mrnCounter).padStart(5, "0")}`;
-}
-
-export async function initMrnCounter(): Promise<void> {
-  try {
-    const { data } = await supabase.from("patients").select("mrn").order("id", { ascending: false }).limit(1);
-    const mrn = data?.[0]?.mrn;
-    if (mrn) {
-      const num = parseInt(String(mrn).replace(/\D/g, ""), 10);
-      if (!isNaN(num) && num > mrnCounter) mrnCounter = num;
-    }
-  } catch { }
+async function generateMRN(): Promise<string> {
+  const { data } = await supabase.from("patients").select("mrn");
+  let max = 1000;
+  for (const row of data ?? []) {
+    const num = parseInt(String(row.mrn ?? "").replace(/\D/g, ""), 10);
+    if (!isNaN(num) && num > max) max = num;
+  }
+  return `AMH-${String(max + 1).padStart(5, "0")}`;
 }
 
 async function getCallerInfo(authHeader: string | undefined): Promise<{ id: number; role: string; unitId: number | null } | null> {
@@ -102,7 +96,7 @@ router.post("/patients", async (req, res): Promise<void> => {
   const parsed = CreatePatientBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const mrn = generateMRN();
+    const mrn = await generateMRN();
     const base = toSnake(parsed.data as Record<string, unknown>);
     delete base.place; // handled separately below
     const insertData = { ...base, mrn, unit_id: unitId ?? null, place };
