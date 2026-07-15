@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useListUnits, useCreateUnit, useUpdateUnit, getListUnitsQueryKey, useListStaff, useListPatients } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
@@ -146,6 +147,7 @@ function UnitDetailDialog({
   onClose: () => void;
   t: (key: string) => string;
 }) {
+  const [, navigate] = useLocation();
   const { data: allStaff = [], isLoading: staffLoading } = useListStaff();
   const { data: patientResp, isLoading: patientsLoading } = useListPatients({ limit: 500 });
 
@@ -276,7 +278,11 @@ function UnitDetailDialog({
             ) : (
               <div className="space-y-2">
                 {patients.map(pat => (
-                  <div key={(pat as any).id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
+                  <div
+                    key={(pat as any).id}
+                    className="flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-card hover:bg-primary/5 hover:border-primary/40 transition-colors cursor-pointer"
+                    onClick={() => { onClose(); navigate(`/patients/${(pat as any).id}`); }}
+                  >
                     <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
                       <UserRound className="h-4 w-4 text-emerald-600" />
                     </div>
