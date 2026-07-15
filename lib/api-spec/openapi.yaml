@@ -1282,6 +1282,10 @@ components:
       properties:
         nameEn: { type: string }
         nameAr: { type: string }
+        dateOfBirth: { type: string }
+        gender: { type: string }
+        nationality: { type: string }
+        nationalId: { type: string }
         phone: { type: string }
         address: { type: string }
         residence: { type: string }

@@ -442,6 +442,8 @@ function EditPatientDialog({
   const [form, setForm] = useState({
     nameEn: patient.nameEn ?? "",
     nameAr: patient.nameAr ?? "",
+    dateOfBirth: patient.dateOfBirth ? patient.dateOfBirth.slice(0, 10) : "",
+    gender: (patient as any).gender ?? "male",
     bloodGroup: patient.bloodGroup ?? "",
     motherBloodGroup: (patient as any).motherBloodGroup ?? "",
     nationality: (patient as any).nationality ?? "",
@@ -469,22 +471,24 @@ function EditPatientDialog({
     const data: any = {};
     if (form.nameEn)            data.nameEn            = form.nameEn;
     if (form.nameAr)            data.nameAr            = form.nameAr;
+    if (form.dateOfBirth)       data.dateOfBirth       = new Date(form.dateOfBirth).toISOString();
+    if (form.gender)            data.gender            = form.gender;
     if (form.bloodGroup)        data.bloodGroup        = form.bloodGroup;
     if (form.motherBloodGroup)  data.motherBloodGroup  = form.motherBloodGroup;
     if (form.nationality)       data.nationality       = form.nationality;
     if (form.nationalId)        data.nationalId        = form.nationalId;
     if (form.phone)             data.phone             = form.phone;
-    if (form.address)        data.address        = form.address;
-    if (form.residence)      data.residence      = form.residence;
-    if (form.guardianName)   data.guardianName   = form.guardianName;
-    if (form.guardianRelation) data.guardianRelation = form.guardianRelation;
-    if (form.guardianPhone)  data.guardianPhone  = form.guardianPhone;
-    if (form.allergies)      data.allergies      = form.allergies;
-    if (form.weight)         data.weight         = form.weight;
-    if (form.height)         data.height         = form.height;
-    if (form.admissionDate)  data.admissionDate  = new Date(form.admissionDate).toISOString();
-    if (form.dischargeDate)  data.dischargeDate  = new Date(form.dischargeDate).toISOString();
-    if (form.status)         data.status         = form.status;
+    if (form.address)           data.address           = form.address;
+    if (form.residence)         data.residence         = form.residence;
+    if (form.guardianName)      data.guardianName      = form.guardianName;
+    if (form.guardianRelation)  data.guardianRelation  = form.guardianRelation;
+    if (form.guardianPhone)     data.guardianPhone     = form.guardianPhone;
+    if (form.allergies)         data.allergies         = form.allergies;
+    if (form.weight)            data.weight            = form.weight;
+    if (form.height)            data.height            = form.height;
+    if (form.admissionDate)     data.admissionDate     = new Date(form.admissionDate).toISOString();
+    if (form.dischargeDate)     data.dischargeDate     = new Date(form.dischargeDate).toISOString();
+    if (form.status)            data.status            = form.status;
     data.place = form.place || null;
 
     updatePatient.mutate(
@@ -529,6 +533,28 @@ function EditPatientDialog({
                 <Input value={form.nameAr} onChange={set("nameAr")} placeholder="الاسم بالعربي" dir="rtl" />
               </div>
               <div className="space-y-1.5">
+                <Label>{t("patient.dateOfBirth")}</Label>
+                <Input type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.genderLabel")}</Label>
+                <Select value={form.gender} onValueChange={v => setForm(p => ({ ...p, gender: v }))}>
+                  <SelectTrigger><SelectValue placeholder={t("patient.selectGender")} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">{t("patient.male")}</SelectItem>
+                    <SelectItem value="female">{t("patient.female")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.nationality")}</Label>
+                <Input value={form.nationality} onChange={set("nationality")} placeholder="e.g. Saudi" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("patient.nationalId")}</Label>
+                <Input value={form.nationalId} onChange={set("nationalId")} placeholder="National / Iqama ID" />
+              </div>
+              <div className="space-y-1.5">
                 <Label>{t("patient.bloodGroup")}</Label>
                 <Select value={form.bloodGroup} onValueChange={v => setForm(p => ({ ...p, bloodGroup: v }))}>
                   <SelectTrigger><SelectValue placeholder={t("patient.selectBloodGroup")} /></SelectTrigger>
@@ -549,14 +575,6 @@ function EditPatientDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("patient.nationality")}</Label>
-                <Input value={form.nationality} onChange={set("nationality")} placeholder="e.g. Saudi" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("patient.nationalId")}</Label>
-                <Input value={form.nationalId} onChange={set("nationalId")} placeholder="National / Iqama ID" />
               </div>
               <div className="space-y-1.5">
                 <Label>{t("patient.patientStatus")}</Label>

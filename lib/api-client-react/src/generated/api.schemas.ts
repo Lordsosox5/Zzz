@@ -110,6 +110,10 @@ export interface PatientInput {
 export interface PatientUpdate {
   nameEn?: string;
   nameAr?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  nationality?: string;
+  nationalId?: string;
   phone?: string;
   address?: string;
   residence?: string;

@@ -268,6 +268,10 @@ export const UpdatePatientParams = zod.object({
 export const UpdatePatientBody = zod.object({
   "nameEn": zod.string().optional(),
   "nameAr": zod.string().optional(),
+  "dateOfBirth": zod.string().optional(),
+  "gender": zod.string().optional(),
+  "nationality": zod.string().optional(),
+  "nationalId": zod.string().optional(),
   "phone": zod.string().optional(),
   "address": zod.string().optional(),
   "residence": zod.string().optional(),
