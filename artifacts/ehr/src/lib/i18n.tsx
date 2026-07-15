@@ -714,6 +714,13 @@ const translations: Translations = {
   "admit.sectionOptional": { en: "All fields in this section are optional and can be filled later.", ar: "جميع حقول هذا القسم اختيارية ويمكن تعبئتها لاحقاً." },
   "admit.registerAndSave": { en: "Register Patient & Save", ar: "تسجيل المريض وحفظ" },
 
+  "dup.warningTitle":   { en: "Possible Duplicate Patient Detected", ar: "تحذير: مريض مشابه موجود مسبقاً" },
+  "dup.warningDesc":    { en: "A patient with a similar name and the same date of birth already exists in the system. Please review the record below before proceeding.", ar: "يوجد مريض بنفس الاسم وتاريخ الميلاد في النظام. يُرجى مراجعة السجل أدناه قبل المتابعة." },
+  "dup.viewRecord":     { en: "View Record", ar: "عرض السجل" },
+  "dup.continueHint":   { en: "If this is a different patient, you may still continue.", ar: "إذا كان مريضاً مختلفاً يمكنك المتابعة." },
+  "dup.continueAnyway": { en: "Continue Anyway", ar: "المتابعة على أي حال" },
+  "dup.checking":       { en: "Checking…", ar: "جارٍ التحقق…" },
+
   // History fields
   "admit.mainComplaint": { en: "Main Complaint", ar: "الشكوى الرئيسية" },
   "admit.analysisTitle": { en: "Analysis of Main Complaint", ar: "تحليل الشكوى الرئيسية" },

@@ -30,6 +30,8 @@ import type {
   AppointmentUpdate,
   AuthResponse,
   BedOccupancy,
+  CheckPatientDuplicate200,
+  CheckPatientDuplicateParams,
   ClinicalNote,
   ClinicalNoteInput,
   ClinicalNoteUpdate,
@@ -850,6 +852,90 @@ export const useCreatePatient = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreatePatientMutationOptions(options));
     }
+
+export const getCheckPatientDuplicateUrl = (params: CheckPatientDuplicateParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/patients/check-duplicate?${stringifiedParams}` : `/api/patients/check-duplicate`
+}
+
+/**
+ * @summary Check for duplicate patients by name and date of birth
+ */
+export const checkPatientDuplicate = async (params: CheckPatientDuplicateParams, options?: RequestInit): Promise<CheckPatientDuplicate200> => {
+
+  return customFetch<CheckPatientDuplicate200>(getCheckPatientDuplicateUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckPatientDuplicateQueryKey = (params?: CheckPatientDuplicateParams,) => {
+    return [
+    `/api/patients/check-duplicate`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCheckPatientDuplicateQueryOptions = <TData = Awaited<ReturnType<typeof checkPatientDuplicate>>, TError = ErrorType<unknown>>(params: CheckPatientDuplicateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkPatientDuplicate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCheckPatientDuplicateQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof checkPatientDuplicate>>> = ({ signal }) => checkPatientDuplicate(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof checkPatientDuplicate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CheckPatientDuplicateQueryResult = NonNullable<Awaited<ReturnType<typeof checkPatientDuplicate>>>
+export type CheckPatientDuplicateQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Check for duplicate patients by name and date of birth
+ */
+
+export function useCheckPatientDuplicate<TData = Awaited<ReturnType<typeof checkPatientDuplicate>>, TError = ErrorType<unknown>>(
+ params: CheckPatientDuplicateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkPatientDuplicate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCheckPatientDuplicateQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetPatientUrl = (id: number,) => {
 

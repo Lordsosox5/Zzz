@@ -860,6 +860,15 @@ page?: number;
 limit?: number;
 };
 
+export type CheckPatientDuplicateParams = {
+nameEn: string;
+dateOfBirth: string;
+};
+
+export type CheckPatientDuplicate200 = {
+  duplicates: Patient[];
+};
+
 export type ListAppointmentsParams = {
 date?: string;
 doctorId?: number;

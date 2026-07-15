@@ -108,6 +108,25 @@ router.post("/patients", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/patients/check-duplicate", async (req, res): Promise<void> => {
+  const nameEn     = typeof req.query.nameEn     === "string" ? req.query.nameEn.trim()     : "";
+  const dateOfBirth = typeof req.query.dateOfBirth === "string" ? req.query.dateOfBirth.trim() : "";
+  if (!nameEn || !dateOfBirth) { res.json({ duplicates: [] }); return; }
+  try {
+    const dobDate = dateOfBirth.slice(0, 10);
+    const { data, error } = await supabase
+      .from("patients")
+      .select("*")
+      .ilike("name_en", `%${nameEn}%`)
+      .gte("date_of_birth", `${dobDate}T00:00:00.000Z`)
+      .lte("date_of_birth", `${dobDate}T23:59:59.999Z`);
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json({ duplicates: (data ?? []).map(mapPatient) });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 router.get("/patients/:id", async (req, res): Promise<void> => {
   const params = GetPatientParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }

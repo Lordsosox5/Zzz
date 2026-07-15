@@ -16,6 +16,8 @@ export * from './appointmentInput';
 export * from './appointmentUpdate';
 export * from './authResponse';
 export * from './bedOccupancy';
+export * from './checkPatientDuplicate200';
+export * from './checkPatientDuplicateParams';
 export * from './clinicalNote';
 export * from './clinicalNoteInput';
 export * from './clinicalNoteUpdate';

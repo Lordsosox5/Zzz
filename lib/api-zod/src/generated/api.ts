@@ -223,6 +223,45 @@ export const CreatePatientBody = zod.object({
 
 
 /**
+ * @summary Check for duplicate patients by name and date of birth
+ */
+export const CheckPatientDuplicateQueryParams = zod.object({
+  "nameEn": zod.coerce.string(),
+  "dateOfBirth": zod.coerce.string()
+})
+
+export const CheckPatientDuplicateResponse = zod.object({
+  "duplicates": zod.array(zod.object({
+  "id": zod.number(),
+  "mrn": zod.string(),
+  "nameEn": zod.string(),
+  "nameAr": zod.string().nullish(),
+  "dateOfBirth": zod.string(),
+  "gender": zod.string(),
+  "bloodGroup": zod.string().nullish(),
+  "motherBloodGroup": zod.string().nullish(),
+  "nationality": zod.string().nullish(),
+  "nationalId": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "residence": zod.string().nullish(),
+  "weight": zod.string().nullish(),
+  "height": zod.string().nullish(),
+  "admissionDate": zod.string().nullish(),
+  "dischargeDate": zod.string().nullish(),
+  "guardianName": zod.string().nullish(),
+  "guardianRelation": zod.string().nullish(),
+  "guardianPhone": zod.string().nullish(),
+  "allergies": zod.string().nullish(),
+  "unitId": zod.number().nullish(),
+  "place": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
  * @summary Get patient
  */
 export const GetPatientParams = zod.object({

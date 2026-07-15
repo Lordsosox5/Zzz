@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useCreatePatient, useCreateAdmissionAssessment, useListUnits, getListPatientsQueryKey } from "@workspace/api-client-react";
+import { useCreatePatient, useCreateAdmissionAssessment, useListUnits, getListPatientsQueryKey, checkPatientDuplicate } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, ArrowRight, Save, Loader2,
   User, ClipboardList, Stethoscope, FlaskConical, CalendarClock, Check,
-  CheckCircle2, XCircle, Circle,
+  CheckCircle2, XCircle, Circle, AlertTriangle, UserSearch, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -208,6 +208,11 @@ export default function NewPatient() {
   const [step, setStep]     = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // ── Duplicate detection ──
+  const [duplicates, setDuplicates]         = useState<any[]>([]);
+  const [dupChecking, setDupChecking]       = useState(false);
+  const [dupDismissed, setDupDismissed]     = useState(false);
+
   // ── Demographics (Step 1) ──
   const [demo, setDemo] = useState({
     nameEn: "", nameAr: "", dateOfBirth: "", gender: "male",
@@ -297,8 +302,30 @@ export default function NewPatient() {
     return Object.keys(e).length === 0;
   };
 
-  const handleNext = () => {
-    if (step === 0 && !validateStep0()) return;
+  const handleNext = async () => {
+    if (step === 0) {
+      if (!validateStep0()) return;
+      // If already dismissed the warning, proceed directly
+      if (!dupDismissed && demo.nameEn && demo.dateOfBirth) {
+        setDupChecking(true);
+        try {
+          const result = await checkPatientDuplicate({ nameEn: demo.nameEn, dateOfBirth: demo.dateOfBirth });
+          const found = result?.duplicates ?? [];
+          setDuplicates(found);
+          if (found.length > 0) {
+            setDupChecking(false);
+            // Stay on step 0, show the warning — user must explicitly dismiss
+            return;
+          }
+        } catch {
+          // If check fails, proceed anyway
+        } finally {
+          setDupChecking(false);
+        }
+      }
+    }
+    setDuplicates([]);
+    setDupDismissed(false);
     setStep(s => Math.min(s + 1, STEPS.length - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -767,6 +794,67 @@ export default function NewPatient() {
         </CardContent>
       </Card>
 
+      {/* ── Duplicate warning panel ── */}
+      {step === 0 && duplicates.length > 0 && (
+        <Card className="border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 shadow-lg">
+          <CardContent className="pt-5 pb-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <UserSearch className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900 dark:text-amber-200">{t("dup.warningTitle")}</p>
+                <p className="text-sm text-amber-800 dark:text-amber-300 mt-0.5">{t("dup.warningDesc")}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {duplicates.map((dup: any) => {
+                const dob = dup.dateOfBirth ? new Date(dup.dateOfBirth).toLocaleDateString() : "—";
+                return (
+                  <div key={dup.id} className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-950/40 px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm truncate">{dup.nameEn}</span>
+                        {dup.nameAr && <span className="text-sm text-muted-foreground font-tajawal" dir="rtl">{dup.nameAr}</span>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                        <span className="font-mono">{dup.mrn}</span>
+                        <span>·</span>
+                        <span>{t("patient.dob")}: {dob}</span>
+                        {dup.gender && <><span>·</span><span className="capitalize">{dup.gender}</span></>}
+                      </div>
+                    </div>
+                    <Link href={`/patients/${dup.id}`}>
+                      <Button size="sm" variant="outline" className="gap-1.5 shrink-0 text-xs border-amber-300 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        {t("dup.viewRecord")}
+                      </Button>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {t("dup.continueHint")}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600 text-white shrink-0"
+                onClick={() => { setDupDismissed(true); setDuplicates([]); handleNext(); }}
+              >
+                <Check className="h-3.5 w-3.5" />
+                {t("dup.continueAnyway")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Navigation bar ── */}
       <div className="flex items-center justify-between gap-4 sticky bottom-4 bg-background/90 backdrop-blur border rounded-xl px-6 py-3 shadow-md">
         <Button type="button" variant="outline"
@@ -789,9 +877,10 @@ export default function NewPatient() {
 
         <div className="flex items-center gap-2">
           {!isLastStep ? (
-            <Button type="button" onClick={handleNext}>
-              {t("generic.next") || "Next"}
-              <ArrowRight className="h-4 w-4 ml-2" />
+            <Button type="button" onClick={handleNext} disabled={dupChecking}>
+              {dupChecking
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("dup.checking")}</>
+                : <>{t("generic.next") || "Next"}<ArrowRight className="h-4 w-4 ml-2" /></>}
             </Button>
           ) : (
             <Button type="button" onClick={handleSubmit} disabled={isLoading}>

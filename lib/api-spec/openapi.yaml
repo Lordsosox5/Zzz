@@ -200,6 +200,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/Patient"
 
+  /patients/check-duplicate:
+    get:
+      operationId: checkPatientDuplicate
+      tags: [patients]
+      summary: Check for duplicate patients by name and date of birth
+      parameters:
+        - name: nameEn
+          in: query
+          required: true
+          schema: { type: string }
+        - name: dateOfBirth
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Duplicate check result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [duplicates]
+                properties:
+                  duplicates:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Patient"
+
   /patients/{id}:
     get:
       operationId: getPatient
