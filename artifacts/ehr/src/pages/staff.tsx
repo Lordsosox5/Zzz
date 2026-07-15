@@ -19,11 +19,21 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import {
   Plus, Loader2, Save, CheckCircle2, ShieldCheck, CalendarClock,
   Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, UserCheck, KeyRound, Pencil, Trash2,
+  Search, Phone, Mail, Building2, X, Users, ChevronRight,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const DOCTOR_ROLES = ["house_officer", "medical_officer", "registrar", "consultant", "specialist"];
+const DOCTOR_ROLES = ["house_officer", "medical_officer", "registrar", "consultant", "specialist", "pediatric_consultant", "pediatric_specialist", "emergency_physician"];
+
+const ROLE_CATEGORIES: Record<string, string[]> = {
+  doctors: ["house_officer", "medical_officer", "registrar", "consultant", "specialist", "pediatric_consultant", "pediatric_specialist", "emergency_physician"],
+  clinical: ["nurse", "lab_technician", "lab_specialist"],
+  support: ["pharmacist"],
+  finance: ["billing_officer"],
+  admin: ["admin", "administrative", "accounts_manager", "data_analyser", "super_admin"],
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +60,20 @@ function getDaysLeft(expiryDate: string): number {
 function generatePassword(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+function staffInitials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map(p => p[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "?";
+}
+
+function avatarColor(name: string): string {
+  const colors = [
+    "bg-blue-500", "bg-emerald-500", "bg-violet-500", "bg-rose-500",
+    "bg-amber-500", "bg-cyan-500", "bg-indigo-500", "bg-teal-500",
+  ];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return colors[h % colors.length];
 }
 
 type ExpiryStatus = "expired" | "soon" | "ok" | "permanent" | "none";
@@ -172,6 +196,165 @@ function CredentialsPanel({
   );
 }
 
+// ── Staff Profile Dialog ───────────────────────────────────────────────────────
+
+type StaffMemberAny = Record<string, any>;
+
+function ProfileDialog({
+  member, open, onOpenChange, onEdit, onReset, onSuspend, onReactivate, onDelete,
+  isFullAdmin, currentUserId, units, t, isRtl, language, updatePending,
+}: {
+  member: StaffMemberAny | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onEdit: () => void;
+  onReset: () => void;
+  onSuspend: () => void;
+  onReactivate: () => void;
+  onDelete: () => void;
+  isFullAdmin: boolean;
+  currentUserId?: number;
+  units: any[];
+  t: (k: string) => string;
+  isRtl: boolean;
+  language: string;
+  updatePending: boolean;
+}) {
+  if (!member) return null;
+  const roleDef = ROLE_DEFINITIONS[member.role];
+  const isActive = member.status === "active";
+  const isExpired = getExpiryStatus(member.role, member.accountExpiryDate) === "expired";
+  const isSelf = currentUserId === member.id;
+  const isSuperAdmin = member.role === "super_admin";
+  const displayName = isRtl && member.nameAr ? member.nameAr : member.nameEn;
+  const unitName = member.unitId
+    ? (units.find((u: any) => u.id === member.unitId)?.[isRtl ? "nameAr" : "nameEn"] ?? null)
+    : null;
+
+  const detailRows = [
+    { icon: Users, label: t("generic.role"), value: roleDef ? roleDef.label[language as "en" | "ar"] : member.role, badge: true },
+    { icon: Building2, label: t("generic.department"), value: member.department || "—" },
+    unitName ? { icon: Building2, label: t("patient.unit"), value: unitName } : null,
+    { icon: Mail, label: t("generic.email"), value: member.email || "—" },
+    { icon: Phone, label: t("generic.phone"), value: member.phone || "—" },
+  ].filter(Boolean) as { icon: any; label: string; value: string; badge?: boolean }[];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+        {/* Profile header */}
+        <div className="relative p-6 pb-4 border-b bg-muted/30">
+          <div className="flex items-start gap-4">
+            <div className={`h-16 w-16 rounded-2xl ${avatarColor(member.nameEn)} text-white text-xl font-bold flex items-center justify-center shrink-0 shadow-md`}>
+              {staffInitials(member.nameEn)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold tracking-tight leading-tight truncate">{displayName}</h2>
+              {isRtl && member.nameEn && member.nameAr && (
+                <p className="text-sm text-muted-foreground truncate">{member.nameEn}</p>
+              )}
+              {member.username && (
+                <p className="text-xs font-mono text-muted-foreground mt-0.5">@{member.username}</p>
+              )}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {roleDef && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleDef.badgeClass}`}>
+                    {roleDef.label[language as "en" | "ar"]}
+                  </span>
+                )}
+                <Badge variant={isActive ? "default" : "secondary"} className="text-xs">
+                  {isActive ? t("staff.active") : t("staff.suspended")}
+                </Badge>
+                {isExpired && <Badge variant="destructive" className="text-xs">{t("staff.expired")}</Badge>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="p-5 space-y-3">
+          {detailRows.map((row, i) => {
+            const Icon = row.icon;
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">{row.label}</p>
+                  <p className="text-sm font-medium truncate">{row.value}</p>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Contract status */}
+          <div className="flex items-center gap-3">
+            <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">{t("staff.contract")}</p>
+              <ExpiryBadge role={member.role} expiryDate={member.accountExpiryDate} t={t} language={language} />
+            </div>
+          </div>
+
+          {/* Permissions */}
+          {roleDef && roleDef.authorities.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staff.permissions")}</p>
+                <ul className="space-y-1.5">
+                  {roleDef.authorities.map((a: any, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                      {language === "ar" ? a.ar : a.en}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+
+          {/* Actions */}
+          <Separator />
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {isFullAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { onOpenChange(false); onEdit(); }}>
+                <Pencil className="h-3.5 w-3.5" /> {t("staff.edit")}
+              </Button>
+            )}
+            {isFullAdmin && !isSelf && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { onOpenChange(false); onReset(); }}>
+                <KeyRound className="h-3.5 w-3.5" /> {t("staff.resetAction")}
+              </Button>
+            )}
+            {isFullAdmin && isActive && !isSuperAdmin && !isSelf && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs text-orange-600 hover:text-orange-700 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                disabled={updatePending} onClick={onSuspend}>
+                <UserX className="h-3.5 w-3.5" /> {t("staff.suspend")}
+              </Button>
+            )}
+            {isFullAdmin && !isActive && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs text-green-600 hover:text-green-700 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20"
+                disabled={updatePending} onClick={onReactivate}>
+                <UserCheck className="h-3.5 w-3.5" /> {t("staff.reactivate")}
+              </Button>
+            )}
+            {!isSelf && !isSuperAdmin && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
+                onClick={() => { onOpenChange(false); onDelete(); }}>
+                <Trash2 className="h-3.5 w-3.5" /> {t("staff.deleteAction")}
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Staff() {
@@ -197,6 +380,13 @@ export default function Staff() {
   const [editForm, setEditForm] = useState({
     nameEn: "", nameAr: "", role: "", department: "", unitId: "", email: "", phone: "",
   });
+
+  // Search + filter
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | "doctors" | "clinical" | "support" | "finance" | "admin">("all");
+
+  // Profile view
+  const [profileMember, setProfileMember] = useState<StaffMemberAny | null>(null);
 
   const openEdit = (member: NonNullable<typeof staff>[number]) => {
     setEditForm({
@@ -250,6 +440,33 @@ export default function Staff() {
   const createMutation = useCreateStaff();
   const updateMutation = useUpdateStaff();
   const deleteMutation = useDeleteStaff();
+
+  // ── Computed stats ──────────────────────────────────────────────────────────
+  const allStaff = (staff ?? []) as StaffMemberAny[];
+  const activeCount   = allStaff.filter(m => m.status === "active").length;
+  const inactiveCount = allStaff.filter(m => m.status !== "active").length;
+  const expiringMembers = allStaff.filter(m => {
+    const s = getExpiryStatus(m.role, m.accountExpiryDate);
+    return s === "expired" || s === "soon";
+  });
+
+  // ── Filtered staff ──────────────────────────────────────────────────────────
+  const filteredStaff = allStaff.filter(m => {
+    if (search) {
+      const q = search.toLowerCase();
+      const hit = (m.nameEn ?? "").toLowerCase().includes(q)
+        || (m.nameAr ?? "").toLowerCase().includes(q)
+        || (m.username ?? "").toLowerCase().includes(q)
+        || (m.email ?? "").toLowerCase().includes(q)
+        || (m.department ?? "").toLowerCase().includes(q);
+      if (!hit) return false;
+    }
+    if (roleFilter !== "all") {
+      const set = ROLE_CATEGORIES[roleFilter] ?? [];
+      if (!set.includes(m.role)) return false;
+    }
+    return true;
+  });
 
   const handleDelete = () => {
     if (!deleteTarget) return;
@@ -899,6 +1116,65 @@ export default function Staff() {
         </DialogContent>
       </Dialog>
 
+      {/* Profile Dialog */}
+      <ProfileDialog
+        member={profileMember}
+        open={!!profileMember}
+        onOpenChange={v => { if (!v) setProfileMember(null); }}
+        onEdit={() => profileMember && openEdit(profileMember as any)}
+        onReset={() => profileMember && openReset(profileMember.id, profileMember.nameEn)}
+        onSuspend={() => profileMember && handleCancelAccount(profileMember.id, profileMember.nameEn)}
+        onReactivate={() => profileMember && handleReactivateAccount(profileMember.id, profileMember.nameEn)}
+        onDelete={() => profileMember && setDeleteTarget({ id: profileMember.id, nameEn: profileMember.nameEn })}
+        isFullAdmin={isFullAdmin}
+        currentUserId={currentUser?.id}
+        units={units as any[]}
+        t={t}
+        isRtl={isRtl}
+        language={language}
+        updatePending={updateMutation.isPending}
+      />
+
+      {/* KPI Summary Bar */}
+      {!isLoading && allStaff.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: t("staff.totalStaff"), value: allStaff.length, icon: Users, color: "text-primary", bg: "bg-primary/10" },
+            { label: t("staff.active"), value: activeCount, icon: UserCheck, color: "text-green-600 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/20" },
+            { label: t("staff.suspended"), value: inactiveCount, icon: UserX, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/20" },
+            { label: t("staff.expiringContracts"), value: expiringMembers.length, icon: CalendarClock, color: expiringMembers.length > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground", bg: expiringMembers.length > 0 ? "bg-red-100 dark:bg-red-900/20" : "bg-muted/50" },
+          ].map((kpi, i) => {
+            const Icon = kpi.icon;
+            return (
+              <Card key={i} className="flex flex-row items-center gap-4 px-4 py-3 shadow-none">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${kpi.bg}`}>
+                  <Icon className={`h-5 w-5 ${kpi.color}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold leading-none">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Expiring contracts banner */}
+      {expiringMembers.length > 0 && (
+        <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 shadow-none">
+          <CardContent className="px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">{t("staff.contractAlertTitle")}</p>
+              <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
+                {expiringMembers.map(m => m.nameEn).join(", ")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Role Authorities Panel */}
       {showAuthorities && (
         <Card>
@@ -984,17 +1260,54 @@ export default function Staff() {
 
       {/* Staff Directory */}
       <Card>
-        <CardHeader>
-          <CardTitle>{t("staff.directory")}</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <CardTitle className="shrink-0">{t("staff.directory")}</CardTitle>
+            {/* Search */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={t("staff.searchPlaceholder")}
+                className="w-full pl-8 pr-8 py-1.5 text-sm rounded-md border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Role-category filter pills */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {(["all", "doctors", "clinical", "support", "finance", "admin"] as const).map(cat => (
+              <button
+                key={cat}
+                onClick={() => setRoleFilter(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                  roleFilter === cat
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/50 text-muted-foreground border-transparent hover:border-border hover:text-foreground"
+                }`}
+              >
+                {t(`staff.cat_${cat}`)}
+                {cat !== "all" && ` (${(ROLE_CATEGORIES[cat] ?? []).reduce((n, r) => n + allStaff.filter(m => m.role === r).length, 0)})`}
+                {cat === "all" && ` (${allStaff.length})`}
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10"></TableHead>
                 <TableHead>{t("generic.name")}</TableHead>
                 <TableHead>{t("generic.role")}</TableHead>
                 <TableHead>{t("generic.department")}</TableHead>
-                <TableHead>{t("generic.email")}</TableHead>
+                <TableHead>{t("staff.contact")}</TableHead>
                 <TableHead>{t("staff.contract")}</TableHead>
                 <TableHead>{t("generic.status")}</TableHead>
                 <TableHead className="text-right">{t("staff.actions")}</TableHead>
@@ -1003,132 +1316,106 @@ export default function Staff() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
-              ) : staff && staff.length > 0 ? (
-                staff.map((member) => {
+              ) : filteredStaff.length > 0 ? (
+                filteredStaff.map((member) => {
                   const roleDef = ROLE_DEFINITIONS[member.role];
                   const expiryStatus = getExpiryStatus(member.role, member.accountExpiryDate);
                   const isExpired = expiryStatus === "expired";
                   const isActive = member.status === "active";
+                  const displayName = isRtl && member.nameAr ? member.nameAr : member.nameEn;
                   return (
-                    <TableRow key={member.id} className={(!isActive || isExpired) ? "opacity-60" : ""}>
+                    <TableRow
+                      key={member.id}
+                      className={`cursor-pointer hover:bg-muted/40 ${(!isActive || isExpired) ? "opacity-60" : ""}`}
+                      onClick={() => setProfileMember(member)}
+                    >
+                      {/* Avatar */}
+                      <TableCell onClick={e => e.stopPropagation()} className="pr-0">
+                        <div className={`h-8 w-8 rounded-full ${avatarColor(member.nameEn)} text-white text-xs font-bold flex items-center justify-center shrink-0`}>
+                          {staffInitials(member.nameEn)}
+                        </div>
+                      </TableCell>
+                      {/* Name */}
                       <TableCell className="font-medium">
                         <div>
-                          <span>{isRtl && member.nameAr ? member.nameAr : member.nameEn}</span>
-                          {isExpired && (
-                            <Badge variant="destructive" className="ml-2 text-[10px] px-1.5 py-0">
-                              {t("staff.expired")}
-                            </Badge>
-                          )}
-                          {!isActive && (
-                            <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200">
-                              {t("staff.suspended")}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {roleDef ? (
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleDef.badgeClass}`}>
-                              {roleDef.label[language as "en" | "ar"]}
-                            </span>
-                          ) : (
-                            <span className="capitalize text-xs">{member.role}</span>
-                          )}
-                          {DOCTOR_ROLES.includes(member.role) && (
-                            <div>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-                                🩺 {t("staff.doctor")}
-                              </span>
-                            </div>
-                          )}
-                          {member.role === "billing_officer" && (
-                            <div>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium">
-                                💰 {t("staff.finance")}
-                              </span>
-                            </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{displayName}</span>
+                            {isExpired && (
+                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{t("staff.expired")}</Badge>
+                            )}
+                            {!isActive && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200">
+                                {t("staff.suspended")}
+                              </Badge>
+                            )}
+                          </div>
+                          {member.username && (
+                            <p className="text-[11px] font-mono text-muted-foreground">@{member.username}</p>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{member.department}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {member.email ?? "—"}
-                      </TableCell>
+                      {/* Role */}
                       <TableCell>
-                        <ExpiryBadge
-                          role={member.role}
-                          expiryDate={member.accountExpiryDate}
-                          t={t}
-                          language={language}
-                        />
+                        {roleDef ? (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleDef.badgeClass}`}>
+                            {roleDef.label[language as "en" | "ar"]}
+                          </span>
+                        ) : (
+                          <span className="capitalize text-xs">{member.role}</span>
+                        )}
                       </TableCell>
+                      {/* Department */}
+                      <TableCell className="text-sm text-muted-foreground">{member.department || "—"}</TableCell>
+                      {/* Contact */}
+                      <TableCell>
+                        <div className="space-y-0.5">
+                          {member.email ? (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Mail className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[130px]">{member.email}</span>
+                            </div>
+                          ) : null}
+                          {member.phone ? (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{member.phone}</span>
+                            </div>
+                          ) : null}
+                          {!member.email && !member.phone && <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
+                      </TableCell>
+                      {/* Contract */}
+                      <TableCell>
+                        <ExpiryBadge role={member.role} expiryDate={member.accountExpiryDate} t={t} language={language} />
+                      </TableCell>
+                      {/* Status */}
                       <TableCell>
                         <Badge variant={isActive ? "default" : "secondary"}>
                           {isActive ? t("staff.active") : t("staff.inactive")}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      {/* Actions */}
+                      <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground"
+                            onClick={() => setProfileMember(member)}>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                            {t("staff.view")}
+                          </Button>
                           {isFullAdmin && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="gap-1.5 text-xs"
-                                onClick={() => openEdit(member)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                                {t("staff.edit")}
-                              </Button>
-                              {isActive && member.role !== "super_admin" && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/20 gap-1.5 text-xs"
-                                  disabled={updateMutation.isPending}
-                                  onClick={() => handleCancelAccount(member.id, member.nameEn)}
-                                >
-                                  <UserX className="h-3.5 w-3.5" />
-                                  {t("staff.suspend")}
-                                </Button>
-                              )}
-                              {!isActive && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/20 gap-1.5 text-xs"
-                                  disabled={updateMutation.isPending}
-                                  onClick={() => handleReactivateAccount(member.id, member.nameEn)}
-                                >
-                                  <UserCheck className="h-3.5 w-3.5" />
-                                  {t("staff.reactivate")}
-                                </Button>
-                              )}
-                              {isActive && currentUser?.id !== member.id && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="gap-1.5 text-xs"
-                                  onClick={() => openReset(member.id, member.nameEn)}
-                                >
-                                  <KeyRound className="h-3.5 w-3.5" />
-                                  {t("staff.resetAction")}
-                                </Button>
-                              )}
-                            </>
+                            <Button size="sm" variant="ghost" className="gap-1.5 text-xs" onClick={() => openEdit(member as any)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                              {t("staff.edit")}
+                            </Button>
                           )}
                           {currentUser?.id !== member.id && member.role !== "super_admin" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
+                            <Button size="sm" variant="ghost"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs"
-                              onClick={() => setDeleteTarget({ id: member.id, nameEn: member.nameEn })}
-                            >
+                              onClick={() => setDeleteTarget({ id: member.id, nameEn: member.nameEn })}>
                               <Trash2 className="h-3.5 w-3.5" />
                               {t("staff.deleteAction")}
                             </Button>
@@ -1140,8 +1427,8 @@ export default function Staff() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    {t("staff.noStaff")}
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    {search || roleFilter !== "all" ? t("staff.noResults") : t("staff.noStaff")}
                   </TableCell>
                 </TableRow>
               )}
