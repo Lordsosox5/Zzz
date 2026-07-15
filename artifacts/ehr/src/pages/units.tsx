@@ -151,7 +151,8 @@ function UnitDetailDialog({
   const { data: allStaff = [], isLoading: staffLoading } = useListStaff();
   const { data: patientResp, isLoading: patientsLoading } = useListPatients({ limit: 500 });
 
-  const doctors = allStaff.filter(s => (s as any).unitId === unit.id);
+  const FINANCE_ROLES = ["billing_officer", "accounts_manager"];
+  const clinicalStaff = allStaff.filter(s => (s as any).unitId === unit.id && !FINANCE_ROLES.includes(s.role));
   const patients = (patientResp?.patients ?? []).filter(p => (p as any).unitId === unit.id);
 
   const ROLE_LABELS: Record<string, string> = {
@@ -162,11 +163,11 @@ function UnitDetailDialog({
     emergency_physician: "Emergency Physician",
     pharmacist: "Pharmacist",
     lab_technician: "Lab Technician",
-    billing_officer: "Billing Officer",
     house_officer: "House Officer",
     medical_officer: "Medical Officer",
     registrar: "Registrar",
   };
+  const DOCTOR_ROLES_SET = new Set(["house_officer", "medical_officer", "registrar", "pediatric_consultant", "pediatric_specialist", "emergency_physician"]);
 
   function calcAge(dob?: string | null) {
     if (!dob) return null;
@@ -212,9 +213,9 @@ function UnitDetailDialog({
           <TabsList className="mx-5 mt-4 mb-0 w-fit">
             <TabsTrigger value="doctors" className="gap-1.5">
               <Stethoscope className="h-3.5 w-3.5" />
-              Doctors &amp; Staff
+              Medical Staff
               {!staffLoading && (
-                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-4">{doctors.length}</Badge>
+                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-4">{clinicalStaff.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="patients" className="gap-1.5">
@@ -226,40 +227,43 @@ function UnitDetailDialog({
             </TabsTrigger>
           </TabsList>
 
-          {/* Doctors tab */}
+          {/* Medical Staff tab */}
           <TabsContent value="doctors" className="flex-1 overflow-y-auto px-5 pb-5 mt-3">
             {staffLoading ? (
               <div className="flex justify-center py-10">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : doctors.length === 0 ? (
+            ) : clinicalStaff.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Stethoscope className="h-10 w-10 mb-2 opacity-25" />
-                <p className="text-sm">No staff assigned to this unit</p>
+                <p className="text-sm">No medical staff assigned to this unit</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {doctors.map(doc => (
-                  <div key={doc.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Stethoscope className="h-4 w-4 text-primary" />
+                {clinicalStaff.map(doc => {
+                  const isDoc = DOCTOR_ROLES_SET.has(doc.role);
+                  return (
+                    <div key={doc.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${isDoc ? "bg-indigo-100 dark:bg-indigo-900/30" : "bg-green-100 dark:bg-green-900/30"}`}>
+                        <Stethoscope className={`h-4 w-4 ${isDoc ? "text-indigo-600 dark:text-indigo-400" : "text-green-600 dark:text-green-400"}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{doc.nameEn}</p>
+                        {doc.nameAr && (
+                          <p className="text-xs text-muted-foreground font-tajawal truncate" dir="rtl">{doc.nameAr}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <Badge variant="outline" className={`text-xs ${isDoc ? "border-indigo-300 text-indigo-700 dark:text-indigo-300" : ""}`}>
+                          {isDoc ? "🩺 " : ""}{ROLE_LABELS[doc.role] ?? doc.role}
+                        </Badge>
+                        {doc.department && doc.department !== "General" && (
+                          <span className="text-[11px] text-muted-foreground">{doc.department}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{doc.nameEn}</p>
-                      {doc.nameAr && (
-                        <p className="text-xs text-muted-foreground font-tajawal truncate" dir="rtl">{doc.nameAr}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <Badge variant="outline" className="text-xs">
-                        {ROLE_LABELS[doc.role] ?? doc.role}
-                      </Badge>
-                      {doc.department && doc.department !== "General" && (
-                        <span className="text-[11px] text-muted-foreground">{doc.department}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>

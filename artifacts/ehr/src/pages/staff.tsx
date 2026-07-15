@@ -503,6 +503,18 @@ export default function Staff() {
                             <SelectItem value="accounts_manager">{t("staff.accountsManager")}</SelectItem>
                             <SelectItem value="administrative">{t("staff.administrative")}</SelectItem>
                           </SelectGroup>
+                          <SelectSeparator />
+                          <SelectGroup>
+                            <SelectLabel className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
+                              💰 {t("staff.financeCategory")}
+                            </SelectLabel>
+                            <SelectItem value="billing_officer">
+                              <div>
+                                <span className="font-medium">{t("staff.billingOfficer")}</span>
+                                <span className="text-xs text-muted-foreground block">Invoice management &amp; financial reporting</span>
+                              </div>
+                            </SelectItem>
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>
@@ -822,6 +834,13 @@ export default function Staff() {
                       <SelectItem value="accounts_manager">{t("staff.accountsManager")}</SelectItem>
                       <SelectItem value="administrative">{t("staff.administrative")}</SelectItem>
                     </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
+                        💰 {t("staff.financeCategory")}
+                      </SelectLabel>
+                      <SelectItem value="billing_officer">{t("staff.billingOfficer")}</SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -1023,7 +1042,14 @@ export default function Staff() {
                           {DOCTOR_ROLES.includes(member.role) && (
                             <div>
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-                                {t("staff.doctor")}
+                                🩺 {t("staff.doctor")}
+                              </span>
+                            </div>
+                          )}
+                          {member.role === "billing_officer" && (
+                            <div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 font-medium">
+                                💰 {t("staff.finance")}
                               </span>
                             </div>
                           )}
