@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Plus, Loader2, Save, CheckCircle2, ShieldCheck, CalendarClock,
-  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, KeyRound, Pencil, Trash2,
+  Infinity, AlertTriangle, RefreshCw, Copy, Eye, EyeOff, UserX, UserCheck, KeyRound, Pencil, Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -363,6 +363,19 @@ export default function Staff() {
           toast({ title: t("staff.accountCancelled"), description: `${nameEn}${t("staff.accountCancelledDesc")}` });
         },
         onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.cancelFailed") }),
+      }
+    );
+  };
+
+  const handleReactivateAccount = (id: number, nameEn: string) => {
+    updateMutation.mutate(
+      { id, data: { status: "active" } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
+          toast({ title: t("staff.reactivated"), description: `${nameEn}${t("staff.reactivatedDesc")}` });
+        },
+        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.reactivateFailed") }),
       }
     );
   };
@@ -991,9 +1004,9 @@ export default function Staff() {
                               {t("staff.expired")}
                             </Badge>
                           )}
-                          {!isActive && !isExpired && (
-                            <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">
-                              Cancelled
+                          {!isActive && (
+                            <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200">
+                              {t("staff.suspended")}
                             </Badge>
                           )}
                         </div>
@@ -1046,7 +1059,7 @@ export default function Staff() {
                                 <Pencil className="h-3.5 w-3.5" />
                                 {t("staff.edit")}
                               </Button>
-                              {isActive && (
+                              {isActive && member.role !== "super_admin" && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -1056,6 +1069,18 @@ export default function Staff() {
                                 >
                                   <UserX className="h-3.5 w-3.5" />
                                   {t("staff.suspend")}
+                                </Button>
+                              )}
+                              {!isActive && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/20 gap-1.5 text-xs"
+                                  disabled={updateMutation.isPending}
+                                  onClick={() => handleReactivateAccount(member.id, member.nameEn)}
+                                >
+                                  <UserCheck className="h-3.5 w-3.5" />
+                                  {t("staff.reactivate")}
                                 </Button>
                               )}
                               {isActive && currentUser?.id !== member.id && (

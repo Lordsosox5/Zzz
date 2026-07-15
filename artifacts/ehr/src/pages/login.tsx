@@ -38,7 +38,12 @@ export default function Login() {
         },
         onError: (err: any) => {
           console.error("Login failed:", err);
-          setErrorMsg(t("login.error"));
+          const msg: string = err?.message ?? err?.error ?? "";
+          if (msg.toLowerCase().includes("suspended") || err?.status === 403 || err?.statusCode === 403) {
+            setErrorMsg(t("staff.suspendedLoginError"));
+          } else {
+            setErrorMsg(t("login.error"));
+          }
         },
       }
     );

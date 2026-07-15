@@ -30,6 +30,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     if (error) { logger.error({ error }, "Supabase error in /auth/login"); res.status(500).json({ error: error.message }); return; }
     const raw = data?.[0];
     if (!raw || raw.password !== password) { res.status(401).json({ error: "Invalid credentials" }); return; }
+    if (raw.is_active === false) { res.status(403).json({ error: "Account suspended" }); return; }
     const user = mapRow(raw);
     const token = Buffer.from(`${user.id}:${user.username}:${Date.now()}`).toString("base64");
     res.json({ token, user: formatUser(user) });
@@ -52,6 +53,7 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     const [userId] = decoded.split(":");
     const { data, error } = await supabase.from("users").select("*").eq("id", parseInt(userId, 10)).limit(1);
     if (error || !data?.[0]) { res.status(401).json({ error: "User not found" }); return; }
+    if (data[0].is_active === false) { res.status(403).json({ error: "Account suspended" }); return; }
     const user = mapRow(data[0]);
     res.json(formatUser(user));
   } catch (err) {
