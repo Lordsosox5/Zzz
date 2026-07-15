@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getToken } from "@/lib/auth";
+import { QRCodeSVG } from "qrcode.react";
 
 /* ──────────────────────────────────────────────
    Helpers
@@ -219,6 +220,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
   const hasSystems  = a && (a.chestExam || a.cvsExam || a.abdomenExam || a.cnsExam || a.entExam || a.skinExam);
   const today = new Date().toLocaleDateString("ar-SA", { day: "2-digit", month: "long", year: "numeric" });
   const todayEn = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const profileUrl = `${window.location.origin}/patients/${patientId}`;
 
   return (
     <div dir="rtl" lang="ar" style={{
@@ -269,27 +271,46 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {/* Left side — Record meta */}
-          <div dir="ltr" style={{
-            textAlign: "left", background: "#f9fafb",
-            border: "1px solid #d1d5db", borderRadius: "4px",
-            padding: "8px 12px", minWidth: "175px",
-          }}>
-            <div style={{ fontSize: "8pt", fontWeight: 700, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "4px" }}>
-              Full Patient Record
+          {/* Left side — Record meta + QR */}
+          <div dir="ltr" style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            {/* QR code block */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
+              <div style={{ border: "1px solid #d1d5db", borderRadius: "4px", padding: "4px", background: "#fff" }}>
+                <QRCodeSVG
+                  value={profileUrl}
+                  size={72}
+                  level="M"
+                  includeMargin={false}
+                  style={{ display: "block" }}
+                />
+              </div>
+              <div style={{ fontSize: "6.5pt", color: "#9ca3af", textAlign: "center", maxWidth: "80px", lineHeight: 1.3 }}>
+                امسح للسجل الرقمي
+              </div>
             </div>
-            <div style={{ fontSize: "11pt", fontWeight: 800, fontFamily: "monospace", color: "#111827" }}>
-              {patient.mrn}
+
+            {/* Meta box */}
+            <div style={{
+              textAlign: "left", background: "#f9fafb",
+              border: "1px solid #d1d5db", borderRadius: "4px",
+              padding: "8px 12px", minWidth: "160px",
+            }}>
+              <div style={{ fontSize: "8pt", fontWeight: 700, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "4px" }}>
+                Full Patient Record
+              </div>
+              <div style={{ fontSize: "11pt", fontWeight: 800, fontFamily: "monospace", color: "#111827" }}>
+                {patient.mrn}
+              </div>
+              <div style={{ fontSize: "8pt", color: "#6b7280", marginTop: "4px" }}>
+                Date: {todayEn}
+              </div>
+              {patient.admissionDate && (
+                <div style={{ fontSize: "8pt", color: "#6b7280" }}>Admitted: {new Date(patient.admissionDate).toLocaleDateString("en-GB")}</div>
+              )}
+              {p.dischargeDate && (
+                <div style={{ fontSize: "8pt", color: "#6b7280" }}>Discharged: {new Date(p.dischargeDate).toLocaleDateString("en-GB")}</div>
+              )}
             </div>
-            <div style={{ fontSize: "8pt", color: "#6b7280", marginTop: "4px" }}>
-              Date: {todayEn}
-            </div>
-            {patient.admissionDate && (
-              <div style={{ fontSize: "8pt", color: "#6b7280" }}>Admitted: {new Date(patient.admissionDate).toLocaleDateString("en-GB")}</div>
-            )}
-            {p.dischargeDate && (
-              <div style={{ fontSize: "8pt", color: "#6b7280" }}>Discharged: {new Date(p.dischargeDate).toLocaleDateString("en-GB")}</div>
-            )}
           </div>
         </div>
 
