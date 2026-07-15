@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListUnits, useCreateUnit, useUpdateUnit, getListUnitsQueryKey } from "@workspace/api-client-react";
+import { useListUnits, useCreateUnit, useUpdateUnit, getListUnitsQueryKey, useListStaff, useListPatients } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { getUser } from "@/lib/auth";
@@ -12,13 +12,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Plus, Pencil, BedDouble, Layers, Users, PowerOff, Power, Loader2,
-  ChevronDown, ChevronRight, ShieldCheck,
+  ChevronDown, ChevronRight, ShieldCheck, UserRound, Stethoscope,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -135,20 +136,191 @@ function RolePermissionPanel({
   );
 }
 
+// ── Unit detail dialog ─────────────────────────────────────────────────────────
+function UnitDetailDialog({
+  unit, typeInfo, open, onClose, t,
+}: {
+  unit: { id: number; nameEn: string; nameAr?: string | null; type: string; floor?: string | null; capacity: number; headDoctorName?: string | null; status: string; description?: string | null };
+  typeInfo: typeof UNIT_TYPES[0] | undefined;
+  open: boolean;
+  onClose: () => void;
+  t: (key: string) => string;
+}) {
+  const { data: allStaff = [], isLoading: staffLoading } = useListStaff();
+  const { data: patientResp, isLoading: patientsLoading } = useListPatients({ limit: 500 });
+
+  const doctors = allStaff.filter(s => (s as any).unitId === unit.id);
+  const patients = (patientResp?.patients ?? []).filter(p => (p as any).unitId === unit.id);
+
+  const ROLE_LABELS: Record<string, string> = {
+    super_admin: "Super Admin",
+    pediatric_consultant: "Consultant",
+    pediatric_specialist: "Specialist",
+    nurse: "Nurse",
+    emergency_physician: "Emergency Physician",
+    pharmacist: "Pharmacist",
+    lab_technician: "Lab Technician",
+    billing_officer: "Billing Officer",
+    house_officer: "House Officer",
+    medical_officer: "Medical Officer",
+    registrar: "Registrar",
+  };
+
+  function calcAge(dob?: string | null) {
+    if (!dob) return null;
+    const diff = Date.now() - new Date(dob).getTime();
+    const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+    if (years > 0) return `${years}y`;
+    const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30.44));
+    return months > 0 ? `${months}m` : "<1m";
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+        {/* Unit header */}
+        <div className={`px-5 py-4 border-b ${typeInfo?.color ?? "bg-muted"}`}>
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-white/30 p-2 shrink-0 mt-0.5">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-bold text-lg leading-tight">{unit.nameEn}</h2>
+              {unit.nameAr && (
+                <p className="text-sm font-tajawal opacity-80" dir="rtl">{unit.nameAr}</p>
+              )}
+              <div className="flex flex-wrap gap-3 mt-1.5 text-xs opacity-75">
+                {unit.floor && (
+                  <span className="flex items-center gap-1"><Layers className="h-3 w-3" />{t("units.floor_label")} {unit.floor}</span>
+                )}
+                <span className="flex items-center gap-1"><BedDouble className="h-3 w-3" />{unit.capacity} {t("units.beds")}</span>
+                {unit.headDoctorName && (
+                  <span className="flex items-center gap-1"><Users className="h-3 w-3" />{unit.headDoctorName}</span>
+                )}
+              </div>
+            </div>
+            <Badge variant={unit.status === "active" ? "default" : "secondary"} className="shrink-0 text-xs">
+              {unit.status === "active" ? t("units.active") : t("units.inactive")}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="doctors" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="mx-5 mt-4 mb-0 w-fit">
+            <TabsTrigger value="doctors" className="gap-1.5">
+              <Stethoscope className="h-3.5 w-3.5" />
+              Doctors &amp; Staff
+              {!staffLoading && (
+                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-4">{doctors.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="patients" className="gap-1.5">
+              <UserRound className="h-3.5 w-3.5" />
+              Patients
+              {!patientsLoading && (
+                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-4">{patients.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Doctors tab */}
+          <TabsContent value="doctors" className="flex-1 overflow-y-auto px-5 pb-5 mt-3">
+            {staffLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : doctors.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Stethoscope className="h-10 w-10 mb-2 opacity-25" />
+                <p className="text-sm">No staff assigned to this unit</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {doctors.map(doc => (
+                  <div key={doc.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Stethoscope className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{doc.nameEn}</p>
+                      {doc.nameAr && (
+                        <p className="text-xs text-muted-foreground font-tajawal truncate" dir="rtl">{doc.nameAr}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge variant="outline" className="text-xs">
+                        {ROLE_LABELS[doc.role] ?? doc.role}
+                      </Badge>
+                      {doc.department && doc.department !== "General" && (
+                        <span className="text-[11px] text-muted-foreground">{doc.department}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Patients tab */}
+          <TabsContent value="patients" className="flex-1 overflow-y-auto px-5 pb-5 mt-3">
+            {patientsLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : patients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <UserRound className="h-10 w-10 mb-2 opacity-25" />
+                <p className="text-sm">No patients assigned to this unit</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {patients.map(pat => (
+                  <div key={(pat as any).id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-card hover:bg-muted/40 transition-colors">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                      <UserRound className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{(pat as any).nameEn ?? (pat as any).name}</p>
+                      {(pat as any).nameAr && (
+                        <p className="text-xs text-muted-foreground font-tajawal truncate" dir="rtl">{(pat as any).nameAr}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge variant="outline" className="text-xs font-mono">{(pat as any).mrn ?? "—"}</Badge>
+                      {(pat as any).dateOfBirth && (
+                        <span className="text-[11px] text-muted-foreground">{calcAge((pat as any).dateOfBirth)}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Unit card ─────────────────────────────────────────────────────────────────
 function UnitCard({
-  unit, typeInfo, canEdit, onEdit, onToggleStatus, t,
+  unit, typeInfo, canEdit, onEdit, onToggleStatus, onViewDetail, t,
 }: {
   unit: { id: number; nameEn: string; nameAr?: string | null; type: string; floor?: string | null; capacity: number; headDoctorName?: string | null; status: string; description?: string | null };
   typeInfo: typeof UNIT_TYPES[0] | undefined;
   canEdit: boolean;
   onEdit: () => void;
   onToggleStatus: () => void;
+  onViewDetail: () => void;
   t: (key: string) => string;
 }) {
   const isActive = unit.status === "active";
   return (
-    <Card className={`transition-opacity ${!isActive ? "opacity-60" : ""}`}>
+    <Card
+      className={`transition-all cursor-pointer hover:shadow-md hover:border-primary/40 ${!isActive ? "opacity-60" : ""}`}
+      onClick={onViewDetail}
+    >
       <CardContent className="px-4 pb-4 pt-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
@@ -195,7 +367,7 @@ function UnitCard({
         </div>
 
         {canEdit && (
-          <div className="mt-3 flex gap-2 border-t pt-3">
+          <div className="mt-3 flex gap-2 border-t pt-3" onClick={e => e.stopPropagation()}>
             <Button size="sm" variant="outline" onClick={onEdit} className="flex-1 gap-1.5">
               <Pencil className="h-3.5 w-3.5" />
               {t("generic.edit")}
@@ -229,6 +401,7 @@ export default function Units() {
   const [form, setForm] = useState<UnitForm>(EMPTY_FORM);
   const [filterType, setFilterType] = useState<string>("all");
   const [showInactive, setShowInactive] = useState(false);
+  const [detailUnit, setDetailUnit] = useState<typeof units[0] | null>(null);
 
   const setField = (k: keyof UnitForm, v: string) => setForm(p => ({ ...p, [k]: v }));
   const toggleRole = (roleKey: string, enabled: boolean) =>
@@ -377,6 +550,7 @@ export default function Units() {
               canEdit={isAdmin}
               onEdit={() => openEdit(unit)}
               onToggleStatus={() => handleToggleStatus(unit)}
+              onViewDetail={() => setDetailUnit(unit as typeof unit & { description?: string | null; floor?: string | null })}
               t={t}
             />
           ))}
@@ -481,6 +655,17 @@ export default function Units() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unit Detail Dialog */}
+      {detailUnit && (
+        <UnitDetailDialog
+          unit={detailUnit}
+          typeInfo={typeInfo(detailUnit.type)}
+          open={!!detailUnit}
+          onClose={() => setDetailUnit(null)}
+          t={t}
+        />
+      )}
     </div>
   );
 }
