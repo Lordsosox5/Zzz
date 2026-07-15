@@ -1966,16 +1966,697 @@ function DataAnalyserDashboard() {
   );
 }
 
+// ─── Clinical Dashboard (pediatric_consultant / pediatric_specialist / registrar) ─
+
+function ClinicalDashboard() {
+  const { t, isRtl } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
+    query: { queryKey: getGetDashboardStatsQueryKey() },
+  });
+  const { data: alerts, isLoading: alertsLoading } = useGetDashboardAlerts();
+  const { data: appointments, isLoading: apptsLoading } = useGetTodayAppointments();
+  const { data: labOrders, isLoading: labLoading } = useListLabOrders({ status: "pending" });
+
+  const appts: Record<string, unknown>[] = Array.isArray(appointments) ? appointments as Record<string, unknown>[] : [];
+  const alertsList: Record<string, unknown>[] = Array.isArray(alerts) ? alerts as Record<string, unknown>[] : [];
+  const pendingLabs = Array.isArray(labOrders) ? labOrders : [];
+
+  const roleTitles: Record<string, { en: string; ar: string; sub: string; subAr: string }> = {
+    pediatric_consultant: { en: "Consultant Dashboard", ar: "لوحة الاستشاري", sub: "Clinical overview for today's patients and pending work", subAr: "نظرة سريرية شاملة لمرضى اليوم والأعمال المعلقة" },
+    pediatric_specialist: { en: "Specialist Dashboard", ar: "لوحة الأخصائي", sub: "Specialist consultations, labs and prescriptions", subAr: "الاستشارات المتخصصة والمختبر والوصفات" },
+    registrar: { en: "Registrar Dashboard", ar: "لوحة الطبيب التخصصي", sub: "Ward rounds, admissions and clinical reviews", subAr: "جولات الجناح والدخول والمراجعات السريرية" },
+  };
+  const roleInfo = roleTitles[user?.role ?? ""] ?? roleTitles.pediatric_consultant;
+
+  const kpiCards = [
+    { label: t("dash.todayAppts"), value: statsLoading ? undefined : stats?.todayAppointments, icon: Calendar, color: "text-blue-600", bg: "bg-blue-500/10", loading: statsLoading, onClick: () => navigate("/appointments") },
+    { label: t("dash.totalPatients"), value: statsLoading ? undefined : stats?.totalPatients, icon: Users, color: "text-green-600", bg: "bg-green-500/10", loading: statsLoading, onClick: () => navigate("/patients") },
+    { label: t("dash.pendingLabs"), value: statsLoading ? undefined : stats?.pendingLabOrders, icon: FlaskConical, color: "text-amber-600", bg: "bg-amber-500/10", loading: statsLoading, onClick: () => navigate("/lab"),
+      sub: stats?.criticalAlerts ? <span className="text-xs font-semibold text-red-600">{stats.criticalAlerts} critical</span> : null },
+    { label: t("dash.pendingRx"), value: statsLoading ? undefined : stats?.pendingPrescriptions, icon: Pill, color: "text-orange-600", bg: "bg-orange-500/10", loading: statsLoading, onClick: () => navigate("/prescriptions") },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+            {isRtl ? roleInfo.ar : roleInfo.en}
+          </p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{isRtl ? roleInfo.subAr : roleInfo.sub}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={() => navigate("/appointments?new=1")} className="gap-1.5">
+            <Calendar className="h-4 w-4" />{t("appt.newAppointment")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/prescriptions")} className="gap-1.5">
+            <Pill className="h-4 w-4" />{t("nav.prescriptions")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/clinical-notes")} className="gap-1.5">
+            <FileText className="h-4 w-4" />{t("nav.notes")}
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="relative overflow-hidden cursor-pointer hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98]" onClick={s.onClick}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? <Skeleton className="h-8 w-16" /> : <p className="text-3xl font-bold tracking-tight">{s.value ?? 0}</p>}
+                    {s.sub && <div className="mt-1">{s.sub}</div>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Main row: Today's Appointments + Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />{t("dash.todayAppts")}
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/appointments")}>{t("dash.viewAll")}</Button>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            {apptsLoading ? (
+              <div className="space-y-0">{[1, 2, 3, 4].map(i => (
+                <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
+                  <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                  <div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-3 w-1/2" /></div>
+                </div>
+              ))}</div>
+            ) : appts.length > 0 ? (
+              <div className="divide-y">
+                {appts.slice(0, 8).map((appt) => {
+                  const time = new Date(appt.scheduledAt as string).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <div key={appt.id as number} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate(`/patients/${appt.patientId}`)}>
+                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">{initials(appt.patientName as string)}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{String(appt.patientName ?? `#${appt.patientId}`)}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{time}</span>
+                          <span className="text-muted-foreground/40">·</span>
+                          {apptTypeBadge(appt.type as string)}
+                        </div>
+                      </div>
+                      {apptStatusBadge(appt.status as string)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Clock className="h-8 w-8 mb-2 opacity-40" />
+                <p className="text-sm">{t("dash.noApptsToday")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-500" />{t("dash.alerts")}
+            </CardTitle>
+            {alertsList.length > 0 && <Badge variant="destructive" className="text-xs">{alertsList.length}</Badge>}
+          </CardHeader>
+          <CardContent className="p-4 flex-1">
+            {alertsLoading ? (
+              <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
+            ) : alertsList.length > 0 ? (
+              <div className="space-y-2.5">
+                {alertsList.slice(0, 6).map((alert) => (
+                  <AlertItem key={alert.id as number} alert={alert} isRtl={isRtl} navigate={navigate} t={t} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{t("dash.noAlerts")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pending Lab Orders */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <FlaskConical className="h-4 w-4 text-amber-500" />
+            {isRtl ? "الطلبات المعلقة" : "Pending Lab Orders"}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/lab")}>{t("dash.viewAll")}</Button>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          {labLoading ? (
+            <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}</div>
+          ) : pendingLabs.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="text-xs">{t("lab.patientName")}</TableHead>
+                  <TableHead className="text-xs">{t("lab.testName")}</TableHead>
+                  <TableHead className="text-xs">{t("generic.priority")}</TableHead>
+                  <TableHead className="text-xs">{t("generic.date")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingLabs.slice(0, 6).map((order: any) => (
+                  <TableRow key={order.id} className={`cursor-pointer hover:bg-muted/40 transition-colors ${order.isCritical ? "bg-destructive/5" : ""}`} onClick={() => navigate(`/patients/${order.patientId}`)}>
+                    <TableCell className="font-medium text-sm">{order.patientName ?? `#${order.patientId}`}</TableCell>
+                    <TableCell className="text-sm">
+                      <div className="flex items-center gap-1.5">
+                        {order.testName}
+                        {order.isCritical && <Badge variant="destructive" className="text-[10px]">⚠</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={order.priority === "stat" ? "destructive" : order.priority === "urgent" ? "default" : "secondary"} className="capitalize text-xs">
+                        {order.priority === "stat" ? t("generic.stat") : order.priority === "urgent" ? t("generic.urgent") : t("generic.routine")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <CheckCircle2 className="h-7 w-7 text-green-500 mb-2" />
+              <p className="text-sm">{isRtl ? "لا توجد طلبات معلقة" : "No pending lab orders"}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick Access */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: isRtl ? "المرضى" : "Patients", icon: Users, path: "/patients", color: "text-blue-600", bg: "bg-blue-500/10" },
+          { label: isRtl ? "الأشعة" : "Radiology", icon: Activity, path: "/radiology", color: "text-purple-600", bg: "bg-purple-500/10" },
+          { label: isRtl ? "التطعيمات" : "Vaccinations", icon: ShieldAlert, path: "/vaccinations", color: "text-green-600", bg: "bg-green-500/10" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card key={item.path} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => navigate(item.path)}>
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${item.bg} ${item.color}`}><Icon className="h-5 w-5" /></div>
+                <div>
+                  <p className="font-semibold">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{isRtl ? "انقر للفتح" : "Click to open"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Emergency Physician Dashboard ────────────────────────────────────────────
+
+function EmergencyDashboard() {
+  const { t, isRtl } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
+    query: { queryKey: getGetDashboardStatsQueryKey() },
+  });
+  const { data: alerts, isLoading: alertsLoading } = useGetDashboardAlerts();
+  const { data: appointments, isLoading: apptsLoading } = useGetTodayAppointments();
+  const { data: allLabOrders, isLoading: labLoading } = useListLabOrders({});
+
+  const appts: Record<string, unknown>[] = Array.isArray(appointments) ? appointments as Record<string, unknown>[] : [];
+  const alertsList: Record<string, unknown>[] = Array.isArray(alerts) ? alerts as Record<string, unknown>[] : [];
+  const urgentLabs = (Array.isArray(allLabOrders) ? allLabOrders : []).filter(
+    (o: any) => (o.priority === "stat" || o.priority === "urgent") && o.status !== "resulted"
+  );
+  const emergencyAppts = appts.filter(a => (a.type as string) === "emergency");
+
+  const criticalAlerts = alertsList.filter(a => a.severity === "critical");
+  const warningAlerts = alertsList.filter(a => a.severity === "warning");
+
+  const kpiCards = [
+    { label: isRtl ? "مواعيد الطوارئ" : "Emergency Appts", value: statsLoading ? undefined : emergencyAppts.length, icon: Activity, color: "text-red-600", bg: "bg-red-500/10", loading: apptsLoading, onClick: () => navigate("/appointments") },
+    { label: isRtl ? "الطلبات العاجلة" : "STAT / Urgent Labs", value: labLoading ? undefined : urgentLabs.length, icon: FlaskConical, color: "text-amber-600", bg: "bg-amber-500/10", loading: labLoading, onClick: () => navigate("/lab") },
+    { label: isRtl ? "التنبيهات الحرجة" : "Critical Alerts", value: statsLoading ? undefined : stats?.criticalAlerts, icon: ShieldAlert, color: stats?.criticalAlerts ? "text-red-600" : "text-muted-foreground", bg: stats?.criticalAlerts ? "bg-red-500/10" : "bg-muted/40", loading: statsLoading, onClick: undefined },
+    { label: t("dash.pendingRx"), value: statsLoading ? undefined : stats?.pendingPrescriptions, icon: Pill, color: "text-orange-600", bg: "bg-orange-500/10", loading: statsLoading, onClick: () => navigate("/prescriptions") },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-red-600 dark:text-red-400 mb-0.5">
+            {isRtl ? "لوحة تحكم طبيب الطوارئ" : "Emergency Physician Dashboard"}
+          </p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isRtl ? "حالة الطوارئ الحية، الطلبات العاجلة، والتنبيهات الحرجة" : "Live emergency status, urgent orders, and critical alerts"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={() => navigate("/patients?new=1")} className="gap-1.5 bg-red-600 hover:bg-red-700">
+            <UserPlus className="h-4 w-4" />{isRtl ? "دخول طارئ" : "Emergency Admit"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/lab?new=1")} className="gap-1.5">
+            <FlaskConical className="h-4 w-4" />{isRtl ? "طلب STAT" : "Order STAT Lab"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/prescriptions")} className="gap-1.5">
+            <Pill className="h-4 w-4" />{t("nav.prescriptions")}
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className={`relative overflow-hidden transition-all ${s.onClick ? "cursor-pointer hover:shadow-md hover:border-primary/30 active:scale-[0.98]" : ""}`} onClick={s.onClick ?? undefined}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? <Skeleton className="h-8 w-16" /> : <p className={`text-3xl font-bold tracking-tight ${s.color}`}>{s.value ?? 0}</p>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* STAT/Urgent Labs + Critical Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-amber-500" />
+              {isRtl ? "الطلبات العاجلة والحرجة" : "STAT / Urgent Lab Queue"}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {urgentLabs.length > 0 && <Badge className="bg-amber-500 hover:bg-amber-600 text-xs">{urgentLabs.length}</Badge>}
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/lab")}>{t("dash.viewAll")}</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            {labLoading ? (
+              <div className="space-y-0">{[1, 2, 3].map(i => (
+                <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
+                  <Skeleton className="h-9 w-9 rounded-lg shrink-0" /><div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-3 w-1/2" /></div>
+                </div>
+              ))}</div>
+            ) : urgentLabs.length > 0 ? (
+              <div className="divide-y">
+                {urgentLabs.slice(0, 8).map((order: any) => (
+                  <div key={order.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate(`/patients/${order.patientId}`)}>
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${order.priority === "stat" ? "bg-red-100 dark:bg-red-900/30" : "bg-amber-100 dark:bg-amber-900/30"}`}>
+                      <FlaskConical className={`h-4 w-4 ${order.priority === "stat" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold truncate">{order.testName}</p>
+                        <Badge variant={order.priority === "stat" ? "destructive" : "default"} className="text-[10px] uppercase">{order.priority}</Badge>
+                        {order.isCritical && <Badge variant="destructive" className="text-[10px]">⚠ {isRtl ? "حرج" : "Critical"}</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{order.patientName ?? `#${order.patientId}`}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">{new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{isRtl ? "لا توجد طلبات عاجلة" : "No STAT or urgent lab orders"}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-1 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-red-500" />{t("dash.alerts")}
+            </CardTitle>
+            {alertsList.length > 0 && <Badge variant="destructive" className="text-xs">{criticalAlerts.length} / {alertsList.length}</Badge>}
+          </CardHeader>
+          <CardContent className="p-4 flex-1">
+            {alertsLoading ? (
+              <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
+            ) : alertsList.length > 0 ? (
+              <div className="space-y-2.5">
+                {[...criticalAlerts, ...warningAlerts].slice(0, 6).map((alert) => (
+                  <AlertItem key={alert.id as number} alert={alert} isRtl={isRtl} navigate={navigate} t={t} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                <p className="text-sm">{t("dash.noAlerts")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Today's Emergency Appointments */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-red-500" />
+            {isRtl ? "مواعيد اليوم" : "Today's Appointments"}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/appointments")}>{t("dash.viewAll")}</Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          {apptsLoading ? (
+            <div className="space-y-0">{[1, 2, 3].map(i => (
+              <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
+                <Skeleton className="h-9 w-9 rounded-full shrink-0" /><div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-3 w-1/2" /></div>
+              </div>
+            ))}</div>
+          ) : appts.length > 0 ? (
+            <div className="divide-y">
+              {appts.slice(0, 6).map((appt) => {
+                const time = new Date(appt.scheduledAt as string).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={appt.id as number} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer" onClick={() => navigate(`/patients/${appt.patientId}`)}>
+                    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">{initials(appt.patientName as string)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{String(appt.patientName ?? `#${appt.patientId}`)}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                        <span className="text-muted-foreground/40">·</span>
+                        {apptTypeBadge(appt.type as string)}
+                      </div>
+                    </div>
+                    {apptStatusBadge(appt.status as string)}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Clock className="h-8 w-8 mb-2 opacity-40" />
+              <p className="text-sm">{t("dash.noApptsToday")}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Accounts Manager Dashboard ───────────────────────────────────────────────
+
+function AccountsManagerDashboard() {
+  const { t, isRtl } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: staffResp, isLoading: staffLoading } = useListPatients({ limit: 1 });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+            {isRtl ? "لوحة تحكم مدير الحسابات" : "Accounts Manager Dashboard"}
+          </p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isRtl ? "إدارة حسابات وصلاحيات الموظفين" : "Manage staff accounts and access permissions"}
+          </p>
+        </div>
+        <Button size="sm" onClick={() => navigate("/staff")} className="gap-1.5 self-start sm:self-auto">
+          <Users className="h-4 w-4" />{isRtl ? "إدارة الموظفين" : "Manage Staff"}
+        </Button>
+      </div>
+
+      {/* Main action card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          {
+            title: isRtl ? "سجل الموظفين" : "Staff Directory",
+            desc: isRtl ? "عرض وإدارة جميع حسابات الموظفين" : "View and manage all staff accounts",
+            icon: Users, color: "text-blue-600", bg: "bg-blue-500/10", path: "/staff",
+          },
+          {
+            title: isRtl ? "إضافة موظف جديد" : "Register New Staff",
+            desc: isRtl ? "إنشاء حساب موظف جديد بصلاحيات محددة" : "Create a new staff account with specific role",
+            icon: UserPlus, color: "text-green-600", bg: "bg-green-500/10", path: "/staff",
+          },
+          {
+            title: isRtl ? "الأدوار والصلاحيات" : "Roles & Permissions",
+            desc: isRtl ? "مراجعة صلاحيات كل دور وظيفي" : "Review access levels for each role",
+            icon: ShieldAlert, color: "text-purple-600", bg: "bg-purple-500/10", path: "/staff",
+          },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card key={item.title} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => navigate(item.path)}>
+              <CardContent className="p-5 flex gap-4">
+                <div className={`p-3 rounded-xl ${item.bg} ${item.color} shrink-0 self-start`}><Icon className="h-5 w-5" /></div>
+                <div>
+                  <p className="font-semibold text-sm">{item.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Informational card about role scope */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader className="pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-primary" />
+            {isRtl ? "نطاق الصلاحيات" : "Account Manager Scope"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { icon: CheckCircle2, color: "text-green-500", text: isRtl ? "تسجيل حسابات موظفين جدد" : "Register new staff accounts" },
+              { icon: CheckCircle2, color: "text-green-500", text: isRtl ? "حذف حسابات الموظفين (غير المدراء)" : "Delete staff accounts (non-admins)" },
+              { icon: XCircle, color: "text-red-400", text: isRtl ? "لا يمكن تعديل حسابات المدراء" : "Cannot modify super admin accounts" },
+              { icon: XCircle, color: "text-red-400", text: isRtl ? "لا وصول لبيانات المرضى" : "No access to patient clinical data" },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <div key={i} className="flex items-center gap-2.5 text-sm">
+                  <Icon className={`h-4 w-4 shrink-0 ${item.color}`} />
+                  <span>{item.text}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Administrative Dashboard ─────────────────────────────────────────────────
+
+function AdministrativeDashboard() {
+  const { t, isRtl } = useTranslation();
+  const [, navigate] = useLocation();
+  const user = getUser();
+  const hour = new Date().getHours();
+  const displayName = isRtl ? (user?.nameAr ?? user?.nameEn) : user?.nameEn;
+  const today = new Date().toLocaleDateString(isRtl ? "ar-SA" : "en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  });
+
+  const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
+    query: { queryKey: getGetDashboardStatsQueryKey() },
+  });
+  const { data: appointments, isLoading: apptsLoading } = useGetTodayAppointments();
+
+  const appts: Record<string, unknown>[] = Array.isArray(appointments) ? appointments as Record<string, unknown>[] : [];
+  const completedAppts = appts.filter(a => a.status === "completed").length;
+  const pendingAppts   = appts.filter(a => a.status === "scheduled" || a.status === "in_progress").length;
+
+  const kpiCards = [
+    { label: t("dash.todayAppts"),    value: statsLoading ? undefined : stats?.todayAppointments, icon: Calendar, color: "text-blue-600",  bg: "bg-blue-500/10",  loading: statsLoading, onClick: () => navigate("/appointments") },
+    { label: isRtl ? "مكتملة اليوم" : "Completed Today", value: apptsLoading ? undefined : completedAppts,  icon: CheckCircle2, color: "text-green-600", bg: "bg-green-500/10", loading: apptsLoading, onClick: () => navigate("/appointments") },
+    { label: isRtl ? "في الانتظار" : "Awaiting",         value: apptsLoading ? undefined : pendingAppts,     icon: Clock,        color: "text-amber-600", bg: "bg-amber-500/10", loading: apptsLoading, onClick: () => navigate("/appointments") },
+    { label: t("dash.totalPatients"), value: statsLoading ? undefined : stats?.totalPatients,    icon: Users,        color: "text-purple-600", bg: "bg-purple-500/10", loading: statsLoading, onClick: () => navigate("/patients") },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
+            {isRtl ? "لوحة تحكم الإداري" : "Administrative Dashboard"}
+          </p>
+          <p className="text-sm text-muted-foreground mb-0.5">{today}</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t(getGreeting(hour))}, {displayName} 👋</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isRtl ? "جدولة المواعيد وإدارة الطاقم الطبي" : "Appointment scheduling and staff coordination"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" onClick={() => navigate("/appointments?new=1")} className="gap-1.5">
+            <Calendar className="h-4 w-4" />{t("appt.newAppointment")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/staff")} className="gap-1.5">
+            <Users className="h-4 w-4" />{t("nav.staff")}
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className="relative overflow-hidden cursor-pointer hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98]" onClick={s.onClick}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{s.label}</p>
+                    {s.loading ? <Skeleton className="h-8 w-16" /> : <p className="text-3xl font-bold tracking-tight">{s.value ?? 0}</p>}
+                  </div>
+                  <div className={`p-3 rounded-xl ${s.bg} ${s.color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Today's Full Appointment Schedule */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            {isRtl ? "جدول اليوم الكامل" : "Today's Full Schedule"}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/appointments")}>{t("dash.viewAll")}</Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          {apptsLoading ? (
+            <div className="space-y-0">{[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="flex gap-3 items-center p-4 border-b last:border-0">
+                <Skeleton className="h-9 w-9 rounded-full shrink-0" /><div className="space-y-1.5 flex-1"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-3 w-1/2" /></div>
+              </div>
+            ))}</div>
+          ) : appts.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="text-xs pl-4">{isRtl ? "الوقت" : "Time"}</TableHead>
+                  <TableHead className="text-xs">{t("generic.patient")}</TableHead>
+                  <TableHead className="text-xs">{isRtl ? "الطبيب" : "Doctor"}</TableHead>
+                  <TableHead className="text-xs">{isRtl ? "النوع" : "Type"}</TableHead>
+                  <TableHead className="text-xs">{t("generic.status")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {appts.slice(0, 12).map((appt) => {
+                  const time = new Date(appt.scheduledAt as string).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <TableRow key={appt.id as number} className="cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => navigate(`/patients/${appt.patientId}`)}>
+                      <TableCell className="pl-4 font-mono text-sm text-muted-foreground">{time}</TableCell>
+                      <TableCell className="font-medium text-sm">{String(appt.patientName ?? `#${appt.patientId}`)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{appt.doctorName ? `Dr. ${appt.doctorName}` : "—"}</TableCell>
+                      <TableCell>{apptTypeBadge(appt.type as string)}</TableCell>
+                      <TableCell>{apptStatusBadge(appt.status as string)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Clock className="h-8 w-8 mb-2 opacity-40" />
+              <p className="text-sm">{t("dash.noApptsToday")}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[
+          { label: isRtl ? "المرضى" : "Patient Registry", icon: Users, path: "/patients", color: "text-blue-600", bg: "bg-blue-500/10" },
+          { label: isRtl ? "دليل الموظفين" : "Staff Directory", icon: Activity, path: "/staff", color: "text-purple-600", bg: "bg-purple-500/10" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card key={item.path} className="cursor-pointer hover:shadow-md transition-shadow active:scale-[0.98]" onClick={() => navigate(item.path)}>
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${item.bg} ${item.color}`}><Icon className="h-5 w-5" /></div>
+                <div>
+                  <p className="font-semibold">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{isRtl ? "انقر للفتح" : "Click to open"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const user = getUser();
   const role = user?.role ?? "";
-  if (isLabRole(role))             return <LabDashboard />;
-  if (isUnitRole(role))            return <UnitDashboard />;
-  if (role === "nurse")            return <NurseDashboard />;
-  if (role === "pharmacist")       return <PharmacistDashboard />;
-  if (role === "billing_officer")  return <BillingOfficerDashboard />;
-  if (role === "data_analyser")    return <DataAnalyserDashboard />;
+  if (isLabRole(role))                                              return <LabDashboard />;
+  if (isUnitRole(role))                                             return <UnitDashboard />;
+  if (role === "nurse")                                             return <NurseDashboard />;
+  if (role === "pharmacist")                                        return <PharmacistDashboard />;
+  if (role === "billing_officer" || role === "accounts_manager")    return role === "accounts_manager" ? <AccountsManagerDashboard /> : <BillingOfficerDashboard />;
+  if (role === "data_analyser")                                     return <DataAnalyserDashboard />;
+  if (role === "emergency_physician")                               return <EmergencyDashboard />;
+  if (role === "administrative")                                    return <AdministrativeDashboard />;
+  if (role === "pediatric_consultant" || role === "pediatric_specialist" || role === "registrar") return <ClinicalDashboard />;
   return <GeneralDashboard />;
 }
