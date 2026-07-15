@@ -38,7 +38,7 @@ type ReportType = "overall" | "patients" | "appointments" | "lab" | "revenue" | 
 type Period = "today" | "days3" | "days10" | "week" | "days30" | "month" | "quarter" | "half" | "year";
 
 const PERIODS: { value: Period; labelEn: string; labelAr: string }[] = [
-  { value: "today",   labelEn: "Today",          labelAr: "اليوم" },
+  { value: "today",   labelEn: "This Day",        labelAr: "هذا اليوم" },
   { value: "days3",   labelEn: "Last 3 Days",    labelAr: "آخر 3 أيام" },
   { value: "days10",  labelEn: "Last 10 Days",   labelAr: "آخر 10 أيام" },
   { value: "week",    labelEn: "This Week",       labelAr: "هذا الأسبوع" },
