@@ -109,7 +109,7 @@ export default function Patients() {
 
   const { data, isLoading } = useListPatients({
     search: debouncedSearch || undefined,
-    limit: 20,
+    limit: 1000,
   });
 
   const deleteMutation = useDeletePatient();
