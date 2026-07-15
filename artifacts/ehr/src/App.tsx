@@ -36,6 +36,7 @@ import MyPatients from "@/pages/my-patients";
 import WardPatients from "@/pages/ward-patients";
 import WardCensus from "@/pages/ward-census";
 import Reports from "@/pages/reports";
+import BillingReports from "@/pages/billing-reports";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -188,7 +189,11 @@ function Router() {
       </Route>
 
       <Route path="/reports">
-        {() => <ProtectedRoute component={Reports} requiredPath="/reports" />}
+        {() => {
+          const u = getUser();
+          const ReportsPage = u?.role === "billing_officer" ? BillingReports : Reports;
+          return <ProtectedRoute component={ReportsPage} requiredPath="/reports" />;
+        }}
       </Route>
 
       <Route component={NotFound} />
