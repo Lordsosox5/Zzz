@@ -1306,9 +1306,12 @@ ${sec("\ud83d\udcb0", "\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0645\u
               ],
               trendData: rxTrend,
               trendLabel: en ? "Prescriptions" : "الوصفات",
-              tableColumns: en ? ["Doctor", "Status"] : ["الطبيب", "الحالة"],
+              tableColumns: en ? ["Drug", "Doctor", "Status"] : ["الدواء", "الطبيب", "الحالة"],
               tableRows: prescriptions.slice(0, 50).map(r => ({
-                Doctor: r.doctorName ?? "—", "الطبيب": r.doctorName ?? "—",
+                Drug: r.drugName ?? r.medicationName ?? "—",
+                "الدواء": r.drugName ?? r.medicationName ?? "—",
+                Doctor: r.prescriberName ?? r.doctorName ?? "—",
+                "الطبيب": r.prescriberName ?? r.doctorName ?? "—",
                 Status: r.status ?? "—", "الحالة": r.status ?? "—",
               })),
               interpretation: buildRxInterp(prescriptions, dispRx, rxPending, rxCancelled, dispRxRate, periodLabel, language),
@@ -2531,7 +2534,13 @@ function PrescriptionReport({ prescriptions, period, groupBy, periodLabel, langu
 
       <ReportTable data={prescriptions.slice(0, 50)} columns={[
         { key: "patientName", label: language === "ar" ? "المريض" : "Patient" },
-        { key: "doctorName", label: language === "ar" ? "الطبيب" : "Doctor" },
+        { key: "drugName", label: language === "ar" ? "الدواء" : "Drug", render: (v, row) => (
+          <div>
+            <span className="font-medium">{v ?? row.medicationName ?? "—"}</span>
+            {row.dosage && <span className="block text-xs text-muted-foreground">{row.dosage} · {row.route ?? ""}</span>}
+          </div>
+        )},
+        { key: "prescriberName", label: language === "ar" ? "الطبيب المعالج" : "Prescribing Doctor", render: (v) => v ?? "—" },
         { key: "status", label: language === "ar" ? "الحالة" : "Status", render: (v) => <StatusBadge status={v} /> },
         { key: "createdAt", label: language === "ar" ? "التاريخ" : "Date", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
       ]} language={language} />

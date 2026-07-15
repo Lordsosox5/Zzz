@@ -51,12 +51,25 @@ router.get("/prescriptions", async (req, res): Promise<void> => {
     const rxList = mapRows(data ?? []);
 
     const patientIds = [...new Set(rxList.map((r: Record<string, unknown>) => r.patientId as number).filter(Boolean))];
+    const prescriberIds = [...new Set(rxList.map((r: Record<string, unknown>) => r.prescriberId as number).filter(Boolean))];
+
     let patientMap: Record<number, string> = {};
+    let prescriberMap: Record<number, string> = {};
+
     if (patientIds.length > 0) {
       const { data: pd } = await supabase.from("patients").select("id, name_en").in("id", patientIds);
       for (const p of (pd ?? [])) patientMap[p.id] = p.name_en;
     }
-    res.json(rxList.map((r: Record<string, unknown>) => ({ ...r, patientName: patientMap[r.patientId as number] ?? null, prescriberName: null })));
+    if (prescriberIds.length > 0) {
+      const { data: ud } = await supabase.from("users").select("id, name_en").in("id", prescriberIds);
+      for (const u of (ud ?? [])) prescriberMap[u.id] = u.name_en;
+    }
+
+    res.json(rxList.map((r: Record<string, unknown>) => ({
+      ...r,
+      patientName: patientMap[r.patientId as number] ?? null,
+      prescriberName: prescriberMap[r.prescriberId as number] ?? null,
+    })));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
