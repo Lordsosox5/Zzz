@@ -35,11 +35,14 @@ import * as XLSX from "xlsx";
 import { printReport, type PrintSection, type PrintDist } from "@/lib/report-print";
 
 type ReportType = "overall" | "patients" | "appointments" | "lab" | "revenue" | "prescriptions" | "radiology" | "pharmacy";
-type Period = "today" | "week" | "month" | "quarter" | "half" | "year";
+type Period = "today" | "days3" | "days10" | "week" | "days30" | "month" | "quarter" | "half" | "year";
 
 const PERIODS: { value: Period; labelEn: string; labelAr: string }[] = [
   { value: "today",   labelEn: "Today",          labelAr: "اليوم" },
+  { value: "days3",   labelEn: "Last 3 Days",    labelAr: "آخر 3 أيام" },
+  { value: "days10",  labelEn: "Last 10 Days",   labelAr: "آخر 10 أيام" },
   { value: "week",    labelEn: "This Week",       labelAr: "هذا الأسبوع" },
+  { value: "days30",  labelEn: "Last 30 Days",   labelAr: "آخر 30 يوماً" },
   { value: "month",   labelEn: "This Month",      labelAr: "هذا الشهر" },
   { value: "quarter", labelEn: "Last 3 Months",   labelAr: "آخر 3 أشهر" },
   { value: "half",    labelEn: "Last 6 Months",   labelAr: "آخر 6 أشهر" },
@@ -92,8 +95,14 @@ function getPeriodRange(period: Period): { start: Date; end: Date; groupBy: "hou
   switch (period) {
     case "today":
       start = new Date(now); start.setHours(0, 0, 0, 0); groupBy = "hour"; break;
+    case "days3":
+      start = new Date(now); start.setDate(now.getDate() - 2); start.setHours(0, 0, 0, 0); groupBy = "day"; break;
+    case "days10":
+      start = new Date(now); start.setDate(now.getDate() - 9); start.setHours(0, 0, 0, 0); groupBy = "day"; break;
     case "week":
       start = new Date(now); start.setDate(now.getDate() - 6); start.setHours(0, 0, 0, 0); groupBy = "day"; break;
+    case "days30":
+      start = new Date(now); start.setDate(now.getDate() - 29); start.setHours(0, 0, 0, 0); groupBy = "day"; break;
     case "month":
       start = new Date(now); start.setDate(1); start.setHours(0, 0, 0, 0); groupBy = "day"; break;
     case "quarter":
