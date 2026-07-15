@@ -76,6 +76,7 @@ Then click **Run**. The app will start automatically.
 | Username | Password | Role |
 |---|---|---|
 | admin | admin123 | Super Admin |
+| finance | finance123 | Billing Officer (Finance) |
 
 ## User preferences
 
