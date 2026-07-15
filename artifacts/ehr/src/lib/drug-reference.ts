@@ -857,6 +857,157 @@ export const DRUG_REFERENCE: DrugReference[] = [
   },
 ];
 
+// ─── Hospital Drug List (from official dose reference sheet) ─────────────────
+// Flat list of all drugs stocked at Almuzini Children Hospital, used for the
+// inline drug-name combobox in the prescription form.
+
+export type DrugForm = "injection" | "syrup" | "drop" | "tablet";
+
+export interface HospitalDrug {
+  name: string;
+  nameAr: string;
+  form: DrugForm;
+  genericName?: string;
+  refKey?: string; // matches DRUG_REFERENCE[].name for dose auto-fill
+}
+
+export const HOSPITAL_DRUG_LIST: HospitalDrug[] = [
+  // ── Injections / Infusions ──────────────────────────────────────────────────
+  { name: "Diazepam Injection (IV / Per Rectal)",     nameAr: "ديازيبام حقن",                form: "injection", genericName: "Diazepam",          refKey: "Diazepam" },
+  { name: "Phenytoin Injection",                       nameAr: "فينيتوين حقن",               form: "injection", genericName: "Phenytoin",          refKey: "Phenytoin (Diphenylhydantoin)" },
+  { name: "Midazolam Injection",                       nameAr: "ميدازولام حقن",              form: "injection", genericName: "Midazolam",          refKey: "Midazolam" },
+  { name: "Chlorphenamine Injection (Antihistamine)",  nameAr: "كلورفينامين حقن",            form: "injection", genericName: "Chlorphenamine" },
+  { name: "Dexamethasone Injection",                   nameAr: "ديكساميتازون حقن",           form: "injection", genericName: "Dexamethasone",      refKey: "Dexamethasone" },
+  { name: "Adrenaline (Epinephrine) Injection",        nameAr: "أدرينالين حقن",              form: "injection", genericName: "Epinephrine",        refKey: "Adrenaline (Epinephrine) Nebulised" },
+  { name: "Hydrocortisone Injection",                  nameAr: "هيدروكورتيزون حقن",          form: "injection", genericName: "Hydrocortisone",     refKey: "Hydrocortisone" },
+  { name: "Furosemide (Lasix) Injection",              nameAr: "فوروسيميد (لاسيكس) حقن",    form: "injection", genericName: "Furosemide",         refKey: "Furosemide (Frusemide)" },
+  { name: "Vitamin K Injection",                       nameAr: "فيتامين ك حقن",              form: "injection", genericName: "Phytomenadione" },
+  { name: "Vitamin B6 (Pyridoxine) Injection",         nameAr: "فيتامين ب6 حقن",             form: "injection", genericName: "Pyridoxine" },
+  { name: "Vitamin B12 Injection",                     nameAr: "فيتامين ب12 حقن",            form: "injection", genericName: "Cyanocobalamin" },
+  { name: "Ondansetron Injection",                     nameAr: "أوندانسيترون حقن",           form: "injection", genericName: "Ondansetron",        refKey: "Ondansetron" },
+  { name: "Calcium Gluconate 10% Injection",           nameAr: "جلوكونات الكالسيوم حقن",    form: "injection", genericName: "Calcium Gluconate",  refKey: "Calcium Gluconate" },
+  { name: "Paracetamol IV Infusion",                   nameAr: "باراسيتامول تسريب وريدي",   form: "injection", genericName: "Paracetamol",        refKey: "Paracetamol (Acetaminophen)" },
+  { name: "Diclofenac Sodium (Voltarol) Injection",    nameAr: "ديكلوفيناك صوديوم حقن",     form: "injection", genericName: "Diclofenac Sodium" },
+  { name: "Benzyl Penicillin Injection",               nameAr: "بنزيل بنسلين حقن",           form: "injection", genericName: "Benzylpenicillin",   refKey: "Benzylpenicillin (Penicillin G)" },
+  { name: "Benzathine Penicillin Injection",           nameAr: "بنزاثين بنسلين حقن",         form: "injection", genericName: "Benzathine Benzylpenicillin" },
+  { name: "Ampicillin Injection",                      nameAr: "أمبيسيلين حقن",              form: "injection", genericName: "Ampicillin",         refKey: "Ampicillin" },
+  { name: "Gentamicin Injection",                      nameAr: "جنتاميسين حقن",              form: "injection", genericName: "Gentamicin",         refKey: "Gentamicin" },
+  { name: "Vancomycin Injection",                      nameAr: "فانكوميسين حقن",             form: "injection", genericName: "Vancomycin",         refKey: "Vancomycin" },
+  { name: "Artesunate Injection",                      nameAr: "أرتيسونات حقن",              form: "injection", genericName: "Artesunate" },
+  { name: "Quinine Injection",                         nameAr: "كينين حقن",                  form: "injection", genericName: "Quinine" },
+  { name: "Acyclovir Injection",                       nameAr: "أسيكلوفير حقن",              form: "injection", genericName: "Acyclovir",          refKey: "Acyclovir" },
+  { name: "Cefotaxime Injection",                      nameAr: "سيفوتاكسيم حقن",             form: "injection", genericName: "Cefotaxime",         refKey: "Cefotaxime" },
+  { name: "Ceftriaxone (Samixon) Injection",           nameAr: "سيفترياكسون (سامكسون) حقن", form: "injection", genericName: "Ceftriaxone",        refKey: "Ceftriaxone" },
+  { name: "Cefuroxime (Maxil) Injection",              nameAr: "سيفوروكسيم (ماكسيل) حقن",   form: "injection", genericName: "Cefuroxime",         refKey: "Cefuroxime" },
+  { name: "Ceftazidime (Fortum) Injection",            nameAr: "سيفتازيديم (فورتوم) حقن",   form: "injection", genericName: "Ceftazidime" },
+  { name: "Aminophylline Injection",                   nameAr: "أمينوفيلين حقن",             form: "injection", genericName: "Aminophylline",      refKey: "Aminophylline" },
+  { name: "Magnesium Sulphate Injection",              nameAr: "كبريتات المغنيسيوم حقن",    form: "injection", genericName: "Magnesium Sulphate" },
+  { name: "Anti-Tetanus Injection (Tetanus Toxoid)",   nameAr: "حقن الكزاز الوقائي",         form: "injection", genericName: "Tetanus Toxoid" },
+  { name: "Tetanus Immunoglobulin",                    nameAr: "غلوبيولين الكزاز العلاجي",  form: "injection", genericName: "Tetanus Immunoglobulin" },
+  { name: "Anti-Venom Injection",                      nameAr: "مضاد السموم حقن",            form: "injection", genericName: "Anti-Venom" },
+  { name: "Anti-Rabies Injection",                     nameAr: "مضاد داء الكلب حقن",         form: "injection", genericName: "Rabies Immunoglobulin" },
+  { name: "Metronidazole IV Infusion",                 nameAr: "ميترونيدازول تسريب وريدي",  form: "injection", genericName: "Metronidazole",      refKey: "Metronidazole" },
+  { name: "Streptomycin Injection",                    nameAr: "ستربتومايسين حقن",           form: "injection", genericName: "Streptomycin" },
+  { name: "Deferoxamine Mesilate Infusion",            nameAr: "دیفيروكسامين ميسيلات تسريب",form: "injection", genericName: "Deferoxamine" },
+  { name: "Morphine Injection",                        nameAr: "مورفين حقن",                 form: "injection", genericName: "Morphine",           refKey: "Morphine Sulfate" },
+  { name: "Meropenem Injection",                       nameAr: "ميروبينيم حقن",              form: "injection", genericName: "Meropenem" },
+  { name: "Mannitol IV Infusion",                      nameAr: "مانيتول تسريب وريدي",        form: "injection", genericName: "Mannitol" },
+  { name: "Amikacin Injection",                        nameAr: "أميكاسين حقن",               form: "injection", genericName: "Amikacin" },
+
+  // ── Syrups / Suspensions ────────────────────────────────────────────────────
+  { name: "Paracetamol Syrup 120mg",                   nameAr: "باراسيتامول شراب 120مج",    form: "syrup",     genericName: "Paracetamol",        refKey: "Paracetamol (Acetaminophen)" },
+  { name: "Mefenamic Acid Syrup 50mg",                 nameAr: "حمض ميفينامي شراب 50مج",    form: "syrup",     genericName: "Mefenamic Acid" },
+  { name: "Ibuprofen Syrup 100mg",                     nameAr: "إيبوبروفين شراب 100مج",     form: "syrup",     genericName: "Ibuprofen",          refKey: "Ibuprofen" },
+  { name: "Balsam Cough Syrup",                        nameAr: "شراب بلسم للكحة",            form: "syrup",     genericName: "Balsam" },
+  { name: "Histalix PD Syrup",                         nameAr: "هيستاليكس شراب للأطفال",    form: "syrup",     genericName: "Antihistamine Cough Syrup" },
+  { name: "Amilyn PD Syrup",                           nameAr: "أميلين شراب للأطفال",        form: "syrup",     genericName: "Antihistamine Cough Syrup" },
+  { name: "Prospan Cough Syrup",                       nameAr: "بروسبان شراب للكحة",         form: "syrup",     genericName: "Ivy Leaf Extract" },
+  { name: "Pulmocare Syrup",                           nameAr: "بولموكار شراب",              form: "syrup",     genericName: "Ambroxol" },
+  { name: "Ambolar Syrup",                             nameAr: "أمبولار شراب",               form: "syrup",     genericName: "Ambroxol" },
+  { name: "Solvexin Syrup",                            nameAr: "سولفكسين شراب",              form: "syrup",     genericName: "Ambroxol" },
+  { name: "Bronchophane Syrup",                        nameAr: "برونكوفان شراب",             form: "syrup",     genericName: "Ambroxol" },
+  { name: "Amoxicillin Syrup 125mg",                   nameAr: "أموكسيسيلين شراب 125مج",    form: "syrup",     genericName: "Amoxicillin",        refKey: "Amoxicillin" },
+  { name: "Amoxicillin Syrup 250mg",                   nameAr: "أموكسيسيلين شراب 250مج",    form: "syrup",     genericName: "Amoxicillin",        refKey: "Amoxicillin" },
+  { name: "Amoclan Syrup 200mg (Co-Amoxiclav)",        nameAr: "أموكلان شراب 200مج",         form: "syrup",     genericName: "Amoxicillin-Clavulanate", refKey: "Co-Amoxiclav (Amoxicillin-Clavulanate)" },
+  { name: "Amoclan Syrup 400mg (Co-Amoxiclav)",        nameAr: "أموكلان شراب 400مج",         form: "syrup",     genericName: "Amoxicillin-Clavulanate", refKey: "Co-Amoxiclav (Amoxicillin-Clavulanate)" },
+  { name: "Ampiclox Suspension 250mg",                 nameAr: "أمبيكلوكس معلق 250مج",      form: "syrup",     genericName: "Ampicillin-Cloxacillin" },
+  { name: "Azithromycin Suspension 200mg",             nameAr: "أزيثروميسين معلق 200مج",    form: "syrup",     genericName: "Azithromycin",       refKey: "Azithromycin" },
+  { name: "Erythromycin Syrup 125mg",                  nameAr: "إيريثروميسين شراب 125مج",   form: "syrup",     genericName: "Erythromycin" },
+  { name: "Erythromycin Syrup 250mg",                  nameAr: "إيريثروميسين شراب 250مج",   form: "syrup",     genericName: "Erythromycin" },
+  { name: "Clarithromycin Syrup 125mg",                nameAr: "كلاريثروميسين شراب 125مج",  form: "syrup",     genericName: "Clarithromycin",     refKey: "Clarithromycin" },
+  { name: "Clarithromycin Syrup 250mg",                nameAr: "كلاريثروميسين شراب 250مج",  form: "syrup",     genericName: "Clarithromycin",     refKey: "Clarithromycin" },
+  { name: "Cefaclor Syrup 125mg",                      nameAr: "سيفاكلور شراب 125مج",       form: "syrup",     genericName: "Cefaclor" },
+  { name: "Cefaclor Syrup 250mg",                      nameAr: "سيفاكلور شراب 250مج",       form: "syrup",     genericName: "Cefaclor" },
+  { name: "Cefixime Suspension 100mg",                 nameAr: "سيفيكسيم معلق 100مج",       form: "syrup",     genericName: "Cefixime" },
+  { name: "Cephalexin (Cefalixin) Syrup 125mg",        nameAr: "سيفاليكسين شراب 125مج",     form: "syrup",     genericName: "Cephalexin",         refKey: "Cephalexin" },
+  { name: "Cephalexin (Cefalixin) Syrup 250mg",        nameAr: "سيفاليكسين شراب 250مج",     form: "syrup",     genericName: "Cephalexin",         refKey: "Cephalexin" },
+  { name: "Cefpodoxime (Cefedox) Syrup 50mg",          nameAr: "سيفبودوكسيم شراب 50مج",     form: "syrup",     genericName: "Cefpodoxime" },
+  { name: "Cefpodoxime (Cefedox) Syrup 100mg",         nameAr: "سيفبودوكسيم شراب 100مج",    form: "syrup",     genericName: "Cefpodoxime" },
+  { name: "Ketoprofen (Ketofen) Syrup",                nameAr: "كيتوبروفين شراب",            form: "syrup",     genericName: "Ketoprofen" },
+  { name: "Chlorphenamine (Antihistamine) Syrup 5mg",  nameAr: "كلورفينامين شراب 5مج",      form: "syrup",     genericName: "Chlorphenamine" },
+  { name: "Salbutamol Syrup 2mg",                      nameAr: "سالبوتامول شراب 2مج",        form: "syrup",     genericName: "Salbutamol",         refKey: "Salbutamol (Albuterol)" },
+  { name: "Metronidazole Syrup 200mg",                 nameAr: "ميترونيدازول شراب 200مج",   form: "syrup",     genericName: "Metronidazole",      refKey: "Metronidazole" },
+  { name: "Zinc Sulphate Syrup",                       nameAr: "كبريتات الزنك شراب",         form: "syrup",     genericName: "Zinc Sulphate" },
+  { name: "Lactulose Syrup 10mg",                      nameAr: "لاكتولوز شراب 10مج",        form: "syrup",     genericName: "Lactulose",          refKey: "Lactulose" },
+  { name: "Ferrous Sulphate (Saferron) Syrup",         nameAr: "كبريتات الحديد (سافيرون) شراب", form: "syrup", genericName: "Ferrous Sulphate",   refKey: "Iron (Ferrous Sulfate)" },
+  { name: "Hematin Syrup",                             nameAr: "هيماتين شراب",               form: "syrup",     genericName: "Iron Protein Succinylate" },
+  { name: "Dexamethasone (Orazone) Syrup",             nameAr: "ديكساميتازون (أوروزون) شراب", form: "syrup",   genericName: "Dexamethasone",      refKey: "Dexamethasone" },
+  { name: "Mebendazole (Vermox) Syrup 100mg",          nameAr: "ميبندازول (فيرموكس) شراب",  form: "syrup",     genericName: "Mebendazole" },
+  { name: "Albendazole Syrup 100mg",                   nameAr: "ألبندازول شراب 100مج",       form: "syrup",     genericName: "Albendazole" },
+  { name: "Co-Trimoxazole (Septrin) Syrup 240mg",      nameAr: "كوتريموكسازول (سبترين) شراب", form: "syrup",  genericName: "Trimethoprim-Sulfamethoxazole", refKey: "Co-trimoxazole (TMP-SMX)" },
+  { name: "Carbamazepine (Tegretol) Syrup",            nameAr: "كاربامازيبين (تيجريتول) شراب", form: "syrup", genericName: "Carbamazepine",      refKey: "Carbamazepine" },
+  { name: "Acyclovir Syrup 200mg",                     nameAr: "أسيكلوفير شراب 200مج",       form: "syrup",     genericName: "Acyclovir",          refKey: "Acyclovir" },
+  { name: "Domperidone Syrup",                         nameAr: "دومبيريدون شراب",            form: "syrup",     genericName: "Domperidone",        refKey: "Domperidone" },
+
+  // ── Oral / Ear / Eye / Nasal Drops ──────────────────────────────────────────
+  { name: "Paracetamol (Adol) Oral Drops 100mg/ml",   nameAr: "باراسيتامول (أدول) قطرة",   form: "drop",      genericName: "Paracetamol",        refKey: "Paracetamol (Acetaminophen)" },
+  { name: "Nystatin (Fungistatin) Oral Drops",         nameAr: "نيستاتين (فنجيستاتين) قطرة",form: "drop",      genericName: "Nystatin",           refKey: "Nystatin" },
+  { name: "Vitamin D3 (Infa D) Oral Drops 1000 IU",   nameAr: "فيتامين د3 (إنفا دي) قطرة", form: "drop",      genericName: "Cholecalciferol" },
+  { name: "Prifinium Bromide (Riabal) Oral Drops",     nameAr: "بريفينيوم بروميد (ريابال) قطرة", form: "drop", genericName: "Prifinium Bromide" },
+  { name: "Simethicone (Disflatyl/Infacon) Drops",     nameAr: "سيميثيكون (ديسفلاتيل) قطرة",form: "drop",     genericName: "Simethicone" },
+  { name: "Folic Acid (Foliclap) Oral Drops",          nameAr: "حمض الفوليك قطرة",           form: "drop",      genericName: "Folic Acid" },
+  { name: "Ivylex Herbal Cough Oral Drops",            nameAr: "أيفيليكس قطرة عشبية للكحة", form: "drop",      genericName: "Ivy Leaf Extract" },
+  { name: "Miniguava Herbal Cough Oral Drops",         nameAr: "ميني جوافة قطرة عشبية للكحة", form: "drop",    genericName: "Guava Leaf Extract" },
+  { name: "Iron (Fer-Sol) Oral Drops",                 nameAr: "حديد (فير-سول) قطرة",        form: "drop",      genericName: "Iron III Hydroxide",  refKey: "Iron (Ferrous Sulfate)" },
+  { name: "Clotrimazole (Candid) 1% Ear Drops",       nameAr: "كلوتريمازول (كانديد) قطرة أذن", form: "drop",  genericName: "Clotrimazole" },
+  { name: "Gentamicin (Apigen) Ear/Eye Drops",        nameAr: "جنتاميسين (أبيجن) قطرة أذن/عين", form: "drop", genericName: "Gentamicin" },
+  { name: "Sodium Bicarbonate Ear Drops",              nameAr: "بيكربونات الصوديوم قطرة أذن", form: "drop",    genericName: "Sodium Bicarbonate" },
+  { name: "Ciprofloxacin 0.3% Eye Drops",             nameAr: "سيبروفلوكساسين 0.3% قطرة عين", form: "drop",  genericName: "Ciprofloxacin",      refKey: "Ciprofloxacin" },
+  { name: "Chloramphenicol (Isomephenicol) 0.5% Eye Drops", nameAr: "كلورامفينيكول قطرة عين 0.5%", form: "drop", genericName: "Chloramphenicol" },
+  { name: "Diclofenac (Diclogesic) 0.1% Eye Drops",   nameAr: "ديكلوفيناك (ديكلوجيزيك) قطرة عين", form: "drop", genericName: "Diclofenac Sodium" },
+
+  // ── Tablets / Capsules ──────────────────────────────────────────────────────
+  { name: "Paracetamol 250mg Tablet",                  nameAr: "باراسيتامول 250مج قرص",     form: "tablet",    genericName: "Paracetamol",        refKey: "Paracetamol (Acetaminophen)" },
+  { name: "Paracetamol 500mg Tablet",                  nameAr: "باراسيتامول 500مج قرص",     form: "tablet",    genericName: "Paracetamol",        refKey: "Paracetamol (Acetaminophen)" },
+  { name: "Ibuprofen 200mg Tablet",                    nameAr: "إيبوبروفين 200مج قرص",      form: "tablet",    genericName: "Ibuprofen",          refKey: "Ibuprofen" },
+  { name: "Ibuprofen 400mg Tablet",                    nameAr: "إيبوبروفين 400مج قرص",      form: "tablet",    genericName: "Ibuprofen",          refKey: "Ibuprofen" },
+  { name: "Mefenamic Acid 250mg Tablet",               nameAr: "حمض ميفينامي 250مج قرص",   form: "tablet",    genericName: "Mefenamic Acid" },
+  { name: "Mefenamic Acid 500mg Tablet",               nameAr: "حمض ميفينامي 500مج قرص",   form: "tablet",    genericName: "Mefenamic Acid" },
+  { name: "Aspirin 75mg Tablet",                       nameAr: "أسبرين 75مج قرص",           form: "tablet",    genericName: "Aspirin" },
+  { name: "Aspirin 100mg Tablet",                      nameAr: "أسبرين 100مج قرص",          form: "tablet",    genericName: "Aspirin" },
+  { name: "Aspirin 300mg Tablet",                      nameAr: "أسبرين 300مج قرص",          form: "tablet",    genericName: "Aspirin" },
+  { name: "Prednisolone 5mg Tablet",                   nameAr: "بريدنيزولون 5مج قرص",       form: "tablet",    genericName: "Prednisolone",       refKey: "Prednisolone" },
+  { name: "Amoclan 375mg Capsule (Co-Amoxiclav)",      nameAr: "أموكلان 375مج كبسول",       form: "tablet",    genericName: "Amoxicillin-Clavulanate", refKey: "Co-Amoxiclav (Amoxicillin-Clavulanate)" },
+  { name: "Amoclan 625mg Capsule (Co-Amoxiclav)",      nameAr: "أموكلان 625مج كبسول",       form: "tablet",    genericName: "Amoxicillin-Clavulanate", refKey: "Co-Amoxiclav (Amoxicillin-Clavulanate)" },
+  { name: "Amoclan 1g Capsule (Co-Amoxiclav)",         nameAr: "أموكلان 1جم كبسول",         form: "tablet",    genericName: "Amoxicillin-Clavulanate", refKey: "Co-Amoxiclav (Amoxicillin-Clavulanate)" },
+];
+
+export function searchHospitalDrugs(query: string): HospitalDrug[] {
+  if (!query.trim()) return HOSPITAL_DRUG_LIST;
+  const q = query.toLowerCase().trim();
+  return HOSPITAL_DRUG_LIST.filter(d =>
+    d.name.toLowerCase().includes(q) ||
+    d.nameAr.includes(q) ||
+    (d.genericName?.toLowerCase().includes(q) ?? false)
+  );
+}
+
+export function getHospitalDrugByName(name: string): HospitalDrug | undefined {
+  return HOSPITAL_DRUG_LIST.find(d => d.name === name);
+}
+
+// ─── End Hospital Drug List ───────────────────────────────────────────────────
+
 export function searchDrugs(query: string): DrugReference[] {
   const q = query.toLowerCase().trim();
   if (!q) return DRUG_REFERENCE;

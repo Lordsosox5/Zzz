@@ -12,13 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PatientSearchCombobox } from "@/components/patient-search-combobox";
 import { DrugPicker } from "@/components/drug-picker";
+import { DrugNameCombobox } from "@/components/drug-name-combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, Save, PackageCheck, Pencil, Baby, Stethoscope } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { type DrugReference } from "@/lib/drug-reference";
+import { type DrugReference, DRUG_REFERENCE } from "@/lib/drug-reference";
+import type { HospitalDrug } from "@/lib/drug-reference";
 
 type Prescription = {
   id: number;
@@ -67,6 +69,27 @@ export default function Prescriptions() {
       frequency: drug.frequency,
       route: drug.route,
     }));
+  };
+
+  const handleComboboxSelect = (name: string, hospitalDrug?: HospitalDrug) => {
+    setForm(p => ({ ...p, drugName: name }));
+    if (hospitalDrug?.refKey) {
+      const ref = DRUG_REFERENCE.find(d => d.name === hospitalDrug.refKey);
+      if (ref) {
+        setSelectedDrugRef(ref);
+        setForm(p => ({
+          ...p,
+          drugName: name,
+          dosage: ref.pediatricDose,
+          frequency: ref.frequency,
+          route: ref.route,
+        }));
+      } else {
+        setSelectedDrugRef(null);
+      }
+    } else {
+      setSelectedDrugRef(null);
+    }
   };
 
   const applyNeonatalDose = () => {
@@ -205,10 +228,15 @@ export default function Prescriptions() {
                   </div>
                 )}
 
-                {/* Drug Name */}
+                {/* Drug Name — searchable combobox */}
                 <div className="space-y-2">
                   <Label>{t("rx.drugName")} *</Label>
-                  <Input name="drugName" required value={form.drugName} onChange={handleChange} placeholder={isRtl ? "اسم الدواء" : "Drug name"} />
+                  <DrugNameCombobox
+                    value={form.drugName}
+                    onChange={handleComboboxSelect}
+                    required
+                    placeholder={isRtl ? "ابحث باسم الدواء…" : "Search drug name…"}
+                  />
                 </div>
 
                 {/* Dosage + Frequency */}
@@ -261,7 +289,12 @@ export default function Prescriptions() {
           <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
             <div className="space-y-3">
               <Label>{t("rx.drugName")} *</Label>
-              <Input name="drugName" required value={editForm.drugName} onChange={handleEditChange} />
+              <DrugNameCombobox
+                value={editForm.drugName}
+                onChange={(name) => setEditForm(p => ({ ...p, drugName: name }))}
+                required
+                placeholder={isRtl ? "ابحث باسم الدواء…" : "Search drug name…"}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
