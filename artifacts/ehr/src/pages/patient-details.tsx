@@ -1196,6 +1196,38 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
               {/* Status + Unit + Place indicator */}
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <PatientStatusBadge status={patient.status ?? "admitted"} />
+                {(() => {
+                  const pt = (patient as any).patientType ?? "outpatient";
+                  const isInpatient = pt === "inpatient";
+                  const canEdit = canEditPatient(user?.role ?? "");
+                  return (
+                    <button
+                      type="button"
+                      disabled={!canEdit}
+                      title={canEdit ? (isRtl ? "انقر لتغيير نوع المريض" : "Click to change patient type") : undefined}
+                      onClick={canEdit ? async () => {
+                        const newType = isInpatient ? "outpatient" : "inpatient";
+                        try {
+                          await fetch(`/api/patients/${patientId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+                            body: JSON.stringify({ patientType: newType }),
+                          });
+                          queryClient.invalidateQueries({ queryKey: getGetPatientSummaryQueryKey(patientId) });
+                        } catch { /* silent */ }
+                      } : undefined}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all
+                        ${isInpatient
+                          ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-400"
+                          : "bg-green-500/15 text-green-700 dark:text-green-300 border-green-400"}
+                        ${canEdit ? "cursor-pointer hover:opacity-70" : "cursor-default"}`}
+                    >
+                      {isInpatient
+                        ? (isRtl ? "🏥 داخلي" : "🏥 Inpatient")
+                        : (isRtl ? "🏠 خارجي" : "🏠 Outpatient")}
+                    </button>
+                  );
+                })()}
                 {(patient as any).place && (() => {
                   const placeKey = (patient as any).place;
                   const placeLabel =

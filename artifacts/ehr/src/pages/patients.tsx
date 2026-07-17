@@ -59,6 +59,7 @@ type ExportFilters = {
   ageMin: string;
   ageMax: string;
   diagnosis: string;
+  patientType: string;
 };
 
 function calcAge(dob: string): number {
@@ -91,6 +92,7 @@ export default function Patients() {
     ageMin: "",
     ageMax: "",
     diagnosis: "",
+    patientType: "",
   });
 
   const user = getUser();
@@ -254,6 +256,9 @@ export default function Patients() {
           if (filters.ageMax !== "" && age > Number(filters.ageMax)) return false;
         }
         if (diagnosisFilterIds !== null && !diagnosisFilterIds.has(p.id)) return false;
+        if (filters.patientType) {
+          if ((p.patientType ?? "outpatient") !== filters.patientType) return false;
+        }
         return true;
       });
 
@@ -324,6 +329,7 @@ export default function Patients() {
 
         return {
           "Research ID": researchIdMap.get(pid),
+          "Patient Type": p.patientType === "inpatient" ? "Inpatient" : "Outpatient",
           "Age (Years)": p.dateOfBirth ? calcAge(p.dateOfBirth) : "",
           Gender: p.gender ?? "",
           "Blood Group": p.bloodGroup ?? p.bloodType ?? "",
@@ -393,7 +399,7 @@ export default function Patients() {
 
   const hasFilters =
     filters.dateFrom || filters.dateTo || (filters.unitId && filters.unitId !== "all") ||
-    filters.ageMin !== "" || filters.ageMax !== "" || filters.diagnosis;
+    filters.ageMin !== "" || filters.ageMax !== "" || filters.diagnosis || filters.patientType;
 
   return (
     <div className="space-y-6">
@@ -711,6 +717,34 @@ export default function Patients() {
 
             <Separator />
 
+            {/* Patient Type */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">{isRtl ? "نوع المريض" : "Patient Type"}</span>
+              </div>
+              <div className="flex gap-2">
+                {([
+                  { value: "",           labelEn: "All",        labelAr: "الكل" },
+                  { value: "outpatient", labelEn: "Outpatient", labelAr: "خارجي" },
+                  { value: "inpatient",  labelEn: "Inpatient",  labelAr: "داخلي" },
+                ] as const).map(opt => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    size="sm"
+                    variant={filters.patientType === opt.value ? "default" : "outline"}
+                    className="flex-1 h-8 text-xs"
+                    onClick={() => setFilters(f => ({ ...f, patientType: opt.value }))}
+                  >
+                    {isRtl ? opt.labelAr : opt.labelEn}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Diagnosis */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -739,7 +773,7 @@ export default function Patients() {
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => setFilters({ dateFrom: "", dateTo: "", unitId: "", ageMin: "", ageMax: "", diagnosis: "" })}
+                onClick={() => setFilters({ dateFrom: "", dateTo: "", unitId: "", ageMin: "", ageMax: "", diagnosis: "", patientType: "" })}
               >
                 <Filter className="h-3.5 w-3.5 mr-1" />
                 {isRtl ? "مسح الفلاتر" : "Clear filters"}
