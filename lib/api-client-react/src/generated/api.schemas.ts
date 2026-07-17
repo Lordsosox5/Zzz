@@ -80,6 +80,7 @@ export interface Patient {
   /** @nullable */
   place?: string | null;
   status?: string;
+  patientType?: string;
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ export interface PatientInput {
   allergies?: string;
   unitId?: number;
   place?: string;
+  patientType?: string;
 }
 
 export interface PatientUpdate {
@@ -130,6 +132,7 @@ export interface PatientUpdate {
   unitId?: number;
   place?: string;
   status?: string;
+  patientType?: string;
 }
 
 export interface AdmissionAssessment {
@@ -858,6 +861,7 @@ export type ListPatientsParams = {
 search?: string;
 page?: number;
 limit?: number;
+patientType?: string;
 };
 
 export type CheckPatientDuplicateParams = {

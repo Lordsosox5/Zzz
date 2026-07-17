@@ -175,6 +175,9 @@ paths:
         - name: limit
           in: query
           schema: { type: integer }
+        - name: patientType
+          in: query
+          schema: { type: string }
       responses:
         "200":
           description: List of patients
@@ -1277,6 +1280,7 @@ components:
         unitId: { type: ["integer", "null"] }
         place: { type: ["string", "null"] }
         status: { type: string }
+        patientType: { type: string }
         createdAt: { type: string }
 
     PatientInput:
@@ -1304,6 +1308,7 @@ components:
         allergies: { type: string }
         unitId: { type: integer }
         place: { type: string }
+        patientType: { type: string }
 
     PatientUpdate:
       type: object
@@ -1330,6 +1335,7 @@ components:
         unitId: { type: integer }
         place: { type: string }
         status: { type: string }
+        patientType: { type: string }
 
     AdmissionAssessment:
       type: object

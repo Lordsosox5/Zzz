@@ -157,7 +157,8 @@ export const GetMeResponse = zod.object({
 export const ListPatientsQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "page": zod.coerce.number().optional(),
-  "limit": zod.coerce.number().optional()
+  "limit": zod.coerce.number().optional(),
+  "patientType": zod.coerce.string().optional()
 })
 
 export const ListPatientsResponse = zod.object({
@@ -186,6 +187,7 @@ export const ListPatientsResponse = zod.object({
   "unitId": zod.number().nullish(),
   "place": zod.string().nullish(),
   "status": zod.string().optional(),
+  "patientType": zod.string().optional(),
   "createdAt": zod.string()
 })),
   "total": zod.number(),
@@ -218,7 +220,8 @@ export const CreatePatientBody = zod.object({
   "guardianPhone": zod.string().optional(),
   "allergies": zod.string().optional(),
   "unitId": zod.number().optional(),
-  "place": zod.string().optional()
+  "place": zod.string().optional(),
+  "patientType": zod.string().optional()
 })
 
 
@@ -256,6 +259,7 @@ export const CheckPatientDuplicateResponse = zod.object({
   "unitId": zod.number().nullish(),
   "place": zod.string().nullish(),
   "status": zod.string().optional(),
+  "patientType": zod.string().optional(),
   "createdAt": zod.string()
 }))
 })
@@ -293,6 +297,7 @@ export const GetPatientResponse = zod.object({
   "unitId": zod.number().nullish(),
   "place": zod.string().nullish(),
   "status": zod.string().optional(),
+  "patientType": zod.string().optional(),
   "createdAt": zod.string()
 })
 
@@ -326,7 +331,8 @@ export const UpdatePatientBody = zod.object({
   "motherBloodGroup": zod.string().optional(),
   "unitId": zod.number().optional(),
   "place": zod.string().optional(),
-  "status": zod.string().optional()
+  "status": zod.string().optional(),
+  "patientType": zod.string().optional()
 })
 
 export const UpdatePatientResponse = zod.object({
@@ -354,6 +360,7 @@ export const UpdatePatientResponse = zod.object({
   "unitId": zod.number().nullish(),
   "place": zod.string().nullish(),
   "status": zod.string().optional(),
+  "patientType": zod.string().optional(),
   "createdAt": zod.string()
 })
 
@@ -619,6 +626,7 @@ export const GetPatientSummaryResponse = zod.object({
   "unitId": zod.number().nullish(),
   "place": zod.string().nullish(),
   "status": zod.string().optional(),
+  "patientType": zod.string().optional(),
   "createdAt": zod.string()
 }),
   "recentNotes": zod.array(zod.object({

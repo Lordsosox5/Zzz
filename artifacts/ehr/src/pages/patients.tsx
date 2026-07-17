@@ -48,6 +48,7 @@ type Patient = {
   dateOfBirth: string;
   gender: string;
   status: string;
+  patientType?: string | null;
   unitId?: number | null;
 };
 
@@ -82,6 +83,7 @@ export default function Patients() {
   const [assignUnitPatient, setAssignUnitPatient] = useState<Patient | null>(null);
   const [assignUnitId, setAssignUnitId] = useState<string>("none");
   const [assigningUnit, setAssigningUnit] = useState(false);
+  const [patientTypeFilter, setPatientTypeFilter] = useState<"all" | "inpatient" | "outpatient">("all");
   const [filters, setFilters] = useState<ExportFilters>({
     dateFrom: "",
     dateTo: "",
@@ -111,6 +113,14 @@ export default function Patients() {
     search: debouncedSearch || undefined,
     limit: 1000,
   });
+
+  const allPatients = (data as any)?.patients ?? (Array.isArray(data) ? data : []) as Patient[];
+  const filteredPatients = patientTypeFilter === "all"
+    ? allPatients
+    : allPatients.filter((p: Patient) => (p.patientType ?? "outpatient") === patientTypeFilter);
+
+  const inpatientCount  = allPatients.filter((p: Patient) => (p.patientType ?? "outpatient") === "inpatient").length;
+  const outpatientCount = allPatients.filter((p: Patient) => (p.patientType ?? "outpatient") === "outpatient").length;
 
   const deleteMutation = useDeletePatient();
 
@@ -423,15 +433,40 @@ export default function Patients() {
       )}
 
       <Card>
-        <CardHeader className="p-4 border-b">
-          <div className="relative max-w-sm">
-            <Search className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
-            <Input
-              placeholder={t("generic.search")}
-              value={searchTerm}
-              onChange={handleSearch}
-              className={`${isRtl ? "pr-9" : "pl-9"}`}
-            />
+        <CardHeader className="p-4 border-b space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="relative flex-1 max-w-sm">
+              <Search className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
+              <Input
+                placeholder={t("generic.search")}
+                value={searchTerm}
+                onChange={handleSearch}
+                className={`${isRtl ? "pr-9" : "pl-9"}`}
+              />
+            </div>
+            <div className="flex rounded-lg border bg-muted/30 p-1 gap-1">
+              {([
+                { value: "all",        labelEn: "All",        labelAr: "الكل",    count: allPatients.length },
+                { value: "inpatient",  labelEn: "Inpatient",  labelAr: "داخليون", count: inpatientCount },
+                { value: "outpatient", labelEn: "Outpatient", labelAr: "خارجيون", count: outpatientCount },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPatientTypeFilter(opt.value)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all
+                    ${patientTypeFilter === opt.value
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {isRtl ? opt.labelAr : opt.labelEn}
+                  <span className={`text-xs rounded-full px-1.5 py-0.5 font-mono
+                    ${patientTypeFilter === opt.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {opt.count}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-4">
@@ -440,6 +475,7 @@ export default function Patients() {
               <TableRow>
                 <TableHead className="px-4">{t("patient.mrn")}</TableHead>
                 <TableHead className="px-4">{t("generic.name")}</TableHead>
+                <TableHead className="px-4">{isRtl ? "النوع" : "Type"}</TableHead>
                 <TableHead className="px-4">{t("patient.dob")}</TableHead>
                 <TableHead className="px-4">{t("patient.gender")}</TableHead>
                 <TableHead className="px-4">{t("generic.status")}</TableHead>
@@ -449,12 +485,12 @@ export default function Patients() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
-              ) : data?.patients && data.patients.length > 0 ? (
-                data.patients.map((patient) => (
+              ) : filteredPatients.length > 0 ? (
+                filteredPatients.map((patient: Patient) => (
                   <TableRow
                     key={patient.id}
                     className="cursor-pointer hover:bg-muted/50"
@@ -471,6 +507,14 @@ export default function Patients() {
                           </span>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4">
+                      {(() => {
+                        const pt = (patient.patientType ?? "outpatient");
+                        return pt === "inpatient"
+                          ? <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-400 text-xs">{isRtl ? "داخلي" : "Inpatient"}</Badge>
+                          : <Badge className="bg-green-500/15 text-green-700 dark:text-green-300 border-green-400 text-xs">{isRtl ? "خارجي" : "Outpatient"}</Badge>;
+                      })()}
                     </TableCell>
                     <TableCell className="px-4">
                       {new Date(patient.dateOfBirth).toLocaleDateString()}
@@ -527,7 +571,7 @@ export default function Patients() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     {t("patient.notFound")}
                   </TableCell>
                 </TableRow>

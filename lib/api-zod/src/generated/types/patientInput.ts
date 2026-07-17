@@ -28,4 +28,5 @@ export interface PatientInput {
   allergies?: string;
   unitId?: number;
   place?: string;
+  patientType?: string;
 }

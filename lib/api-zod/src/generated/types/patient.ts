@@ -49,5 +49,6 @@ export interface Patient {
   /** @nullable */
   place?: string | null;
   status?: string;
+  patientType?: string;
   createdAt: string;
 }

@@ -25,6 +25,7 @@ export const patientsTable = pgTable("patients", {
   guardianPhone: text("guardian_phone"),
   allergies: text("allergies"),
   status: text("status").notNull().default("active"),
+  patientType: text("patient_type").notNull().default("outpatient"),
   unitId: integer("unit_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

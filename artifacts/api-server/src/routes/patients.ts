@@ -55,6 +55,7 @@ router.get("/patients", async (req, res): Promise<void> => {
     const { search, page = 1, limit = 20 } = params.data;
     const place = typeof req.query.place === "string" ? req.query.place : undefined;
     const statusFilter = typeof req.query.status === "string" ? req.query.status : undefined;
+    const patientTypeFilter = typeof req.query.patientType === "string" ? req.query.patientType : undefined;
     const offset = (page - 1) * limit;
     const caller = await getCallerInfo(req.headers.authorization);
     const isUnitRestricted = caller && UNIT_RESTRICTED_ROLES.includes(caller.role);
@@ -79,6 +80,7 @@ router.get("/patients", async (req, res): Promise<void> => {
       }
     }
     if (statusFilter) query = query.eq("status", statusFilter);
+    if (patientTypeFilter) query = query.eq("patient_type", patientTypeFilter);
     if (search) query = query.or(`name_en.ilike.%${search}%,mrn.ilike.%${search}%`);
     query = query.order("created_at", { ascending: true }).range(offset, offset + limit - 1);
 

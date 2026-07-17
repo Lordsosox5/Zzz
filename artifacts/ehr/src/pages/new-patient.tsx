@@ -216,6 +216,7 @@ export default function NewPatient() {
   // ── Demographics (Step 1) ──
   const [demo, setDemo] = useState({
     nameEn: "", nameAr: "", dateOfBirth: "", gender: "male",
+    patientType: "outpatient",
     bloodGroup: "", motherBloodGroup: "", nationality: "", nationalId: "",
     phone: "", address: "", residence: "",
     weight: "", height: "", admissionDate: "", dischargeDate: "",
@@ -342,6 +343,7 @@ export default function NewPatient() {
       dateOfBirth: demo.dateOfBirth,
       gender: demo.gender,
     };
+    if (demo.patientType) patientData.patientType = demo.patientType;
     const optionals: (keyof typeof demo)[] = [
       "nameAr","bloodGroup","motherBloodGroup","nationality","nationalId","phone","address","residence",
       "weight","height","admissionDate","dischargeDate","guardianName","guardianRelation","guardianPhone","allergies","place",
@@ -383,6 +385,27 @@ export default function NewPatient() {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
       <SectionTitle title="Patient Identity" />
+      <Field label={isRtl ? "نوع المريض" : "Patient Type"} required span>
+        <div className="flex gap-3">
+          {([
+            { value: "outpatient", labelEn: "Outpatient", labelAr: "خارجي", icon: "🏠" },
+            { value: "inpatient",  labelEn: "Inpatient",  labelAr: "داخلي",  icon: "🏥" },
+          ] as const).map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setDemo(p => ({ ...p, patientType: opt.value }))}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-lg border-2 py-3 text-sm font-semibold transition-all
+                ${demo.patientType === opt.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-muted bg-muted/30 text-muted-foreground hover:border-muted-foreground/40"}`}
+            >
+              <span>{opt.icon}</span>
+              {isRtl ? opt.labelAr : opt.labelEn}
+            </button>
+          ))}
+        </div>
+      </Field>
       <Field label={t("patient.fullNameEn")} required>
         <Input name="nameEn" value={demo.nameEn} onChange={handleDemo} placeholder="Full name in English"
           className={errors.nameEn ? "border-destructive" : ""} />

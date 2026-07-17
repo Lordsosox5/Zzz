@@ -29,4 +29,5 @@ export interface PatientUpdate {
   unitId?: number;
   place?: string;
   status?: string;
+  patientType?: string;
 }

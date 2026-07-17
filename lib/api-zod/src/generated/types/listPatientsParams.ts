@@ -10,4 +10,5 @@ export type ListPatientsParams = {
 search?: string;
 page?: number;
 limit?: number;
+patientType?: string;
 };
