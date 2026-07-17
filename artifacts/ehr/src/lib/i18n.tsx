@@ -453,6 +453,9 @@ const translations: Translations = {
   "lab.testName": { en: "Test Name", ar: "اسم الفحص" },
   "lab.testCode": { en: "Test Code", ar: "رمز الفحص" },
   "lab.orderedBy": { en: "Ordered By", ar: "الطبيب الآمر" },
+  "billing.searchOrTypeService": { en: "Search or type a service…", ar: "ابحث أو اكتب خدمة…" },
+  "billing.noServices":          { en: "No services found.",        ar: "لا توجد خدمات." },
+  "billing.saveService":         { en: "Save as new service",       ar: "حفظ كخدمة جديدة" },
   "lab.noOrders": { en: "No lab orders found.", ar: "لا توجد طلبات مختبر." },
 
   // Radiology dialog

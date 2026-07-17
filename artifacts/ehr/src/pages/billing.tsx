@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   useListInvoices, useCreateInvoice, useUpdateInvoice,
   getListInvoicesQueryKey, useListPatients,
@@ -21,11 +21,150 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Plus, Loader2, Save, ChevronsUpDown, Check, User,
-  Receipt, X, Trash2, DollarSign,
+  Receipt, X, Trash2, DollarSign, BookmarkPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceViewDialog } from "@/components/invoice-view-dialog";
 import { useLocation } from "wouter";
+
+// ─── Service Catalog ──────────────────────────────────────────────────────────
+
+const CATALOG_STORAGE_KEY = "ehr_service_catalog_v1";
+
+const DEFAULT_SERVICES = [
+  "فتح ملف مريض جديد",
+  "استخراج ملف مريض",
+  "رسوم عنبر",
+  "رسوم عناية مكثفة",
+  "رسوم متابعة مستمرة",
+  "شراء دواء",
+  "رسوم فحص",
+];
+
+function loadCatalog(): string[] {
+  try {
+    const raw = localStorage.getItem(CATALOG_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as string[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  return [...DEFAULT_SERVICES];
+}
+
+function saveCatalog(catalog: string[]) {
+  try { localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalog)); } catch { /* ignore */ }
+}
+
+function useServiceCatalog() {
+  const [catalog, setCatalog] = useState<string[]>(loadCatalog);
+  const addService = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCatalog(prev => {
+      if (prev.some(s => s === trimmed)) return prev;
+      const next = [...prev, trimmed];
+      saveCatalog(next);
+      return next;
+    });
+  }, []);
+  return { catalog, addService };
+}
+
+// ─── Service Combobox ─────────────────────────────────────────────────────────
+
+function ServiceCombobox({
+  value, onChange, catalog, onSaveService,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  catalog: string[];
+  onSaveService: (name: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filtered = query.trim()
+    ? catalog.filter(s => s.toLowerCase().includes(query.toLowerCase()))
+    : catalog;
+
+  const isNew = query.trim() !== "" && !catalog.some(s => s.toLowerCase() === query.trim().toLowerCase());
+
+  const select = (name: string) => {
+    onChange(name);
+    setOpen(false);
+    setQuery("");
+  };
+
+  const saveNew = () => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    onSaveService(trimmed);
+    onChange(trimmed);
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          className="w-full justify-between font-normal h-9 text-sm px-3"
+        >
+          <span className={`truncate ${!value ? "text-muted-foreground" : ""}`}>
+            {value || t("billing.itemDescription")}
+          </span>
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={t("billing.searchOrTypeService")}
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            {filtered.length === 0 && !isNew && (
+              <CommandEmpty>{t("billing.noServices")}</CommandEmpty>
+            )}
+            {filtered.length > 0 && (
+              <CommandGroup>
+                <ScrollArea className="max-h-52">
+                  {filtered.map(s => (
+                    <CommandItem key={s} value={s} onSelect={() => select(s)}>
+                      <Check className={`mr-2 h-4 w-4 ${value === s ? "opacity-100" : "opacity-0"}`} />
+                      {s}
+                    </CommandItem>
+                  ))}
+                </ScrollArea>
+              </CommandGroup>
+            )}
+            {isNew && (
+              <CommandGroup>
+                <CommandItem
+                  value={`__new__${query}`}
+                  onSelect={saveNew}
+                  className="gap-2 text-primary"
+                >
+                  <BookmarkPlus className="h-4 w-4 shrink-0" />
+                  <span className="flex flex-col">
+                    <span className="font-medium text-xs">{t("billing.saveService")}</span>
+                    <span className="text-muted-foreground font-normal">{query.trim()}</span>
+                  </span>
+                </CommandItem>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -99,6 +238,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const createMutation = useCreateInvoice();
+  const { catalog, addService } = useServiceCatalog();
 
   const [patientId, setPatientId] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -200,11 +340,11 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
               <div className="space-y-2">
                 {items.map((item) => (
                   <div key={item.id} className="grid grid-cols-[1fr_80px_110px_90px_36px] gap-2 items-center">
-                    <Input
-                      placeholder={t("billing.itemDescription")}
+                    <ServiceCombobox
                       value={item.description}
-                      onChange={e => updateItem(item.id, "description", e.target.value)}
-                      className="h-9 text-sm"
+                      onChange={v => updateItem(item.id, "description", v)}
+                      catalog={catalog}
+                      onSaveService={addService}
                     />
                     <Input
                       type="number" min="1"
