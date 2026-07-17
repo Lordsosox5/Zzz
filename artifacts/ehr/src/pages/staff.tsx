@@ -202,7 +202,7 @@ type StaffMemberAny = Record<string, any>;
 
 function ProfileDialog({
   member, open, onOpenChange, onEdit, onReset, onSuspend, onReactivate, onDelete,
-  isFullAdmin, currentUserId, units, t, isRtl, language, updatePending,
+  isFullAdmin, currentUserId, units, t, isRtl, language, updatePending, isLastActiveSuperAdmin,
 }: {
   member: StaffMemberAny | null;
   open: boolean;
@@ -219,6 +219,7 @@ function ProfileDialog({
   isRtl: boolean;
   language: string;
   updatePending: boolean;
+  isLastActiveSuperAdmin: boolean;
 }) {
   if (!member) return null;
   const roleDef = ROLE_DEFINITIONS[member.role];
@@ -330,9 +331,10 @@ function ProfileDialog({
                 <KeyRound className="h-3.5 w-3.5" /> {t("staff.resetAction")}
               </Button>
             )}
-            {isFullAdmin && isActive && !isSuperAdmin && !isSelf && (
+            {isFullAdmin && isActive && !isSelf && (isSuperAdmin ? !isLastActiveSuperAdmin : true) && (
               <Button size="sm" variant="outline" className="gap-1.5 text-xs text-orange-600 hover:text-orange-700 border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                disabled={updatePending} onClick={onSuspend}>
+                disabled={updatePending} onClick={onSuspend}
+                title={isSuperAdmin && isLastActiveSuperAdmin ? "Cannot suspend the last active admin" : undefined}>
                 <UserX className="h-3.5 w-3.5" /> {t("staff.suspend")}
               </Button>
             )}
@@ -445,6 +447,7 @@ export default function Staff() {
   const allStaff = (staff ?? []) as StaffMemberAny[];
   const activeCount   = allStaff.filter(m => m.status === "active").length;
   const inactiveCount = allStaff.filter(m => m.status !== "active").length;
+  const activeSuperAdminCount = allStaff.filter(m => m.role === "super_admin" && m.status === "active").length;
   const expiringMembers = allStaff.filter(m => {
     const s = getExpiryStatus(m.role, m.accountExpiryDate);
     return s === "expired" || s === "soon";
@@ -579,7 +582,10 @@ export default function Staff() {
           queryClient.invalidateQueries({ queryKey: getListStaffQueryKey() });
           toast({ title: t("staff.accountCancelled"), description: `${nameEn}${t("staff.accountCancelledDesc")}` });
         },
-        onError: () => toast({ variant: "destructive", title: t("generic.error"), description: t("staff.cancelFailed") }),
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error ?? err?.message ?? t("staff.cancelFailed");
+          toast({ variant: "destructive", title: t("generic.error"), description: msg });
+        },
       }
     );
   };
@@ -1133,6 +1139,12 @@ export default function Staff() {
         isRtl={isRtl}
         language={language}
         updatePending={updateMutation.isPending}
+        isLastActiveSuperAdmin={
+          !!profileMember &&
+          profileMember.role === "super_admin" &&
+          profileMember.status === "active" &&
+          activeSuperAdminCount <= 1
+        }
       />
 
       {/* KPI Summary Bar */}

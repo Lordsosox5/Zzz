@@ -116,7 +116,25 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
     if (parsed.data.department) updates.department = parsed.data.department;
     if (parsed.data.email !== undefined) updates.email = parsed.data.email;
     if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
-    if (parsed.data.status) updates.is_active = parsed.data.status === "active";
+    if (parsed.data.status) {
+      const suspending = parsed.data.status === "inactive";
+      if (suspending) {
+        // Guard: never suspend the last active super_admin
+        const { data: target } = await supabase.from("users").select("role").eq("id", params.data.id).single();
+        if (target?.role === "super_admin") {
+          const { count } = await supabase
+            .from("users")
+            .select("*", { count: "exact", head: true })
+            .eq("role", "super_admin")
+            .eq("is_active", true);
+          if ((count ?? 0) <= 1) {
+            res.status(403).json({ error: "Cannot suspend the last active super_admin — at least one must remain active." });
+            return;
+          }
+        }
+      }
+      updates.is_active = !suspending;
+    }
     if (parsed.data.password) updates.password = parsed.data.password;
     if (parsed.data.unitId !== undefined) updates.unit_id = parsed.data.unitId ? Number(parsed.data.unitId) : null;
     const { data, error } = await supabase.from("users").update(updates).eq("id", params.data.id).select().single();
