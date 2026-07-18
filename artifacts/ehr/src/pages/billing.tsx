@@ -21,7 +21,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Plus, Loader2, Save, ChevronsUpDown, Check, User,
-  Receipt, X, Trash2, DollarSign, BookmarkPlus,
+  Receipt, X, Trash2, DollarSign, BookmarkPlus, Settings2, RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { InvoiceViewDialog } from "@/components/invoice-view-dialog";
@@ -58,6 +58,7 @@ function saveCatalog(catalog: string[]) {
 
 function useServiceCatalog() {
   const [catalog, setCatalog] = useState<string[]>(loadCatalog);
+
   const addService = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -68,7 +69,21 @@ function useServiceCatalog() {
       return next;
     });
   }, []);
-  return { catalog, addService };
+
+  const removeService = useCallback((name: string) => {
+    setCatalog(prev => {
+      const next = prev.filter(s => s !== name);
+      saveCatalog(next);
+      return next;
+    });
+  }, []);
+
+  const resetToDefaults = useCallback(() => {
+    saveCatalog([...DEFAULT_SERVICES]);
+    setCatalog([...DEFAULT_SERVICES]);
+  }, []);
+
+  return { catalog, addService, removeService, resetToDefaults };
 }
 
 // ─── Service Combobox ─────────────────────────────────────────────────────────
@@ -225,6 +240,115 @@ function PatientSearchCombobox({
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+// ─── Manage Services Dialog ───────────────────────────────────────────────────
+
+function ManageServicesDialog() {
+  const { t, isRtl } = useTranslation();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const { catalog, addService, removeService, resetToDefaults } = useServiceCatalog();
+  const [newName, setNewName] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleAdd = () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    if (catalog.some(s => s === trimmed)) {
+      toast({ variant: "destructive", title: t("billing.serviceDuplicate") });
+      return;
+    }
+    addService(trimmed);
+    setNewName("");
+    toast({ title: t("billing.serviceAdded") });
+  };
+
+  const handleReset = () => {
+    if (!confirmReset) { setConfirmReset(true); return; }
+    resetToDefaults();
+    setConfirmReset(false);
+    toast({ title: t("billing.servicesReset") });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); setConfirmReset(false); setNewName(""); }}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" title={t("billing.manageServices")}>
+          <Settings2 className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md" dir={isRtl ? "rtl" : "ltr"}>
+        <DialogHeader className={isRtl ? "text-right" : "text-left"}>
+          <DialogTitle className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
+            <Settings2 className="h-5 w-5 text-primary" />
+            {t("billing.manageServices")}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          {/* Add new service */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">{t("billing.addNewService")}</p>
+            <div className={`flex gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
+              <Input
+                placeholder={t("billing.serviceNamePlaceholder")}
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+                className="h-9 text-sm"
+              />
+              <Button type="button" size="sm" className="h-9 shrink-0 gap-1.5" onClick={handleAdd} disabled={!newName.trim()}>
+                <Plus className="h-3.5 w-3.5" />{t("generic.add")}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Services list */}
+          <div className="space-y-1.5">
+            <div className={`flex items-center justify-between ${isRtl ? "flex-row-reverse" : ""}`}>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("billing.savedServices")} <span className="font-bold text-foreground">({catalog.length})</span>
+              </p>
+              <Button
+                type="button" variant={confirmReset ? "destructive" : "ghost"} size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={handleReset}
+                onBlur={() => setConfirmReset(false)}
+              >
+                <RotateCcw className="h-3 w-3" />
+                {confirmReset ? t("billing.confirmReset") : t("billing.resetToDefaults")}
+              </Button>
+            </div>
+            <ScrollArea className="h-64 rounded-md border">
+              <div className="p-2 space-y-1">
+                {catalog.map((service) => (
+                  <div
+                    key={service}
+                    className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 hover:bg-muted/50 group ${isRtl ? "flex-row-reverse" : ""}`}
+                  >
+                    <span className="text-sm flex-1 truncate">{service}</span>
+                    <Button
+                      type="button" variant="ghost" size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 transition-opacity"
+                      onClick={() => removeService(service)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                {catalog.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-6">{t("billing.noCatalogServices")}</p>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -565,7 +689,10 @@ export default function Billing() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">{t("nav.billing")}</h1>
-        <CreateInvoiceDialog onCreated={() => queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() })} />
+        <div className={`flex items-center gap-2 ${isRtl ? "flex-row-reverse" : ""}`}>
+          <ManageServicesDialog />
+          <CreateInvoiceDialog onCreated={() => queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() })} />
+        </div>
       </div>
 
       {/* Stats */}
