@@ -4,7 +4,7 @@ import {
   getListInvoicesQueryKey, useListPatients,
   type Invoice, type Patient,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,6 @@ import { useLocation } from "wouter";
 
 // ─── Service Catalog ──────────────────────────────────────────────────────────
 
-const CATALOG_STORAGE_KEY = "ehr_service_catalog_v1";
-
 const DEFAULT_SERVICES = [
   "فتح ملف مريض جديد",
   "استخراج ملف مريض",
@@ -41,49 +39,74 @@ const DEFAULT_SERVICES = [
   "رسوم فحص",
 ];
 
-function loadCatalog(): string[] {
-  try {
-    const raw = localStorage.getItem(CATALOG_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as string[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch { /* ignore */ }
-  return [...DEFAULT_SERVICES];
-}
+interface CatalogService { id: number; name: string; }
 
-function saveCatalog(catalog: string[]) {
-  try { localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalog)); } catch { /* ignore */ }
+const CATALOG_QUERY_KEY = ["service-catalog"];
+
+function catalogFetch(path: string, options?: RequestInit) {
+  const token = localStorage.getItem("ehr_token");
+  return fetch(`/api${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers ?? {}),
+    },
+  });
 }
 
 function useServiceCatalog() {
-  const [catalog, setCatalog] = useState<string[]>(loadCatalog);
+  const qc = useQueryClient();
 
-  const addService = useCallback((name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setCatalog(prev => {
-      if (prev.some(s => s === trimmed)) return prev;
-      const next = [...prev, trimmed];
-      saveCatalog(next);
-      return next;
+  const { data: catalog = DEFAULT_SERVICES.map((name, i) => ({ id: -(i + 1), name })) } =
+    useQuery<CatalogService[]>({
+      queryKey: CATALOG_QUERY_KEY,
+      queryFn: async () => {
+        const r = await catalogFetch("/service-catalog");
+        if (!r.ok) throw new Error("Failed to load catalog");
+        return r.json();
+      },
+      staleTime: 1000 * 60 * 5,
     });
-  }, []);
 
-  const removeService = useCallback((name: string) => {
-    setCatalog(prev => {
-      const next = prev.filter(s => s !== name);
-      saveCatalog(next);
-      return next;
-    });
-  }, []);
+  const addMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const r = await catalogFetch("/service-catalog", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      if (r.status === 409) throw new Error("duplicate");
+      if (!r.ok) throw new Error("Failed to add service");
+      return r.json() as Promise<CatalogService>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CATALOG_QUERY_KEY }),
+  });
 
-  const resetToDefaults = useCallback(() => {
-    saveCatalog([...DEFAULT_SERVICES]);
-    setCatalog([...DEFAULT_SERVICES]);
-  }, []);
+  const removeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const r = await catalogFetch(`/service-catalog/${id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("Failed to remove service");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CATALOG_QUERY_KEY }),
+  });
 
-  return { catalog, addService, removeService, resetToDefaults };
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      const r = await catalogFetch("/service-catalog/reset", { method: "POST" });
+      if (!r.ok) throw new Error("Failed to reset catalog");
+      return r.json() as Promise<CatalogService[]>;
+    },
+    onSuccess: (data) => qc.setQueryData(CATALOG_QUERY_KEY, data),
+  });
+
+  return {
+    catalog,
+    catalogNames: catalog.map(s => s.name),
+    addService: addMutation.mutateAsync,
+    removeService: (id: number) => removeMutation.mutate(id),
+    resetToDefaults: resetMutation.mutate,
+    isMutating: addMutation.isPending || removeMutation.isPending || resetMutation.isPending,
+  };
 }
 
 // ─── Service Combobox ─────────────────────────────────────────────────────────
@@ -249,25 +272,33 @@ function ManageServicesDialog() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const { catalog, addService, removeService, resetToDefaults } = useServiceCatalog();
+  const { catalog, addService, removeService, resetToDefaults, isMutating } = useServiceCatalog();
   const [newName, setNewName] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    if (catalog.some(s => s === trimmed)) {
+    if (catalog.some(s => s.name === trimmed)) {
       toast({ variant: "destructive", title: t("billing.serviceDuplicate") });
       return;
     }
-    addService(trimmed);
-    setNewName("");
-    toast({ title: t("billing.serviceAdded") });
+    try {
+      await addService(trimmed);
+      setNewName("");
+      toast({ title: t("billing.serviceAdded") });
+    } catch (err: any) {
+      if (err?.message === "duplicate") {
+        toast({ variant: "destructive", title: t("billing.serviceDuplicate") });
+      } else {
+        toast({ variant: "destructive", title: t("generic.error") });
+      }
+    }
   };
 
   const handleReset = () => {
     if (!confirmReset) { setConfirmReset(true); return; }
-    resetToDefaults();
+    resetToDefaults(undefined);
     setConfirmReset(false);
     toast({ title: t("billing.servicesReset") });
   };
@@ -327,14 +358,15 @@ function ManageServicesDialog() {
               <div className="p-2 space-y-1">
                 {catalog.map((service) => (
                   <div
-                    key={service}
+                    key={service.id}
                     className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 hover:bg-muted/50 group ${isRtl ? "flex-row-reverse" : ""}`}
                   >
-                    <span className="text-sm flex-1 truncate">{service}</span>
+                    <span className="text-sm flex-1 truncate">{service.name}</span>
                     <Button
                       type="button" variant="ghost" size="icon"
                       className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0 transition-opacity"
-                      onClick={() => removeService(service)}
+                      onClick={() => removeService(service.id)}
+                      disabled={isMutating}
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
@@ -362,7 +394,7 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const createMutation = useCreateInvoice();
-  const { catalog, addService } = useServiceCatalog();
+  const { catalogNames, addService } = useServiceCatalog();
 
   const [patientId, setPatientId] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -467,8 +499,8 @@ function CreateInvoiceDialog({ onCreated }: { onCreated: () => void }) {
                     <ServiceCombobox
                       value={item.description}
                       onChange={v => updateItem(item.id, "description", v)}
-                      catalog={catalog}
-                      onSaveService={addService}
+                      catalog={catalogNames}
+                      onSaveService={(name) => addService(name).catch(() => {})}
                     />
                     <Input
                       type="number" min="1"

@@ -14,6 +14,7 @@ import dashboardRouter from "./dashboard";
 import admissionsRouter from "./admissions";
 import unitsRouter from "./units";
 import dischargeSummariesRouter from "./discharge-summaries";
+import serviceCatalogRouter from "./service-catalog";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(dashboardRouter);
 router.use(admissionsRouter);
 router.use(unitsRouter);
 router.use(dischargeSummariesRouter);
+router.use(serviceCatalogRouter);
 
 export default router;
