@@ -37,12 +37,12 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "160px 1fr", gap: "4px 8px",
+      display: "grid", gridTemplateColumns: "minmax(90px, 28%) 1fr", gap: "4px 8px",
       padding: "5px 0", borderBottom: "1px solid #e5e7eb",
       fontSize: "10pt", lineHeight: 1.5,
     }}>
-      <span style={{ fontWeight: 600, color: "#374151" }}>{label}</span>
-      <span style={{ color: "#111827", whiteSpace: "pre-wrap" }}>{value}</span>
+      <span style={{ fontWeight: 600, color: "#374151", wordBreak: "break-word" }}>{label}</span>
+      <span style={{ color: "#111827", whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere" }}>{value}</span>
     </div>
   );
 }
@@ -317,7 +317,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         </div>
 
         {/* ══════════════════ PATIENT IDENTITY BANNER ══════════════════ */}
-        <div style={{
+        <div className="print-banner-grid" style={{
           display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0",
           border: "1px solid #9ca3af", borderRadius: "3px",
           marginBottom: "20px", overflow: "hidden",
@@ -347,7 +347,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
         {/* ══════════════════ SEC 1: DEMOGRAPHICS ══════════════════ */}
         <Section title="البيانات الديموغرافية الكاملة">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 28px" }}>
+          <div className="print-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 28px" }}>
             <div>
               <Field label="الاسم الكامل (عربي)"     value={patient.nameAr} />
               <Field label="الاسم الكامل (إنجليزي)"  value={patient.nameEn} />
@@ -386,7 +386,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
 
             {hasSocrates && (
               <Section title="تحليل الشكوى — SOCRATES">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 28px" }}>
+                <div className="print-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 28px" }}>
                   <div>
                     <Field label="S — الموقع"           value={a.analysisSite} />
                     <Field label="O — البداية"          value={a.analysisOnset} />
@@ -718,33 +718,24 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 12mm 14mm 16mm;
-            @bottom-center {
-              content: "صفحة " counter(page) " من " counter(pages);
-              font-family: 'Tajawal', Arial, sans-serif;
-              font-size: 8pt;
-              color: #9ca3af;
-            }
+            margin: 14mm 16mm 18mm;
           }
 
-          /* Kill all overflow — nothing escapes the page width */
           html, body {
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
-            max-width: 100% !important;
-            overflow: hidden !important;
             font-size: 10pt !important;
             box-sizing: border-box !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            /* NEVER overflow:hidden in print — it clips content at the paper edge */
+            overflow: visible !important;
           }
 
-          /* Every element respects the box model */
           *, *::before, *::after {
             box-sizing: border-box !important;
-            max-width: 100% !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -752,18 +743,18 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
           #no-print { display: none !important; }
 
           #print-body {
-            max-width: 100% !important;
             width: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
-            padding: 0 !important;
+            /* keep a small horizontal pad so content never sits on the gutter */
+            padding: 0 4mm !important;
             box-shadow: none !important;
-            overflow: hidden !important;
+            overflow: visible !important;
           }
 
-          /* Allow sections to break across pages — only prevent orphan headers */
           h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
 
-          /* Tables: auto layout so columns never exceed page width */
+          /* Tables — auto layout wraps long cell text instead of overflowing */
           table {
             border-collapse: collapse !important;
             width: 100% !important;
@@ -771,15 +762,25 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
             table-layout: auto !important;
             break-inside: auto;
           }
-          col  { width: auto !important; }       /* reset all colgroup widths */
+          col   { width: auto !important; }
           thead { display: table-header-group; break-inside: avoid; }
           tfoot { display: table-footer-group; }
           tr    { break-inside: avoid; page-break-inside: avoid; }
           td, th {
-            break-inside: avoid;
             word-break: break-word !important;
-            overflow-wrap: break-word !important;
-            max-width: 0;           /* forces word-wrap to activate in fixed layouts */
+            overflow-wrap: anywhere !important;
+            /* do NOT set max-width:0 here — it can make cell content invisible */
+          }
+
+          /* 4-col patient banner → 2 cols on paper */
+          .print-banner-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+
+          /* 2-col demographic/SOCRATES grids → single column on paper */
+          .print-two-col {
+            grid-template-columns: 1fr !important;
+            gap: 0 !important;
           }
         }
       `}</style>
