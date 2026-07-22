@@ -1837,13 +1837,17 @@ function DataAnalyserDashboard() {
                 </Badge>
               </div>
 
-              {/* Patient details grid — anonymized: no name or MRN */}
+              {/* Patient details grid */}
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
-                  { label: isRtl ? "معرّف البحث" : "Research ID", value: ridQuery, mono: true },
+                  { label: isRtl ? "الاسم (إنجليزي)" : "Name (English)", value: ridPatient.nameEn ?? "—" },
+                  { label: isRtl ? "الاسم (عربي)" : "Name (Arabic)", value: ridPatient.nameAr ?? "—" },
+                  { label: isRtl ? "رقم السجل الطبي" : "MRN", value: ridPatient.mrn ?? "—", mono: true },
+                  { label: isRtl ? "تاريخ الميلاد" : "Date of Birth", value: ridPatient.dateOfBirth ? new Date(ridPatient.dateOfBirth).toLocaleDateString() : "—" },
                   { label: isRtl ? "العمر" : "Age", value: calcAge(ridPatient.dateOfBirth) },
                   { label: isRtl ? "الجنس" : "Gender", value: ridPatient.gender ? ridPatient.gender.charAt(0).toUpperCase() + ridPatient.gender.slice(1) : "—" },
                   { label: isRtl ? "فصيلة الدم" : "Blood Group", value: ridPatient.bloodGroup ?? "—" },
+                  { label: isRtl ? "تاريخ الدخول" : "Admission Date", value: ridPatient.admissionDate ? new Date(ridPatient.admissionDate).toLocaleDateString() : "—" },
                   { label: isRtl ? "الحالة" : "Status", value: ridPatient.status ?? "active" },
                 ].map((row, i) => (
                   <div key={i} className="space-y-0.5">
