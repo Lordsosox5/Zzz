@@ -1162,7 +1162,25 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
   if (!summary?.patient) return <div>{t("patient.notFoundMsg")}</div>;
 
   const { patient } = summary;
-  const name = isRtl && patient.nameAr ? patient.nameAr : patient.nameEn;
+  const isDataAnalyser = role === "data_analyser";
+  const RESEARCH_ID_SALT = "AMH-EHR-RESEARCH-2026";
+  const hashPatientId = (pid: number): string => {
+    const input = `${RESEARCH_ID_SALT}:${pid}`;
+    let h1 = 0xdeadbeef ^ input.length;
+    let h2 = 0x41c6ce57 ^ input.length;
+    for (let i = 0; i < input.length; i++) {
+      const ch = input.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const combined = (h2 >>> 0) * 0x100000000 + (h1 >>> 0);
+    const part1 = (h1 >>> 0).toString(36).toUpperCase().slice(0, 4).padStart(4, "0");
+    const part2 = (Math.abs(combined) % 9000 + 1000).toString();
+    return `RID-${part1}-${part2}`;
+  };
+  const name = isDataAnalyser ? hashPatientId(patient.id) : (isRtl && patient.nameAr ? patient.nameAr : patient.nameEn);
 
   return (
     <div className="space-y-6">
@@ -1184,7 +1202,7 @@ export default function PatientDetails({ params }: { params: { id: string } }) {
             <div>
               <h2 className="text-2xl font-bold">{name}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
-                <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">{t("patient.mrn")}: {patient.mrn}</span>
+                {!isDataAnalyser && <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">{t("patient.mrn")}: {patient.mrn}</span>}
                 <span>•</span>
                 <span>{patient.gender === 'male' ? t("patient.male") : patient.gender === 'female' ? t("patient.female") : patient.gender}</span>
                 <span>•</span>

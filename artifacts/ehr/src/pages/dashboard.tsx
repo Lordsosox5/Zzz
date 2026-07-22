@@ -1837,17 +1837,13 @@ function DataAnalyserDashboard() {
                 </Badge>
               </div>
 
-              {/* Patient details grid */}
+              {/* Patient details grid — anonymized: no name or MRN */}
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
-                  { label: isRtl ? "الاسم (إنجليزي)" : "Name (English)", value: ridPatient.nameEn ?? "—" },
-                  { label: isRtl ? "الاسم (عربي)" : "Name (Arabic)", value: ridPatient.nameAr ?? "—" },
-                  { label: isRtl ? "رقم السجل الطبي" : "MRN", value: ridPatient.mrn ?? "—", mono: true },
-                  { label: isRtl ? "تاريخ الميلاد" : "Date of Birth", value: ridPatient.dateOfBirth ? new Date(ridPatient.dateOfBirth).toLocaleDateString() : "—" },
+                  { label: isRtl ? "معرّف البحث" : "Research ID", value: ridQuery, mono: true },
                   { label: isRtl ? "العمر" : "Age", value: calcAge(ridPatient.dateOfBirth) },
                   { label: isRtl ? "الجنس" : "Gender", value: ridPatient.gender ? ridPatient.gender.charAt(0).toUpperCase() + ridPatient.gender.slice(1) : "—" },
                   { label: isRtl ? "فصيلة الدم" : "Blood Group", value: ridPatient.bloodGroup ?? "—" },
-                  { label: isRtl ? "تاريخ الدخول" : "Admission Date", value: ridPatient.admissionDate ? new Date(ridPatient.admissionDate).toLocaleDateString() : "—" },
                   { label: isRtl ? "الحالة" : "Status", value: ridPatient.status ?? "active" },
                 ].map((row, i) => (
                   <div key={i} className="space-y-0.5">
@@ -1909,9 +1905,7 @@ function DataAnalyserDashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="px-4">{isRtl ? "رقم السجل" : "MRN"}</TableHead>
-                  <TableHead>{isRtl ? "الاسم" : "Name"}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{isRtl ? "معرّف البحث" : "Research ID"}</TableHead>
+                  <TableHead className="px-4">{isRtl ? "معرّف البحث" : "Research ID"}</TableHead>
                   <TableHead className="hidden md:table-cell">{isRtl ? "العمر" : "Age"}</TableHead>
                   <TableHead className="hidden md:table-cell">{isRtl ? "الجنس" : "Gender"}</TableHead>
                   <TableHead>{isRtl ? "الحالة" : "Status"}</TableHead>
@@ -1919,30 +1913,8 @@ function DataAnalyserDashboard() {
               </TableHeader>
               <TableBody>
                 {patients.slice(0, 10).map((p: any) => (
-                  <TableRow
-                    key={p.id}
-                    className="cursor-pointer hover:bg-muted/40 transition-colors"
-                    onClick={() => navigate(`/patients/${p.id}`)}
-                  >
-                    <TableCell className="px-4 font-mono text-xs text-muted-foreground">{p.mrn}</TableCell>
-                    <TableCell className="font-medium">{isRtl && p.nameAr ? p.nameAr : p.nameEn}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <span
-                        className="font-mono text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors"
-                        title={isRtl ? "انقر للبحث" : "Click to look up"}
-                        onClick={e => {
-                          e.stopPropagation();
-                          const rid = hashPatientId(p.id);
-                          setRidInput(rid);
-                          setRidQuery(rid);
-                          setRidPatient(p);
-                          setRidResult("found");
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                      >
-                        {hashPatientId(p.id)}
-                      </span>
-                    </TableCell>
+                  <TableRow key={p.id}>
+                    <TableCell className="px-4 font-mono text-xs">{hashPatientId(p.id)}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{calcAge(p.dateOfBirth)}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm capitalize text-muted-foreground">{p.gender ?? "—"}</TableCell>
                     <TableCell>

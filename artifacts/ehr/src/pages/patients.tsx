@@ -71,6 +71,24 @@ function calcAge(dob: string): number {
   return age;
 }
 
+const RESEARCH_ID_SALT = "AMH-EHR-RESEARCH-2026";
+function hashPatientId(pid: number): string {
+  const input = `${RESEARCH_ID_SALT}:${pid}`;
+  let h1 = 0xdeadbeef ^ input.length;
+  let h2 = 0x41c6ce57 ^ input.length;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const combined = (h2 >>> 0) * 0x100000000 + (h1 >>> 0);
+  const part1 = (h1 >>> 0).toString(36).toUpperCase().slice(0, 4).padStart(4, "0");
+  const part2 = (Math.abs(combined) % 9000 + 1000).toString();
+  return `RID-${part1}-${part2}`;
+}
+
 export default function Patients() {
   const { t, isRtl } = useTranslation();
   const { toast } = useToast();
@@ -479,19 +497,19 @@ export default function Patients() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="px-4">{t("patient.mrn")}</TableHead>
-                <TableHead className="px-4">{t("generic.name")}</TableHead>
+                <TableHead className="px-4">{isDataAnalyser ? (isRtl ? "معرّف البحث" : "Research ID") : t("patient.mrn")}</TableHead>
+                {!isDataAnalyser && <TableHead className="px-4">{t("generic.name")}</TableHead>}
                 <TableHead className="px-4">{isRtl ? "النوع" : "Type"}</TableHead>
                 <TableHead className="px-4">{t("patient.dob")}</TableHead>
                 <TableHead className="px-4">{t("patient.gender")}</TableHead>
                 <TableHead className="px-4">{t("generic.status")}</TableHead>
-                <TableHead className="px-4">{t("generic.actions")}</TableHead>
+                {!isDataAnalyser && <TableHead className="px-4">{t("generic.actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={isDataAnalyser ? 5 : 7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                   </TableCell>
                 </TableRow>
@@ -499,21 +517,25 @@ export default function Patients() {
                 filteredPatients.map((patient: Patient) => (
                   <TableRow
                     key={patient.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/patients/${patient.id}`)}
+                    className={isDataAnalyser ? undefined : "cursor-pointer hover:bg-muted/50"}
+                    onClick={isDataAnalyser ? undefined : () => navigate(`/patients/${patient.id}`)}
                   >
-                    <TableCell className="px-4 font-mono text-xs">{patient.mrn}</TableCell>
-                    <TableCell className="px-4 font-medium">
-                      <div className="flex flex-col">
-                        <span>{isRtl && patient.nameAr ? patient.nameAr : patient.nameEn}</span>
-                        {(patient as any).motherBloodGroup && (
-                          <span className="text-xs text-muted-foreground mt-0.5">
-                            {isRtl ? "فصيلة دم الأم:" : "Mother BG:"}{" "}
-                            <span className="font-mono font-medium text-foreground">{(patient as any).motherBloodGroup}</span>
-                          </span>
-                        )}
-                      </div>
+                    <TableCell className="px-4 font-mono text-xs">
+                      {isDataAnalyser ? hashPatientId(patient.id) : patient.mrn}
                     </TableCell>
+                    {!isDataAnalyser && (
+                      <TableCell className="px-4 font-medium">
+                        <div className="flex flex-col">
+                          <span>{isRtl && patient.nameAr ? patient.nameAr : patient.nameEn}</span>
+                          {(patient as any).motherBloodGroup && (
+                            <span className="text-xs text-muted-foreground mt-0.5">
+                              {isRtl ? "فصيلة دم الأم:" : "Mother BG:"}{" "}
+                              <span className="font-mono font-medium text-foreground">{(patient as any).motherBloodGroup}</span>
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell className="px-4">
                       {(() => {
                         const pt = (patient.patientType ?? "outpatient");
@@ -546,38 +568,40 @@ export default function Patients() {
                         })()}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/patients/${patient.id}`}>
-                            {t("patient.viewProfile")}
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title={isRtl ? "تعيين الوحدة" : "Assign Unit"}
-                          onClick={() => openAssignUnit(patient as Patient)}
-                        >
-                          <Building2 className="h-4 w-4" />
-                        </Button>
-                        {isAdmin && (
+                    {!isDataAnalyser && (
+                      <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/patients/${patient.id}`}>
+                              {t("patient.viewProfile")}
+                            </Link>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setPatientToDelete(patient as Patient)}
+                            title={isRtl ? "تعيين الوحدة" : "Assign Unit"}
+                            onClick={() => openAssignUnit(patient as Patient)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Building2 className="h-4 w-4" />
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setPatientToDelete(patient as Patient)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={isDataAnalyser ? 5 : 7} className="h-24 text-center text-muted-foreground">
                     {t("patient.notFound")}
                   </TableCell>
                 </TableRow>
