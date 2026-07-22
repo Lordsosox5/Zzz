@@ -355,7 +355,7 @@ export default function DischargePrint({ params }: { params: { id: string; summa
         @media print {
           @page {
             size: A4 portrait;
-            margin: 14mm 16mm 18mm;
+            margin: 12mm 14mm 16mm;
             @bottom-center {
               content: "Page " counter(page) " of " counter(pages);
               font-size: 8pt;
@@ -365,25 +365,46 @@ export default function DischargePrint({ params }: { params: { id: string; summa
           html, body {
             background: #fff !important;
             margin: 0 !important; padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
             font-size: 10pt !important;
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          *, *::before, *::after {
+            box-sizing: border-box !important;
+            max-width: 100% !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           #no-print { display: none !important; }
           #print-body {
-            max-width: none !important;
+            max-width: 100% !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
+            overflow: hidden !important;
           }
           h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
-          table { border-collapse: collapse !important; width: 100% !important; break-inside: auto; }
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
+            break-inside: auto;
+          }
+          col  { width: auto !important; }
           thead { display: table-header-group; break-inside: avoid; }
           tfoot { display: table-footer-group; }
           tr    { break-inside: avoid; page-break-inside: avoid; }
-          td, th { break-inside: avoid; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          td, th {
+            break-inside: avoid;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+          }
         }
       `}</style>
     </div>

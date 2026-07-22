@@ -718,7 +718,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 14mm 16mm 18mm;
+            margin: 12mm 14mm 16mm;
             @bottom-center {
               content: "صفحة " counter(page) " من " counter(pages);
               font-family: 'Tajawal', Arial, sans-serif;
@@ -727,11 +727,24 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
             }
           }
 
+          /* Kill all overflow — nothing escapes the page width */
           html, body {
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
             font-size: 10pt !important;
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* Every element respects the box model */
+          *, *::before, *::after {
+            box-sizing: border-box !important;
+            max-width: 100% !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -739,25 +752,35 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
           #no-print { display: none !important; }
 
           #print-body {
-            max-width: none !important;
+            max-width: 100% !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
+            overflow: hidden !important;
           }
 
           /* Allow sections to break across pages — only prevent orphan headers */
           h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
 
-          /* Tables: headers repeat on every page, rows never split mid-cell */
-          table  { border-collapse: collapse !important; width: 100% !important; break-inside: auto; }
-          thead  { display: table-header-group; break-inside: avoid; }
-          tfoot  { display: table-footer-group; }
-          tr     { break-inside: avoid; page-break-inside: avoid; }
-          td, th { break-inside: avoid; }
-
-          /* Ensure background colours and borders print */
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          /* Tables: auto layout so columns never exceed page width */
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: auto !important;
+            break-inside: auto;
+          }
+          col  { width: auto !important; }       /* reset all colgroup widths */
+          thead { display: table-header-group; break-inside: avoid; }
+          tfoot { display: table-footer-group; }
+          tr    { break-inside: avoid; page-break-inside: avoid; }
+          td, th {
+            break-inside: avoid;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            max-width: 0;           /* forces word-wrap to activate in fixed layouts */
+          }
         }
       `}</style>
     </div>
