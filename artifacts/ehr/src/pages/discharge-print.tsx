@@ -43,19 +43,22 @@ function Field({ label, value, labelAr }: { label: string; labelAr?: string; val
 
 function Section({ title, titleAr, children }: { title: string; titleAr?: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: "18px", pageBreakInside: "avoid", breakInside: "avoid" }}>
-      <div style={{
-        borderLeft: "4px solid #111827", paddingLeft: "10px",
-        display: "flex", alignItems: "baseline", gap: "8px",
-        marginBottom: "6px",
-      }}>
-        <span style={{
-          fontSize: "9pt", fontWeight: 700, letterSpacing: "0.07em",
-          color: "#111827", textTransform: "uppercase",
-        }}>{title}</span>
-        {titleAr && (
-          <span style={{ fontSize: "9pt", color: "#6b7280", fontWeight: 500 }}>/ {titleAr}</span>
-        )}
+    <div style={{ marginBottom: "18px" }}>
+      {/* Keep header glued to first line of content — never orphan it */}
+      <div style={{ breakInside: "avoid", pageBreakInside: "avoid" }}>
+        <div style={{
+          borderLeft: "4px solid #111827", paddingLeft: "10px",
+          display: "flex", alignItems: "baseline", gap: "8px",
+          marginBottom: "6px",
+        }}>
+          <span style={{
+            fontSize: "9pt", fontWeight: 700, letterSpacing: "0.07em",
+            color: "#111827", textTransform: "uppercase",
+          }}>{title}</span>
+          {titleAr && (
+            <span style={{ fontSize: "9pt", color: "#6b7280", fontWeight: 500 }}>/ {titleAr}</span>
+          )}
+        </div>
       </div>
       <div style={{
         border: "1px solid #d1d5db", borderRadius: "3px",
@@ -103,10 +106,10 @@ export default function DischargePrint({ params }: { params: { id: string; summa
   useEffect(() => {
     if (!loading && patient && summary && !printedRef.current) {
       printedRef.current = true;
-      const t = setTimeout(() => window.print(), 800);
-      return () => clearTimeout(t);
+      document.fonts.ready.then(() => {
+        setTimeout(() => window.print(), 400);
+      });
     }
-    return undefined;
   }, [loading, patient, summary]);
 
   if (loading) return (
@@ -332,6 +335,13 @@ export default function DischargePrint({ params }: { params: { id: string; summa
 
       {/* ══════ PRINT CSS ══════ */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap');
+
+        html, body {
+          font-family: 'Inter', 'Tajawal', 'Helvetica Neue', Arial, sans-serif;
+          background: #f3f4f6;
+        }
+
         @media screen {
           #print-body {
             margin-top: 52px;
@@ -345,7 +355,12 @@ export default function DischargePrint({ params }: { params: { id: string; summa
         @media print {
           @page {
             size: A4 portrait;
-            margin: 16mm 18mm;
+            margin: 14mm 16mm 18mm;
+            @bottom-center {
+              content: "Page " counter(page) " of " counter(pages);
+              font-size: 8pt;
+              color: #9ca3af;
+            }
           }
           html, body {
             background: #fff !important;
@@ -362,6 +377,12 @@ export default function DischargePrint({ params }: { params: { id: string; summa
             padding: 0 !important;
             box-shadow: none !important;
           }
+          h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+          table { border-collapse: collapse !important; width: 100% !important; break-inside: auto; }
+          thead { display: table-header-group; break-inside: avoid; }
+          tfoot { display: table-footer-group; }
+          tr    { break-inside: avoid; page-break-inside: avoid; }
+          td, th { break-inside: avoid; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>

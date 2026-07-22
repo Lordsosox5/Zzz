@@ -64,11 +64,11 @@ function SectionHeader({ title }: { title: string }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      marginBottom: "18px",
-      pageBreakInside: "avoid", breakInside: "avoid",
-    }}>
-      <SectionHeader title={title} />
+    <div style={{ marginBottom: "18px" }}>
+      {/* Header + top border stay with the first line of content */}
+      <div style={{ breakInside: "avoid", pageBreakInside: "avoid" }}>
+        <SectionHeader title={title} />
+      </div>
       <div style={{
         border: "1px solid #d1d5db", borderRadius: "3px",
         padding: "8px 10px", background: "#fff",
@@ -196,10 +196,12 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!isLoading && patient && !printedRef.current) {
       printedRef.current = true;
-      const t = setTimeout(() => window.print(), 900);
-      return () => clearTimeout(t);
+      // Wait for fonts to finish loading before printing, then add a small
+      // buffer so the browser has time to complete layout.
+      document.fonts.ready.then(() => {
+        setTimeout(() => window.print(), 400);
+      });
     }
-    return undefined;
   }, [isLoading, patient]);
 
   if (isLoading) {
@@ -716,7 +718,13 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 16mm 18mm;
+            margin: 14mm 16mm 18mm;
+            @bottom-center {
+              content: "صفحة " counter(page) " من " counter(pages);
+              font-family: 'Tajawal', Arial, sans-serif;
+              font-size: 8pt;
+              color: #9ca3af;
+            }
           }
 
           html, body {
@@ -728,7 +736,7 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
             print-color-adjust: exact !important;
           }
 
-          #no-print  { display: none !important; }
+          #no-print { display: none !important; }
 
           #print-body {
             max-width: none !important;
@@ -738,15 +746,17 @@ export default function PatientPrint({ params }: { params: { id: string } }) {
             box-shadow: none !important;
           }
 
-          /* section keeps together */
-          section, .section-block { break-inside: avoid; page-break-inside: avoid; }
+          /* Allow sections to break across pages — only prevent orphan headers */
+          h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
 
-          /* table keeps rows together */
-          table  { border-collapse: collapse !important; width: 100% !important; }
-          thead  { display: table-header-group; }
+          /* Tables: headers repeat on every page, rows never split mid-cell */
+          table  { border-collapse: collapse !important; width: 100% !important; break-inside: auto; }
+          thead  { display: table-header-group; break-inside: avoid; }
+          tfoot  { display: table-footer-group; }
           tr     { break-inside: avoid; page-break-inside: avoid; }
+          td, th { break-inside: avoid; }
 
-          /* B&W: ensure fills render */
+          /* Ensure background colours and borders print */
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
