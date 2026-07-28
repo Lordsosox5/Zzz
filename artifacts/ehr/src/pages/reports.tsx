@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { generateReportPDF, generateOverallReportPDF } from "@/lib/report-pdf";
+
 import { getToken, getUser } from "@/lib/auth";
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
@@ -1215,302 +1215,62 @@ ${sec("\ud83d\udcb0", "\u0627\u0644\u0645\u0644\u062e\u0635 \u0627\u0644\u0645\u
         const labCritical  = labOrders.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length;
         const rxCancelled  = prescriptions.filter(r => r.status === "cancelled").length;
 
-        await generateOverallReportPDF({
-          period: periodLabel,
-          dateRange,
-          language,
-          execKpis: [
-            { label: en ? "Patients"     : "المرضى",         value: patients.length },
-            { label: en ? "Appointments" : "المواعيد",        value: appointments.length },
-            { label: en ? "Lab Orders"   : "طلبات المختبر",   value: labOrders.length },
-            { label: en ? "Revenue (SDG)": "الإيرادات",       value: `SDG ${totalRev.toLocaleString()}`, sub: collRate },
-            { label: en ? "Prescriptions": "الوصفات",         value: prescriptions.length },
-          ],
-          sections: [
-            {
-              title: en ? "Patients" : "المرضى",
-              color: [59, 130, 246],
-              kpis: [
-                { label: en ? "Period Total" : "إجمالي الفترة", value: patients.length },
-                { label: en ? "Admitted"     : "مقبولون",        value: admitted },
-                { label: en ? "Discharged"   : "مخرجون",         value: discharged },
-                { label: en ? "System Total" : "إجمالي النظام",  value: allPatients.length },
-              ],
-              trendData: patTrend,
-              trendLabel: en ? "Registrations" : "التسجيلات",
-              tableColumns: en ? ["File #", "Gender", "Status"] : ["رقم الملف", "الجنس", "الحالة"],
-              tableRows: patients.slice(0, 50).map(p => ({
-                "File #": p.fileNumber ?? "—", "رقم الملف": p.fileNumber ?? "—",
-                Gender: p.gender ?? "—", "الجنس": p.gender ?? "—",
-                Status: p.status ?? "—", "الحالة": p.status ?? "—",
-              })),
-              interpretation: buildPatientInterp(patients, allPatients, admitted, discharged, patTrend, periodLabel, language),
-            },
-            {
-              title: en ? "Appointments" : "المواعيد",
-              color: [139, 92, 246],
-              kpis: [
-                { label: en ? "Total"     : "الإجمالي",  value: appointments.length },
-                { label: en ? "Completed" : "مكتملة",    value: compAppts,  sub: compApptRate },
-                { label: en ? "Scheduled" : "مجدولة",    value: appointments.filter(a => a.status === "scheduled").length },
-                { label: en ? "Cancelled" : "ملغاة",     value: cancAppts,  sub: cancApptRate },
-              ],
-              trendData: apptTrend,
-              trendLabel: en ? "Appointments" : "المواعيد",
-              tableColumns: en ? ["Type", "Status"] : ["النوع", "الحالة"],
-              tableRows: appointments.slice(0, 50).map(a => ({
-                Type: a.type ?? "—", "النوع": a.type ?? "—",
-                Status: a.status ?? "—", "الحالة": a.status ?? "—",
-              })),
-              interpretation: buildApptInterp(appointments, compAppts, cancAppts, compApptRate, cancApptRate, periodLabel, language),
-            },
-            {
-              title: en ? "Lab Orders" : "طلبات المختبر",
-              color: [245, 158, 11],
-              kpis: [
-                { label: en ? "Total"   : "الإجمالي",   value: labOrders.length },
-                { label: en ? "Resulted": "مكتملة",      value: labDone,    sub: labRate },
-                { label: en ? "Pending" : "معلقة",       value: labPending },
-                { label: en ? "Urgent"  : "عاجلة",       value: labCritical },
-              ],
-              trendData: labTrend,
-              trendLabel: en ? "Lab Orders" : "طلبات المختبر",
-              tableColumns: en ? ["Test", "Priority", "Status"] : ["الفحص", "الأولوية", "الحالة"],
-              tableRows: labOrders.slice(0, 50).map(l => ({
-                Test: l.testName ?? "—", "الفحص": l.testName ?? "—",
-                Priority: l.priority ?? "normal", "الأولوية": l.priority ?? "normal",
-                Status: l.status ?? "—", "الحالة": l.status ?? "—",
-              })),
-              interpretation: buildLabInterp(labOrders, labDone, labPending, labCritical, labRate, periodLabel, language),
-            },
-            {
-              title: en ? "Revenue" : "الإيرادات",
-              color: [16, 185, 129],
-              kpis: [
-                { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SDG ${totalRev.toLocaleString()}` },
-                { label: en ? "Collected"     : "المحصّل",          value: `SDG ${totalPaid.toLocaleString()}`, sub: collRate },
-                { label: en ? "Outstanding"   : "المتأخرات",        value: `SDG ${(totalRev - totalPaid).toLocaleString()}` },
-                { label: en ? "Invoices"      : "الفواتير",         value: invoices.length },
-              ],
-              trendData: revTrend,
-              trendLabel: en ? "Revenue" : "الإيرادات",
-              tableColumns: en ? ["Total (SDG)", "Paid (SDG)", "Status"] : ["المبلغ", "المدفوع", "الحالة"],
-              tableRows: invoices.slice(0, 50).map(i => ({
-                "Total (SDG)": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
-                "المبلغ": Number(i.totalAmount ?? i.total_amount ?? 0).toLocaleString(),
-                "Paid (SDG)": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
-                "المدفوع": Number(i.paidAmount ?? i.paid_amount ?? 0).toLocaleString(),
-                Status: i.status ?? "—", "الحالة": i.status ?? "—",
-              })),
-              interpretation: buildRevenueInterp(invoices, totalRev, totalPaid, totalRev - totalPaid, collRate, revTrend, periodLabel, language),
-            },
-            {
-              title: en ? "Prescriptions" : "الوصفات الطبية",
-              color: [239, 68, 68],
-              kpis: [
-                { label: en ? "Total"     : "الإجمالي", value: prescriptions.length },
-                { label: en ? "Dispensed" : "مصروفة",   value: dispRx,     sub: dispRxRate },
-                { label: en ? "Pending"   : "معلقة",    value: rxPending },
-                { label: en ? "Cancelled" : "ملغاة",    value: rxCancelled },
-              ],
-              trendData: rxTrend,
-              trendLabel: en ? "Prescriptions" : "الوصفات",
-              tableColumns: en ? ["Drug", "Doctor", "Status"] : ["الدواء", "الطبيب", "الحالة"],
-              tableRows: prescriptions.slice(0, 50).map(r => ({
-                Drug: r.drugName ?? r.medicationName ?? "—",
-                "الدواء": r.drugName ?? r.medicationName ?? "—",
-                Doctor: r.prescriberName ?? r.doctorName ?? "—",
-                "الطبيب": r.prescriberName ?? r.doctorName ?? "—",
-                Status: r.status ?? "—", "الحالة": r.status ?? "—",
-              })),
-              interpretation: buildRxInterp(prescriptions, dispRx, rxPending, rxCancelled, dispRxRate, periodLabel, language),
-            },
-          ],
-        });
+        sections = [
+          buildPatientsSection(patients),
+          buildApptsSection(appointments),
+          buildLabSection(labOrders),
+          buildRevenueSection(invoices),
+          buildRxSection(prescriptions),
+          buildRadSection(radiologyOrders),
+          buildPharmacySection(drugs),
+        ];
+        reportTitle = en ? "Overall Hospital Report" : "التقرير الشامل للمستشفى";
         break;
       }
       case "patients": {
-        const admitted   = patients.filter(p => (p.status ?? p.admissionStatus) === "admitted").length;
-        const discharged = patients.filter(p => (p.status ?? p.admissionStatus) === "discharged").length;
-        const dispRate   = patients.length > 0 ? `${((admitted / patients.length) * 100).toFixed(1)}%` : "0%";
-        const trend      = groupByTime(patients, "createdAt", groupBy);
-        const interp     = buildPatientInterp(patients, allPatients, admitted, discharged, trend, periodLabel, language);
-        await generateReportPDF({
-          reportType: en ? "Patients" : "المرضى",
-          period: periodLabel, dateRange, language,
-          kpis: [
-            { label: en ? "Period Total"    : "إجمالي الفترة",  value: patients.length },
-            { label: en ? "Admitted"        : "مقبولون",        value: admitted, sub: dispRate },
-            { label: en ? "Discharged"      : "مخرجون",         value: discharged },
-            { label: en ? "System Total"    : "إجمالي النظام",  value: allPatients.length, sub: en ? "All time" : "جميع الأوقات" },
-          ],
-          trendData: trend,
-          trendLabel: en ? "Patient Registrations Over Period" : "دخول المرضى خلال الفترة",
-          tableColumns: [],
-          tableRows: [],
-          distributions: [
-            { title: en ? "Status Breakdown" : "توزيع الحالة",
-              data: statusDist(patients, "status", {
-                admitted:   { label: en ? "Admitted"   : "مقبول",  color: "#8b5cf6" },
-                discharged: { label: en ? "Discharged" : "مخرج",   color: "#10b981" },
-                outpatient: { label: en ? "Outpatient" : "خارجي",  color: "#3b82f6" },
-                emergency:  { label: en ? "Emergency"  : "طوارئ",  color: "#ef4444" },
-              }) },
-            { title: en ? "Gender Distribution" : "توزيع الجنس",
-              data: statusDist(patients, "gender", {
-                male:   { label: en ? "Male"   : "ذكر",  color: "#3b82f6" },
-                female: { label: en ? "Female" : "أنثى", color: "#ec4899" },
-              }) },
-          ],
-          interpretation: interp,
-        });
+        sections = [buildPatientsSection(patients)];
+        reportTitle = en ? "Patient Report" : "تقرير المرضى";
         break;
       }
       case "appointments": {
-        const completed  = appointments.filter(a => a.status === "completed").length;
-        const scheduled  = appointments.filter(a => a.status === "scheduled").length;
-        const cancelled  = appointments.filter(a => a.status === "cancelled").length;
-        const compRate   = appointments.length > 0 ? `${((completed / appointments.length) * 100).toFixed(1)}%` : "0%";
-        const cancRate   = appointments.length > 0 ? `${((cancelled / appointments.length) * 100).toFixed(1)}%` : "0%";
-        const trend      = groupByTime(appointments, "scheduledAt", groupBy);
-        const interp     = buildApptInterp(appointments, completed, cancelled, compRate, cancRate, periodLabel, language);
-        await generateReportPDF({
-          reportType: en ? "Appointments" : "المواعيد",
-          period: periodLabel, dateRange, language,
-          kpis: [
-            { label: en ? "Total"      : "الإجمالي",  value: appointments.length },
-            { label: en ? "Completed"  : "مكتملة",    value: completed, sub: compRate },
-            { label: en ? "Scheduled"  : "مجدولة",    value: scheduled },
-            { label: en ? "Cancelled"  : "ملغاة",     value: cancelled, sub: cancRate },
-          ],
-          trendData: trend,
-          trendLabel: en ? "Appointments Over Period" : "المواعيد خلال الفترة",
-          tableColumns: [],
-          tableRows: [],
-          distributions: [
-            { title: en ? "Status Breakdown" : "توزيع الحالة",
-              data: statusDist(appointments, "status", {
-                completed: { label: en ? "Completed" : "مكتمل",  color: "#10b981" },
-                scheduled: { label: en ? "Scheduled" : "مجدول",  color: "#3b82f6" },
-                cancelled: { label: en ? "Cancelled" : "ملغى",   color: "#ef4444" },
-                "no-show": { label: en ? "No-show"   : "غياب",   color: "#f59e0b" },
-              }) },
-            { title: en ? "Appointment Types" : "أنواع المواعيد",
-              data: freqDist(appointments, "type") },
-          ],
-          interpretation: interp,
-        });
+        sections = [buildApptsSection(appointments)];
+        reportTitle = en ? "Appointments Report" : "تقرير المواعيد";
         break;
       }
       case "lab": {
-        const resulted = labOrders.filter(l => l.status === "resulted" || l.status === "reviewed").length;
-        const pending  = labOrders.filter(l => l.status === "pending").length;
-        const critical = labOrders.filter(l => l.priority === "urgent" || l.priority === "stat" || l.isCritical).length;
-        const turnRate = labOrders.length > 0 ? `${((resulted / labOrders.length) * 100).toFixed(1)}%` : "0%";
-        const trend    = groupByTime(labOrders, "createdAt", groupBy);
-        const interp   = buildLabInterp(labOrders, resulted, pending, critical, turnRate, periodLabel, language);
-        await generateReportPDF({
-          reportType: en ? "Lab Orders" : "طلبات المختبر",
-          period: periodLabel, dateRange, language,
-          kpis: [
-            { label: en ? "Total Orders" : "إجمالي الطلبات", value: labOrders.length },
-            { label: en ? "Resulted"     : "مكتملة",         value: resulted, sub: turnRate },
-            { label: en ? "Pending"      : "معلقة",          value: pending },
-            { label: en ? "Urgent"       : "عاجلة",          value: critical },
-          ],
-          trendData: trend,
-          trendLabel: en ? "Lab Orders Over Period" : "طلبات المختبر خلال الفترة",
-          tableColumns: [],
-          tableRows: [],
-          distributions: [
-            { title: en ? "Status Breakdown" : "توزيع الحالة",
-              data: statusDist(labOrders, "status", {
-                resulted:      { label: en ? "Resulted"    : "مكتمل",   color: "#10b981" },
-                reviewed:      { label: en ? "Reviewed"    : "مراجَع",   color: "#3b82f6" },
-                pending:       { label: en ? "Pending"     : "معلق",    color: "#6b7280" },
-                "in-progress": { label: en ? "In Progress" : "جارٍ",    color: "#f59e0b" },
-              }) },
-            { title: en ? "Priority Distribution" : "توزيع الأولوية",
-              data: statusDist(labOrders, "priority", {
-                routine: { label: en ? "Routine" : "عادي", color: "#3b82f6" },
-                urgent:  { label: en ? "Urgent"  : "عاجل", color: "#f59e0b" },
-                stat:    { label: en ? "STAT"    : "فوري", color: "#ef4444" },
-              }) },
-            { title: en ? "Top Tests Requested" : "الفحوصات الأكثر طلباً",
-              data: freqDist(labOrders, "testName").slice(0, 6) },
-          ],
-          interpretation: interp,
-        });
+        sections = [buildLabSection(labOrders)];
+        reportTitle = en ? "Laboratory Report" : "تقرير المختبر";
         break;
       }
       case "revenue": {
-        const totalRev   = invoices.reduce((s, i) => s + Number(i.totalAmount ?? i.total_amount ?? 0), 0);
-        const totalPaid  = invoices.reduce((s, i) => s + Number(i.paidAmount ?? i.paid_amount ?? 0), 0);
-        const totalUnpaid = totalRev - totalPaid;
-        const collRate   = totalRev > 0 ? `${((totalPaid / totalRev) * 100).toFixed(1)}%` : "0%";
-        const paid       = invoices.filter(i => i.status === "paid").length;
-        const trend      = groupByTime(invoices, "createdAt", groupBy);
-        const interp     = buildRevenueInterp(invoices, totalRev, totalPaid, totalUnpaid, collRate, trend, periodLabel, language);
-        await generateReportPDF({
-          reportType: en ? "Revenue" : "الإيرادات",
-          period: periodLabel, dateRange, language,
-          kpis: [
-            { label: en ? "Total Revenue" : "إجمالي الإيرادات", value: `SDG ${totalRev.toLocaleString()}` },
-            { label: en ? "Collected"     : "المحصّل",          value: `SDG ${totalPaid.toLocaleString()}`, sub: collRate },
-            { label: en ? "Outstanding"   : "المتأخرات",        value: `SDG ${totalUnpaid.toLocaleString()}` },
-            { label: en ? "Invoices"      : "الفواتير",         value: invoices.length, sub: `${paid} ${en ? "paid" : "مدفوع"}` },
-          ],
-          trendData: trend,
-          trendLabel: en ? "Invoices Issued Over Period" : "الفواتير الصادرة خلال الفترة",
-          tableColumns: [],
-          tableRows: [],
-          distributions: [
-            { title: en ? "Payment Status" : "حالة الدفع",
-              data: statusDist(invoices, "status", {
-                paid:    { label: en ? "Paid"    : "مدفوع", color: "#10b981" },
-                pending: { label: en ? "Pending" : "معلق",  color: "#f59e0b" },
-                partial: { label: en ? "Partial" : "جزئي", color: "#3b82f6" },
-              }) },
-          ],
-          interpretation: interp,
-        });
+        sections = [buildRevenueSection(invoices)];
+        reportTitle = en ? "Revenue & Billing Report" : "تقرير الإيرادات والفواتير";
         break;
       }
       case "prescriptions": {
-        const dispensed  = prescriptions.filter(r => r.status === "dispensed").length;
-        const pending    = prescriptions.filter(r => r.status === "pending").length;
-        const cancelled  = prescriptions.filter(r => r.status === "cancelled").length;
-        const dispRate   = prescriptions.length > 0 ? `${((dispensed / prescriptions.length) * 100).toFixed(1)}%` : "0%";
-        const trend      = groupByTime(prescriptions, "createdAt", groupBy);
-        const interp     = buildRxInterp(prescriptions, dispensed, pending, cancelled, dispRate, periodLabel, language);
-        await generateReportPDF({
-          reportType: en ? "Prescriptions" : "الوصفات الطبية",
-          period: periodLabel, dateRange, language,
-          kpis: [
-            { label: en ? "Total"      : "الإجمالي",  value: prescriptions.length },
-            { label: en ? "Dispensed"  : "مصروفة",    value: dispensed, sub: dispRate },
-            { label: en ? "Pending"    : "معلقة",     value: pending },
-            { label: en ? "Cancelled"  : "ملغاة",     value: cancelled },
-          ],
-          trendData: trend,
-          trendLabel: en ? "Prescriptions Over Period" : "الوصفات خلال الفترة",
-          tableColumns: [],
-          tableRows: [],
-          distributions: [
-            { title: en ? "Status Breakdown" : "توزيع الحالة",
-              data: statusDist(prescriptions, "status", {
-                dispensed:  { label: en ? "Dispensed" : "مصروف",  color: "#10b981" },
-                pending:    { label: en ? "Pending"   : "معلق",   color: "#f59e0b" },
-                cancelled:  { label: en ? "Cancelled" : "ملغى",   color: "#ef4444" },
-              }) },
-            { title: en ? "Top Medications" : "الأدوية الأكثر وصفاً",
-              data: freqDist(prescriptions, "medicationName").slice(0, 6) },
-          ],
-          interpretation: interp,
-        });
+        sections = [buildRxSection(prescriptions)];
+        reportTitle = en ? "Prescriptions Report" : "تقرير الوصفات الطبية";
+        break;
+      }
+      case "radiology": {
+        sections = [buildRadSection(radiologyOrders)];
+        reportTitle = en ? "Radiology Report" : "تقرير الأشعة";
+        break;
+      }
+      case "pharmacy": {
+        sections = [buildPharmacySection(drugs)];
+        reportTitle = en ? "Pharmacy & Inventory Report" : "تقرير الصيدلية والمخزون";
         break;
       }
     }
+
+    printReport({
+      title: reportTitle,
+      subtitle: `${periodLabel} · ${dateRange}`,
+      hospitalName: en ? "Almuzini Children Hospital" : "مستشفى الموزيني للأطفال",
+      language,
+      sections,
+    });
   }
 
   const currentReport = REPORT_TYPES.find(r => r.value === reportType)!;

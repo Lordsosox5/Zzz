@@ -50,7 +50,7 @@ export default defineConfig({
       : []),
   ],
   optimizeDeps: {
-    include: ["xlsx"],
+    include: ["xlsx", "qrcode.react"],
   },
   resolve: {
     alias: {
