@@ -6,7 +6,7 @@ import {
 import { getUser } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/lib/i18n";
-import { ROLE_DEFINITIONS, canFullyManageStaff } from "@/lib/permissions";
+import { ROLE_DEFINITIONS, canFullyManageStaff, canManageStaff } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,7 +202,7 @@ type StaffMemberAny = Record<string, any>;
 
 function ProfileDialog({
   member, open, onOpenChange, onEdit, onReset, onSuspend, onReactivate, onDelete,
-  isFullAdmin, currentUserId, units, t, isRtl, language, updatePending, isLastActiveSuperAdmin,
+  isFullAdmin, canDelete, currentUserId, units, t, isRtl, language, updatePending, isLastActiveSuperAdmin,
 }: {
   member: StaffMemberAny | null;
   open: boolean;
@@ -213,6 +213,7 @@ function ProfileDialog({
   onReactivate: () => void;
   onDelete: () => void;
   isFullAdmin: boolean;
+  canDelete: boolean;
   currentUserId?: number;
   units: any[];
   t: (k: string) => string;
@@ -344,7 +345,7 @@ function ProfileDialog({
                 <UserCheck className="h-3.5 w-3.5" /> {t("staff.reactivate")}
               </Button>
             )}
-            {!isSelf && !isSuperAdmin && (
+            {canDelete && !isSelf && !isSuperAdmin && (
               <Button size="sm" variant="outline" className="gap-1.5 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5"
                 onClick={() => { onOpenChange(false); onDelete(); }}>
                 <Trash2 className="h-3.5 w-3.5" /> {t("staff.deleteAction")}
@@ -436,6 +437,7 @@ export default function Staff() {
 
   const currentUser = getUser();
   const isFullAdmin = canFullyManageStaff(currentUser?.role ?? "");
+  const isAccountsManager = currentUser?.role === "accounts_manager";
 
   const { data: staff, isLoading } = useListStaff({});
   const { data: units = [] } = useListUnits();
@@ -614,6 +616,7 @@ export default function Staff() {
             {t("staff.roleAuthorities")}
           </Button>
 
+          {canManageStaff(currentUser?.role ?? "") && (
           <Dialog open={isOpen} onOpenChange={v => { if (!v) handleClose(); else setIsOpen(true); }}>
             <DialogTrigger asChild>
               <Button onClick={() => { resetForm(); setIsOpen(true); }}>
@@ -882,6 +885,7 @@ export default function Staff() {
               )}
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 
@@ -1133,6 +1137,7 @@ export default function Staff() {
         onReactivate={() => profileMember && handleReactivateAccount(profileMember.id, profileMember.nameEn)}
         onDelete={() => profileMember && setDeleteTarget({ id: profileMember.id, nameEn: profileMember.nameEn })}
         isFullAdmin={isFullAdmin}
+        canDelete={canManageStaff(currentUser?.role ?? "")}
         currentUserId={currentUser?.id}
         units={units as any[]}
         t={t}
@@ -1424,7 +1429,7 @@ export default function Staff() {
                               {t("staff.edit")}
                             </Button>
                           )}
-                          {currentUser?.id !== member.id && member.role !== "super_admin" && (
+                          {canManageStaff(currentUser?.role ?? "") && currentUser?.id !== member.id && member.role !== "super_admin" && (
                             <Button size="sm" variant="ghost"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 text-xs"
                               onClick={() => setDeleteTarget({ id: member.id, nameEn: member.nameEn })}>
