@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
+import { apiRequest } from '@/lib/api';
 
 interface PatientDetail {
   id: number; nameEn: string; nameAr?: string; mrn: string; dob?: string;
@@ -13,6 +15,22 @@ interface PatientDetail {
   guardianName?: string; guardianRelation?: string; guardianPhone?: string;
   address?: string; admissionDate?: string; chiefComplaint?: string;
   unitId?: number; email?: string; phone?: string;
+}
+
+interface ClinicalNote {
+  id: number; noteType?: string; content: string; createdAt?: string;
+  authorName?: string; patientId?: number;
+}
+
+interface LabOrder {
+  id: number; testName: string; status: string; orderedAt?: string;
+  result?: string; referenceRange?: string; unit?: string;
+  orderedByName?: string; notes?: string;
+}
+
+interface RadiologyOrder {
+  id: number; studyType: string; status: string; orderedAt?: string;
+  findings?: string; impression?: string; orderedByName?: string;
 }
 
 type TabId = 'overview' | 'vitals' | 'notes' | 'labs';
@@ -41,9 +59,162 @@ const irStyles = StyleSheet.create({
   value: { fontSize: 14, fontFamily: 'Tajawal_500Medium', textAlign: 'right', flex: 1 },
 });
 
+const LAB_STATUS: Record<string, { color: string; bg: string }> = {
+  pending:    { color: '#D97706', bg: '#FEF3C7' },
+  in_progress:{ color: '#0A66C2', bg: '#E8F1FB' },
+  completed:  { color: '#16A34A', bg: '#DCFCE7' },
+  cancelled:  { color: '#EF4444', bg: '#FEE2E2' },
+};
+
+function LabCard({ order }: { order: LabOrder }) {
+  const colors = useColors();
+  const st = LAB_STATUS[order.status] ?? { color: colors.mutedForeground, bg: colors.muted };
+  return (
+    <View style={[labStyles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+      <View style={labStyles.topRow}>
+        <View style={[labStyles.iconWrap, { backgroundColor: colors.primaryLight }]}>
+          <Ionicons name="flask-outline" size={18} color={colors.primary} />
+        </View>
+        <View style={labStyles.info}>
+          <Text style={[labStyles.name, { color: colors.foreground }]} numberOfLines={1}>{order.testName}</Text>
+          {order.orderedByName && (
+            <Text style={[labStyles.sub, { color: colors.mutedForeground }]}>Dr. {order.orderedByName}</Text>
+          )}
+        </View>
+        <View style={[labStyles.badge, { backgroundColor: st.bg }]}>
+          <Text style={[labStyles.badgeText, { color: st.color }]}>
+            {order.status.replace('_', ' ')}
+          </Text>
+        </View>
+      </View>
+      {order.result && (
+        <View style={[labStyles.resultBox, { backgroundColor: colors.muted }]}>
+          <Text style={[labStyles.resultLabel, { color: colors.mutedForeground }]}>Result</Text>
+          <Text style={[labStyles.resultValue, { color: colors.foreground }]}>
+            {order.result}{order.unit ? ` ${order.unit}` : ''}
+            {order.referenceRange ? `  (ref: ${order.referenceRange})` : ''}
+          </Text>
+        </View>
+      )}
+      {order.orderedAt && (
+        <Text style={[labStyles.date, { color: colors.mutedForeground }]}>
+          {new Date(order.orderedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const labStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16, padding: 14, marginBottom: 10,
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2,
+  },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconWrap: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1, minWidth: 0 },
+  name: { fontSize: 14, fontFamily: 'Tajawal_700Bold' },
+  sub: { fontSize: 12, fontFamily: 'Tajawal_400Regular', marginTop: 1 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  badgeText: { fontSize: 11, fontFamily: 'Tajawal_700Bold' },
+  resultBox: { borderRadius: 10, padding: 10, marginTop: 10 },
+  resultLabel: { fontSize: 11, fontFamily: 'Tajawal_500Medium', marginBottom: 2 },
+  resultValue: { fontSize: 14, fontFamily: 'Tajawal_500Medium' },
+  date: { fontSize: 11, fontFamily: 'Tajawal_400Regular', marginTop: 8 },
+});
+
+const NOTE_TYPE_COLOR: Record<string, { color: string; bg: string }> = {
+  progress_note:   { color: '#0A66C2', bg: '#E8F1FB' },
+  admission_note:  { color: '#7C3AED', bg: '#EDE9FE' },
+  discharge_note:  { color: '#16A34A', bg: '#DCFCE7' },
+  consultation:    { color: '#D97706', bg: '#FEF3C7' },
+  procedure_note:  { color: '#DC2626', bg: '#FEE2E2' },
+};
+
+function NoteCard({ note }: { note: ClinicalNote }) {
+  const [expanded, setExpanded] = useState(false);
+  const colors = useColors();
+  const tc = NOTE_TYPE_COLOR[note.noteType ?? ''] ?? { color: colors.primary, bg: colors.primaryLight };
+  const label = (note.noteType ?? 'note').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return (
+    <TouchableOpacity
+      style={[noteStyles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}
+      onPress={() => setExpanded(v => !v)}
+      activeOpacity={0.85}
+    >
+      <View style={noteStyles.header}>
+        <View style={[noteStyles.typeBadge, { backgroundColor: tc.bg }]}>
+          <Text style={[noteStyles.typeBadgeText, { color: tc.color }]}>{label}</Text>
+        </View>
+        {note.createdAt && (
+          <Text style={[noteStyles.date, { color: colors.mutedForeground }]}>
+            {new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </Text>
+        )}
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={16} color={colors.mutedForeground}
+        />
+      </View>
+      {note.authorName && (
+        <Text style={[noteStyles.author, { color: colors.mutedForeground }]}>Dr. {note.authorName}</Text>
+      )}
+      <Text
+        style={[noteStyles.content, { color: colors.foreground }]}
+        numberOfLines={expanded ? undefined : 2}
+      >
+        {note.content}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+const noteStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16, padding: 14, marginBottom: 10,
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  typeBadgeText: { fontSize: 11, fontFamily: 'Tajawal_700Bold' },
+  date: { fontSize: 12, fontFamily: 'Tajawal_400Regular', flex: 1 },
+  author: { fontSize: 12, fontFamily: 'Tajawal_400Regular', marginBottom: 6 },
+  content: { fontSize: 14, fontFamily: 'Tajawal_400Regular', lineHeight: 20 },
+});
+
+// ─── Vitals gauge card ──────────────────────────────────────────────────────
+interface VitalCardProps { label: string; value?: string | number | null; unit: string; icon: string; color: string; bg: string; }
+function VitalCard({ label, value, unit, icon, color, bg }: VitalCardProps) {
+  const colors = useColors();
+  return (
+    <View style={[vitStyles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+      <View style={[vitStyles.iconWrap, { backgroundColor: bg }]}>
+        <Ionicons name={icon as any} size={20} color={color} />
+      </View>
+      <Text style={[vitStyles.value, { color: colors.foreground }]}>
+        {value ?? '—'}
+        {value ? <Text style={[vitStyles.unit, { color: colors.mutedForeground }]}> {unit}</Text> : null}
+      </Text>
+      <Text style={[vitStyles.label, { color: colors.mutedForeground }]}>{label}</Text>
+    </View>
+  );
+}
+const vitStyles = StyleSheet.create({
+  card: {
+    flex: 1, borderRadius: 16, padding: 14, alignItems: 'flex-start', minWidth: 0,
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2,
+    marginBottom: 10,
+  },
+  iconWrap: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  value: { fontSize: 22, fontFamily: 'Tajawal_700Bold' },
+  unit: { fontSize: 13, fontFamily: 'Tajawal_400Regular' },
+  label: { fontSize: 12, fontFamily: 'Tajawal_400Regular', marginTop: 2 },
+});
+
 export default function PatientDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
@@ -52,6 +223,27 @@ export default function PatientDetailScreen() {
     queryKey: [`/patients/${id}`],
     enabled: !!id,
     retry: false,
+  });
+
+  const { data: notesData, isLoading: notesLoading } = useQuery<ClinicalNote[]>({
+    queryKey: [`/clinical-notes?patientId=${id}`],
+    enabled: !!id && activeTab === 'notes',
+    retry: false,
+    select: (d) => (Array.isArray(d) ? d : []),
+  });
+
+  const { data: labsData, isLoading: labsLoading } = useQuery<LabOrder[]>({
+    queryKey: [`/lab-orders?patientId=${id}`],
+    enabled: !!id && activeTab === 'labs',
+    retry: false,
+    select: (d) => (Array.isArray(d) ? d : []),
+  });
+
+  const { data: radiologyData, isLoading: radioLoading } = useQuery<RadiologyOrder[]>({
+    queryKey: [`/radiology-orders?patientId=${id}`],
+    enabled: !!id && activeTab === 'labs',
+    retry: false,
+    select: (d) => (Array.isArray(d) ? d : []),
   });
 
   const age = patient?.dob
@@ -69,7 +261,17 @@ export default function PatientDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={s.headerTitle} numberOfLines={1}>Patient Profile</Text>
-        <View style={{ width: 38 }} />
+        {patient && (
+          <TouchableOpacity
+            style={[s.apptBtn, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push(`/book-appointment?patientId=${id}&patientName=${encodeURIComponent(patient.nameEn)}`);
+            }}
+          >
+            <Ionicons name="calendar-outline" size={16} color="#FFF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {isLoading ? (
@@ -125,7 +327,9 @@ export default function PatientDetailScreen() {
           </View>
 
           {/* Tab Content */}
-          <ScrollView style={s.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
+          <ScrollView style={s.tabContent} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+
+            {/* ── Overview ── */}
             {activeTab === 'overview' && (
               <View style={s.section}>
                 <Text style={s.sectionTitle}>Demographics</Text>
@@ -138,7 +342,6 @@ export default function PatientDetailScreen() {
                   <InfoRow label="Height" value={patient.height ? `${patient.height} cm` : null} icon="resize-outline" />
                   <InfoRow label="Patient Type" value={patient.patientType} icon="clipboard-outline" />
                 </View>
-
                 <Text style={s.sectionTitle}>Guardian / Contact</Text>
                 <View style={[s.card, { backgroundColor: colors.card }]}>
                   <InfoRow label="Guardian" value={patient.guardianName} icon="people-outline" />
@@ -146,7 +349,6 @@ export default function PatientDetailScreen() {
                   <InfoRow label="Phone" value={patient.guardianPhone} icon="call-outline" />
                   <InfoRow label="Address" value={patient.address} icon="location-outline" />
                 </View>
-
                 <Text style={s.sectionTitle}>Admission</Text>
                 <View style={[s.card, { backgroundColor: colors.card }]}>
                   <InfoRow label="Admission Date" value={patient.admissionDate} icon="enter-outline" />
@@ -154,31 +356,117 @@ export default function PatientDetailScreen() {
                 </View>
               </View>
             )}
+
+            {/* ── Vitals ── */}
             {activeTab === 'vitals' && (
               <View style={s.section}>
-                <View style={s.emptyTab}>
-                  <Ionicons name="pulse-outline" size={48} color={colors.mutedForeground} />
+                {/* Pulled from patient record */}
+                {(patient.weight || patient.height) ? (
+                  <>
+                    <Text style={s.sectionTitle}>Anthropometrics</Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <VitalCard label="Weight" value={patient.weight} unit="kg" icon="scale-outline" color="#0A66C2" bg="#E8F1FB" />
+                      <VitalCard label="Height" value={patient.height} unit="cm" icon="resize-outline" color="#7C3AED" bg="#EDE9FE" />
+                    </View>
+                    {patient.weight && patient.height && (() => {
+                      const bmi = patient.weight! / Math.pow(patient.height! / 100, 2);
+                      return (
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <VitalCard label="BMI" value={bmi.toFixed(1)} unit="kg/m²" icon="body-outline" color="#13A2AE" bg="#E5F7F9" />
+                        </View>
+                      );
+                    })()}
+                  </>
+                ) : null}
+
+                <Text style={[s.sectionTitle, { marginTop: patient.weight || patient.height ? 8 : 0 }]}>Clinical Vitals</Text>
+                <View style={[s.emptyTab, { backgroundColor: colors.card, borderRadius: 16, padding: 24 }]}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                    <Ionicons name="pulse-outline" size={28} color={colors.primary} />
+                  </View>
                   <Text style={[s.emptyTitle, { color: colors.foreground }]}>No vitals recorded</Text>
-                  <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Vitals are recorded through the desktop app</Text>
+                  <Text style={[s.emptySub, { color: colors.mutedForeground }]}>
+                    Vital signs (BP, HR, SpO₂, Temp) are recorded through the desktop EHR
+                  </Text>
                 </View>
               </View>
             )}
+
+            {/* ── Notes ── */}
             {activeTab === 'notes' && (
               <View style={s.section}>
-                <View style={s.emptyTab}>
-                  <Ionicons name="document-text-outline" size={48} color={colors.mutedForeground} />
-                  <Text style={[s.emptyTitle, { color: colors.foreground }]}>No clinical notes</Text>
-                  <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Notes are added through the desktop app</Text>
-                </View>
+                {notesLoading ? (
+                  <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+                ) : !notesData || notesData.length === 0 ? (
+                  <View style={s.emptyTab}>
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                      <Ionicons name="document-text-outline" size={28} color={colors.primary} />
+                    </View>
+                    <Text style={[s.emptyTitle, { color: colors.foreground }]}>No clinical notes</Text>
+                    <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Notes for this patient will appear here</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={s.sectionTitle}>{notesData.length} note{notesData.length !== 1 ? 's' : ''}</Text>
+                    {notesData.map(n => <NoteCard key={n.id} note={n} />)}
+                  </>
+                )}
               </View>
             )}
+
+            {/* ── Labs ── */}
             {activeTab === 'labs' && (
               <View style={s.section}>
-                <View style={s.emptyTab}>
-                  <Ionicons name="flask-outline" size={48} color={colors.mutedForeground} />
-                  <Text style={[s.emptyTitle, { color: colors.foreground }]}>No lab results</Text>
-                  <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Lab results are managed through the desktop app</Text>
-                </View>
+                {labsLoading || radioLoading ? (
+                  <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+                ) : (
+                  <>
+                    {(labsData?.length ?? 0) > 0 && (
+                      <>
+                        <Text style={s.sectionTitle}>Lab Orders ({labsData!.length})</Text>
+                        {labsData!.map(o => <LabCard key={o.id} order={o} />)}
+                      </>
+                    )}
+                    {(radiologyData?.length ?? 0) > 0 && (
+                      <>
+                        <Text style={s.sectionTitle}>Radiology ({radiologyData!.length})</Text>
+                        {radiologyData!.map(r => (
+                          <View key={r.id} style={[labStyles.card, { backgroundColor: colors.card, shadowColor: colors.shadow }]}>
+                            <View style={labStyles.topRow}>
+                              <View style={[labStyles.iconWrap, { backgroundColor: '#FEF3C7' }]}>
+                                <Ionicons name="scan-outline" size={18} color="#D97706" />
+                              </View>
+                              <View style={labStyles.info}>
+                                <Text style={[labStyles.name, { color: colors.foreground }]}>{r.studyType}</Text>
+                                {r.orderedByName && <Text style={[labStyles.sub, { color: colors.mutedForeground }]}>Dr. {r.orderedByName}</Text>}
+                              </View>
+                              <View style={[labStyles.badge, { backgroundColor: LAB_STATUS[r.status]?.bg ?? colors.muted }]}>
+                                <Text style={[labStyles.badgeText, { color: LAB_STATUS[r.status]?.color ?? colors.mutedForeground }]}>
+                                  {r.status.replace('_', ' ')}
+                                </Text>
+                              </View>
+                            </View>
+                            {r.findings && (
+                              <View style={[labStyles.resultBox, { backgroundColor: colors.muted }]}>
+                                <Text style={[labStyles.resultLabel, { color: colors.mutedForeground }]}>Findings</Text>
+                                <Text style={[labStyles.resultValue, { color: colors.foreground }]}>{r.findings}</Text>
+                              </View>
+                            )}
+                          </View>
+                        ))}
+                      </>
+                    )}
+                    {(labsData?.length ?? 0) === 0 && (radiologyData?.length ?? 0) === 0 && (
+                      <View style={s.emptyTab}>
+                        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                          <Ionicons name="flask-outline" size={28} color={colors.primary} />
+                        </View>
+                        <Text style={[s.emptyTitle, { color: colors.foreground }]}>No lab orders</Text>
+                        <Text style={[s.emptySub, { color: colors.mutedForeground }]}>Lab and radiology orders will appear here</Text>
+                      </View>
+                    )}
+                  </>
+                )}
               </View>
             )}
           </ScrollView>
@@ -196,13 +484,15 @@ const detailStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border,
   },
   backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: c.muted, alignItems: 'center', justifyContent: 'center' },
+  apptBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontFamily: 'Tajawal_700Bold', color: c.foreground, flex: 1, textAlign: 'center', marginHorizontal: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   errorText: { fontSize: 17, fontFamily: 'Tajawal_700Bold' },
   backLink: { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 },
   heroCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: c.card, padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border,
+    backgroundColor: c.card, padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.border,
   },
   avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 20, fontFamily: 'Tajawal_700Bold', color: '#FFF' },
@@ -215,10 +505,7 @@ const detailStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: 'Tajawal_700Bold' },
-  tabBar: {
-    flexDirection: 'row', backgroundColor: c.card,
-    borderBottomWidth: 1,
-  },
+  tabBar: { flexDirection: 'row', backgroundColor: c.card, borderBottomWidth: 1 },
   tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 12, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
   tabBtnActive: {},
   tabLabel: { fontSize: 12, fontFamily: 'Tajawal_500Medium' },
@@ -226,7 +513,7 @@ const detailStyles = (c: ReturnType<typeof useColors>) => StyleSheet.create({
   section: { padding: 20 },
   sectionTitle: { fontSize: 13, fontFamily: 'Tajawal_700Bold', color: c.mutedForeground, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10, marginTop: 16 },
   card: { borderRadius: 16, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4, shadowColor: 'rgba(0,0,0,0.06)', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 6, elevation: 2 },
-  emptyTab: { alignItems: 'center', paddingTop: 48, gap: 10 },
+  emptyTab: { alignItems: 'center', paddingTop: 32, gap: 6 },
   emptyTitle: { fontSize: 17, fontFamily: 'Tajawal_700Bold' },
-  emptySub: { fontSize: 13, fontFamily: 'Tajawal_400Regular', textAlign: 'center' },
+  emptySub: { fontSize: 13, fontFamily: 'Tajawal_400Regular', textAlign: 'center', paddingHorizontal: 20, lineHeight: 18 },
 });
