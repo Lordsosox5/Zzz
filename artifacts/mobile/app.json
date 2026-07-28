@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Almuzini EHR",
+    "slug": "almuzini-ehr",
+    "version": "1.0.0",
+    "scheme": "almuziniehr",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.almuzini.ehr",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used for patient photo capture."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0A66C2"
+      },
+      "package": "com.almuzini.ehr"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/icon.png"
+    },
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A66C2"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        { "backgroundColor": "#0A66C2", "image": "./assets/images/splash-icon.png" }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
