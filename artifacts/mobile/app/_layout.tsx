@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import * as SystemUI from 'expo-system-ui';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -12,14 +11,16 @@ import {
   Tajawal_500Medium,
   Tajawal_700Bold,
 } from '@expo-google-fonts/tajawal';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import { queryClient } from '@/lib/query-client';
 import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
+console.log('[layout] _layout.tsx module loaded');
 
 export default function RootLayout() {
+  console.log('[layout] RootLayout rendering');
   const scheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
     Tajawal_400Regular,
@@ -27,17 +28,17 @@ export default function RootLayout() {
     Tajawal_700Bold,
   });
 
-  useEffect(() => {
-    SystemUI.setBackgroundColorAsync(scheme === 'dark' ? '#070D1A' : '#F6F9FC');
-  }, [scheme]);
+  // On web: fonts load asynchronously via CSS — never block render.
+  // On native: wait for fonts before hiding the splash screen.
+  const ready = Platform.OS === 'web' ? true : (fontsLoaded || !!fontError);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+    if (ready) {
+      SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, fontError]);
+  }, [ready]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!ready) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
