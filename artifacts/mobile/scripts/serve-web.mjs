@@ -9,7 +9,7 @@ import fs   from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const PORT    = 8082;
+const PORT    = 5000;
 const __dir   = path.dirname(fileURLToPath(import.meta.url));
 const DIST    = path.resolve(__dir, '..', 'dist');
 

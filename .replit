@@ -31,12 +31,11 @@ name = "Start application"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "webview"
+outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm install && PORT=8080 pnpm --filter @workspace/api-server run dev & PORT=5000 BASE_PATH=/ pnpm --filter @workspace/ehr run dev"
-waitForPort = 5000
 
 [[workflows.workflow]]
 name = "artifacts/mobile: Mobile App"
@@ -47,8 +46,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter @workspace/mobile run web"
-waitForPort = 8082
+args = "node artifacts/mobile/scripts/serve-web.mjs"
+waitForPort = 5000
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
