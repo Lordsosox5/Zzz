@@ -1,5 +1,5 @@
 /**
- * Replit dev proxy — binds 0.0.0.0:3000 so Replit's port detector can find it,
+ * Replit dev proxy — binds 0.0.0.0:8083 so Replit's port detector can find it,
  * then forwards all HTTP and WebSocket traffic to Metro on localhost:3001.
  *
  * Metro itself only binds to the LAN IP (172.x.x.x), so the workflow port-open
@@ -14,16 +14,21 @@ const TARGET_HOST = 'localhost';
 
 // ── HTTP proxy ────────────────────────────────────────────────────────────────
 const server = http.createServer((req, res) => {
+  // Force the Host header to what Metro expects
+  const headers = { ...req.headers, host: `${TARGET_HOST}:${TARGET_PORT}` };
+
   const opts = {
     hostname: TARGET_HOST,
     port:     TARGET_PORT,
     path:     req.url,
     method:   req.method,
-    headers:  req.headers,
+    headers,
   };
 
   const proxy = http.request(opts, (upstream) => {
-    res.writeHead(upstream.statusCode, upstream.headers);
+    // Pass through all response headers but strip transfer-encoding if chunked
+    const resHeaders = { ...upstream.headers };
+    res.writeHead(upstream.statusCode, resHeaders);
     upstream.pipe(res, { end: true });
   });
 
@@ -42,8 +47,11 @@ server.on('upgrade', (req, socket, head) => {
   conn.on('connect', () => {
     // Re-emit the full HTTP Upgrade request to the upstream Metro server
     let raw = `${req.method} ${req.url} HTTP/1.1\r\n`;
+    raw += `Host: ${TARGET_HOST}:${TARGET_PORT}\r\n`;
     for (let i = 0; i < req.rawHeaders.length; i += 2) {
-      raw += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
+      const name = req.rawHeaders[i];
+      if (name.toLowerCase() === 'host') continue; // already added above
+      raw += `${name}: ${req.rawHeaders[i + 1]}\r\n`;
     }
     raw += '\r\n';
     conn.write(raw);
