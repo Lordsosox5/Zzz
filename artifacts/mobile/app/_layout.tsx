@@ -17,10 +17,8 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
-console.log('[layout] _layout.tsx module loaded');
 
 export default function RootLayout() {
-  console.log('[layout] RootLayout rendering');
   const scheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
     Tajawal_400Regular,

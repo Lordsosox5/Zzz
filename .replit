@@ -48,7 +48,7 @@ outputType = "webview"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/mobile run web"
-waitForPort = 8083
+waitForPort = 8082
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
