@@ -8,7 +8,7 @@
 import http from 'http';
 import net  from 'net';
 
-const PROXY_PORT  = 3000;
+const PROXY_PORT  = 8083;
 const TARGET_PORT = 3001;
 const TARGET_HOST = 'localhost';
 
