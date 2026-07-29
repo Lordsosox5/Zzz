@@ -43,11 +43,12 @@ name = "artifacts/mobile: Mobile App"
 author = "agent"
 
 [workflows.workflow.metadata]
-outputType = "console"
+outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/mobile run web"
+waitForPort = 3000
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"

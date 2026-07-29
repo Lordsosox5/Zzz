@@ -8,11 +8,14 @@ export function getApiUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const { hostname, protocol } = window.location;
-    // Replit dev proxy: 8081-xxxx.replit.dev → 8080-xxxx.replit.dev
-    if (/^\d+-[^.]+\.replit\.dev$/.test(hostname)) {
-      return `${protocol}//${hostname.replace(/^\d+-/, '8080-')}`;
+    // Replit dev proxy: replace the leading port number with 8080.
+    // Domain format: {port}-{anything}.replit.dev  (dots allowed in the UUID part)
+    const replitMatch = hostname.match(/^(\d+)-(.+\.replit\.dev)$/);
+    if (replitMatch) {
+      return `${protocol}//8080-${replitMatch[2]}`;
     }
-    return `${protocol}//${hostname}:8080`;
+    // Generic fallback: same host, port 8080
+    return `${protocol}//${hostname.replace(/:\d+$/, '')}:8080`;
   }
   return 'http://localhost:8080';
 }
