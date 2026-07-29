@@ -46,7 +46,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node artifacts/mobile/scripts/serve-web.mjs"
+args = "node artifacts/mobile/scripts/dev.mjs"
 waitForPort = 5000
 
 [agent]
